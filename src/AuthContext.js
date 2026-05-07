@@ -71,7 +71,7 @@ export function AuthProvider({ children }) {
     if (Platform.OS !== 'web') {
       registerForPushNotifications(t).catch(console.error)
     }
-    return u
+    return { user: u, token: t }
   }
 
   async function logout() {
