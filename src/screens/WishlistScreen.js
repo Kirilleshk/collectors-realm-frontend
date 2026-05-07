@@ -59,7 +59,9 @@ export default function WishlistScreen() {
     Alert.alert('Удалить?', 'Убрать из вишлиста?', [
       { text: 'Отмена', style: 'cancel' },
       { text: 'Удалить', style: 'destructive', onPress: async () => {
-        try { await wishlist.remove(id); await load() } catch (e) {}
+        try { await wishlist.remove(id); await load() } catch (e) {
+          Alert.alert('Ошибка', 'Не удалось удалить')
+        }
       }}
     ])
   }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView, Modal, Image, Platform, Alert } from 'react-native'
 import { WebView } from 'react-native-webview'
 import * as Location from 'expo-location'
@@ -116,6 +116,7 @@ users.forEach(function(u) {
 export default function MapScreen({ navigation }) {
   const { token } = useAuth()
   const [users, setUsers] = useState([])
+  const usersRef = useRef([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState(null)
   const [selected, setSelected] = useState(null)
@@ -135,7 +136,7 @@ export default function MapScreen({ navigation }) {
     try {
       const data = JSON.parse(event.data)
       if (data.type === 'USER_CLICK') {
-        const user = users.find(u => u.id === data.userId)
+        const user = usersRef.current.find(u => u.id === data.userId)
         if (user) setSelected(user)
       }
     } catch (e) {}
@@ -145,7 +146,9 @@ export default function MapScreen({ navigation }) {
     try {
       const res = await fetch(`${API}/users`, { headers: { Authorization: `Bearer ${token}` } })
       const data = await res.json()
-      setUsers(Array.isArray(data) ? data.filter(u => u.latitude && u.longitude) : [])
+      const list = Array.isArray(data) ? data.filter(u => u.latitude && u.longitude) : []
+      setUsers(list)
+      usersRef.current = list
     } catch (e) { console.error(e) }
     setLoading(false)
   }

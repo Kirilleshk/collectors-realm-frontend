@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, ActivityIndicator, Alert, Image, Modal, KeyboardAvoidingView, Platform } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 import * as Location from 'expo-location'
@@ -27,9 +27,18 @@ export default function ProfileScreen() {
   const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl || null)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [locating, setLocating] = useState(false)
-  const [portfolio, setPortfolio] = useState(
-    user?.portfolioPhotos?.map(p => p.url) || []
-  )
+  const [portfolio, setPortfolio] = useState([])
+
+  useEffect(() => {
+    fetch(`${API}/users/me`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data.portfolioPhotos)) {
+          setPortfolio(data.portfolioPhotos.map(p => p.url))
+        }
+      })
+      .catch(() => {})
+  }, [])
   const [uploadingPortfolio, setUploadingPortfolio] = useState(false)
 
   const initials = (user?.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
