@@ -129,11 +129,15 @@ export default function AdminScreen() {
         isAuction: form.isAuction,
         startPrice: form.isAuction ? Number(form.startPrice) || 0 : null,
         priceStep: form.isAuction ? Number(form.priceStep) || 0 : null,
-        auctionEndTime: form.isAuction ? (() => {
-          const d = new Date()
-          d.setDate(d.getDate() + parseInt(form.auctionDays))
-          return d.toISOString()
-        })() : null,
+        auctionEndTime: form.isAuction ? (
+          editItem?.auctionEndTime && form.auctionDays === '1'
+            ? editItem.auctionEndTime
+            : (() => {
+                const d = new Date()
+                d.setDate(d.getDate() + parseInt(form.auctionDays))
+                return d.toISOString()
+              })()
+        ) : null,
       }
       const url = editItem ? `${API}/products/${editItem.id}` : `${API}/products`
       const method = editItem ? 'PUT' : 'POST'

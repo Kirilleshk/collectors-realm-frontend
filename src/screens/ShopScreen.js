@@ -57,10 +57,10 @@ export default function ShopScreen({ navigation }) {
   const filtered = items.filter(item => {
     const matchSearch = item.name?.toLowerCase().includes(search.toLowerCase()) ||
       item.manufacturer?.toLowerCase().includes(search.toLowerCase())
-    const matchFilter = !filter || (
+    const matchFilter = !filter ? item.status !== 'SOLD' : (
       filter === 'NEW' ? item.status !== 'SOLD' && item.condition === 'NEW' :
       filter === 'USED' ? item.status !== 'SOLD' && item.condition === 'USED' :
-      filter === 'AUCTION' ? item.isAuction :
+      filter === 'AUCTION' ? item.isAuction && item.status !== 'SOLD' :
       item.status === filter
     )
     return matchSearch && matchFilter

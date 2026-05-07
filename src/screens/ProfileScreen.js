@@ -27,7 +27,9 @@ export default function ProfileScreen() {
   const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl || null)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [locating, setLocating] = useState(false)
-  const [portfolio, setPortfolio] = useState([])
+  const [portfolio, setPortfolio] = useState(
+    user?.portfolioPhotos?.map(p => p.url) || []
+  )
   const [uploadingPortfolio, setUploadingPortfolio] = useState(false)
 
   const initials = (user?.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
