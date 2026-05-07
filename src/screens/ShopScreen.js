@@ -10,6 +10,7 @@ const FILTERS = [
   { label: 'Все', value: null },
   { label: 'Новые', value: 'NEW' },
   { label: 'Б/у', value: 'USED' },
+  { label: '🔨 Аукцион', value: 'AUCTION' },
   { label: 'Предзаказ', value: 'PREORDER' },
   { label: 'Резерв', value: 'RESERVED' },
   { label: 'Торг', value: 'NEGOTIABLE' },
@@ -59,6 +60,7 @@ export default function ShopScreen({ navigation }) {
     const matchFilter = !filter || (
       filter === 'NEW' ? item.status !== 'SOLD' && item.condition === 'NEW' :
       filter === 'USED' ? item.status !== 'SOLD' && item.condition === 'USED' :
+      filter === 'AUCTION' ? item.isAuction :
       item.status === filter
     )
     return matchSearch && matchFilter
@@ -163,11 +165,17 @@ export default function ShopScreen({ navigation }) {
                   ? <Image source={{ uri: item.images[0].url }} style={s.img} resizeMode="cover" />
                   : <Text style={s.imgIcon}>🗿</Text>
                 }
-                <View style={[s.badge, getBadgeStyle(item)]}>
-                  <Text style={[s.badgeText, badge.color ? { color: badge.color } : {}]}>
-                    {badge.label}
-                  </Text>
-                </View>
+                {item.isAuction ? (
+                  <View style={s.auctionBadge}>
+                    <Text style={s.auctionBadgeText}>🔨 АУКЦИОН</Text>
+                  </View>
+                ) : (
+                  <View style={[s.badge, getBadgeStyle(item)]}>
+                    <Text style={[s.badgeText, badge.color ? { color: badge.color } : {}]}>
+                      {badge.label}
+                    </Text>
+                  </View>
+                )}
               </View>
               <View style={s.cardBody}>
                 <Text style={s.cardName} numberOfLines={2}>{item.name}</Text>
@@ -216,6 +224,8 @@ const s = StyleSheet.create({
   imgWrap: { height: 150, backgroundColor: colors.surface2, justifyContent: 'center', alignItems: 'center', position: 'relative', overflow: 'hidden' },
   img: { width: '100%', height: 150 },
   imgIcon: { fontSize: 52 },
+  auctionBadge: { position: 'absolute', top: 10, right: 10, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: '#FF6B0022', borderWidth: 1, borderColor: '#FF6B0060' },
+  auctionBadgeText: { fontSize: 10, fontWeight: '800', color: '#FF6B00' },
   badge: { position: 'absolute', top: 10, right: 10, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1 },
   badgeNew: { backgroundColor: 'rgba(42,170,96,0.2)', borderColor: 'rgba(42,170,96,0.4)' },
   badgeUsed: { backgroundColor: 'rgba(139,79,212,0.2)', borderColor: 'rgba(139,79,212,0.4)' },

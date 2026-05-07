@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Image, Platform, Linking, Alert } from 'react-native'
+import React, { useState, useEffect, useRef } from 'react'
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Image, Platform, Linking, Alert, TextInput } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
-import { products, wishlist } from '../api'
+import { products, wishlist, bids } from '../api'
+import { useAuth } from '../AuthContext'
 import { colors } from '../theme'
 
 const CLOUD_NAME = 'dqutmb1rm'
@@ -22,16 +23,70 @@ const STATUS_INFO = {
   NEGOTIABLE: { label: 'Торг уместен', color: '#AF52DE' },
 }
 
+function getTimeLeft(endTime) {
+  const diff = new Date(endTime) - new Date()
+  if (diff <= 0) return null
+  return {
+    days: Math.floor(diff / 86400000),
+    hours: Math.floor((diff % 86400000) / 3600000),
+    mins: Math.floor((diff % 3600000) / 60000),
+    secs: Math.floor((diff % 60000) / 1000),
+  }
+}
+
 export default function ProductDetailScreen({ route, navigation }) {
   const { id } = route.params
+  const { user } = useAuth()
   const [item, setItem] = useState(null)
   const [loading, setLoading] = useState(true)
   const [addingToWishlist, setAddingToWishlist] = useState(false)
   const [addedToWishlist, setAddedToWishlist] = useState(false)
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0)
   const [uploading, setUploading] = useState(false)
+  const [auctionBids, setAuctionBids] = useState([])
+  const [bidAmount, setBidAmount] = useState('')
+  const [placingBid, setPlacingBid] = useState(false)
+  const [timeLeft, setTimeLeft] = useState(null)
+  const timerRef = useRef(null)
 
   useEffect(() => { load() }, [id])
+
+  useEffect(() => {
+    if (item?.isAuction && item?.auctionEndTime) {
+      loadBids()
+      setTimeLeft(getTimeLeft(item.auctionEndTime))
+      timerRef.current = setInterval(() => {
+        setTimeLeft(getTimeLeft(item.auctionEndTime))
+      }, 1000)
+    }
+    return () => clearInterval(timerRef.current)
+  }, [item?.id])
+
+  async function loadBids() {
+    try {
+      const res = await bids.getForProduct(id)
+      setAuctionBids(Array.isArray(res.data) ? res.data : [])
+    } catch (e) {}
+  }
+
+  async function handlePlaceBid() {
+    const amount = Number(bidAmount)
+    const topBid = auctionBids[0]?.amount || 0
+    const minBid = topBid > 0 ? topBid + (item.priceStep || 0) : (item.startPrice || 0)
+    if (!amount || amount < minBid) {
+      Alert.alert('Ставка слишком мала', `Минимальная ставка: ${minBid.toLocaleString('ru')} ₽`)
+      return
+    }
+    setPlacingBid(true)
+    try {
+      await bids.place(id, amount)
+      setBidAmount('')
+      await loadBids()
+    } catch (e) {
+      Alert.alert('Ошибка', e.response?.data?.error || 'Не удалось сделать ставку')
+    }
+    setPlacingBid(false)
+  }
 
   async function load() {
     try {
@@ -72,7 +127,7 @@ export default function ProductDetailScreen({ route, navigation }) {
   async function handleAddToWishlist() {
     setAddingToWishlist(true)
     try {
-      await wishlist.add(item.name, 'HIGH', `Хочу купить: ${item.name}`)
+      await wishlist.add({ name: item.name, priority: 'HIGH', comment: `Хочу купить: ${item.name}` })
       setAddedToWishlist(true)
     } catch (e) { console.error(e) }
     setAddingToWishlist(false)
@@ -205,8 +260,78 @@ export default function ProductDetailScreen({ route, navigation }) {
           </View>
         ) : null}
 
+        {/* Аукцион */}
+        {item.isAuction && (
+          <View style={s.auctionCard}>
+            <View style={s.auctionHeader}>
+              <Text style={s.auctionTitle}>🔨 Аукцион</Text>
+              {timeLeft ? (
+                <View style={s.timer}>
+                  <Text style={s.timerText}>
+                    {timeLeft.days > 0 ? `${timeLeft.days}д ` : ''}{String(timeLeft.hours).padStart(2,'0')}:{String(timeLeft.mins).padStart(2,'0')}:{String(timeLeft.secs).padStart(2,'0')}
+                  </Text>
+                </View>
+              ) : (
+                <View style={[s.timer, { backgroundColor: '#8E8E9320' }]}>
+                  <Text style={[s.timerText, { color: '#8E8E93' }]}>Завершён</Text>
+                </View>
+              )}
+            </View>
+
+            <View style={s.auctionStats}>
+              <View style={s.auctionStat}>
+                <Text style={s.auctionStatLabel}>Начальная цена</Text>
+                <Text style={s.auctionStatValue}>{item.startPrice?.toLocaleString('ru')} ₽</Text>
+              </View>
+              <View style={s.auctionStat}>
+                <Text style={s.auctionStatLabel}>Шаг ставки</Text>
+                <Text style={s.auctionStatValue}>{item.priceStep?.toLocaleString('ru')} ₽</Text>
+              </View>
+              <View style={s.auctionStat}>
+                <Text style={s.auctionStatLabel}>Лучшая ставка</Text>
+                <Text style={[s.auctionStatValue, { color: '#FF6B00' }]}>
+                  {auctionBids[0] ? `${auctionBids[0].amount?.toLocaleString('ru')} ₽` : 'Нет ставок'}
+                </Text>
+              </View>
+            </View>
+
+            {auctionBids.length > 0 && (
+              <View style={s.bidsList}>
+                <Text style={s.bidsTitle}>Ставки ({auctionBids.length})</Text>
+                {auctionBids.slice(0, 5).map((bid, i) => (
+                  <View key={bid.id || i} style={s.bidRow}>
+                    <Text style={s.bidName}>{bid.userName || 'Участник'}</Text>
+                    <Text style={[s.bidAmount, i === 0 && { color: '#FF6B00', fontWeight: '800' }]}>
+                      {i === 0 ? '🏆 ' : ''}{bid.amount?.toLocaleString('ru')} ₽
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {timeLeft && (
+              <View style={s.bidInput}>
+                <TextInput
+                  style={s.bidTextInput}
+                  value={bidAmount}
+                  onChangeText={setBidAmount}
+                  placeholder={`Мин. ${((auctionBids[0]?.amount || 0) + (item.priceStep || 0) || item.startPrice || 0).toLocaleString('ru')} ₽`}
+                  placeholderTextColor={colors.text2}
+                  keyboardType="numeric"
+                />
+                <TouchableOpacity style={s.bidBtn} onPress={handlePlaceBid} disabled={placingBid}>
+                  {placingBid
+                    ? <ActivityIndicator color="white" size="small" />
+                    : <Text style={s.bidBtnText}>Ставка</Text>
+                  }
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        )}
+
         {/* Контакты продавца */}
-        {!isSold ? (
+        {!isSold && !item.isAuction ? (
           <View style={s.contactCard}>
             <Text style={s.contactTitle}>Связаться с продавцом</Text>
             <View style={s.contactRow}>
@@ -227,7 +352,7 @@ export default function ProductDetailScreen({ route, navigation }) {
         ) : null}
 
         {/* Кнопки */}
-        {!isSold ? (
+        {!isSold && !item.isAuction ? (
           <View style={s.actions}>
             <TouchableOpacity style={s.buyBtn} onPress={() => navigation.navigate('Chat', { productName: item.name, productId: item.id })}>
               <Text style={s.buyBtnText}>💬 Написать в чате</Text>
@@ -305,4 +430,22 @@ const s = StyleSheet.create({
   wishlistBtnText: { color: colors.accent, fontSize: 15, fontWeight: '600' },
   soldBanner: { backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.border, padding: 16, alignItems: 'center', gap: 12 },
   soldBannerText: { fontSize: 16, color: colors.text2, fontWeight: '600' },
+  auctionCard: { backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1.5, borderColor: '#FF6B0040', padding: 16, marginBottom: 16, gap: 14 },
+  auctionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  auctionTitle: { fontSize: 17, fontWeight: '800', color: '#FF6B00' },
+  timer: { backgroundColor: '#FF6B0015', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
+  timerText: { fontSize: 14, fontWeight: '800', color: '#FF6B00', fontVariant: ['tabular-nums'] },
+  auctionStats: { flexDirection: 'row', gap: 8 },
+  auctionStat: { flex: 1, backgroundColor: colors.surface2, borderRadius: 10, padding: 10, alignItems: 'center' },
+  auctionStatLabel: { fontSize: 10, color: colors.text2, fontWeight: '600', marginBottom: 4, textAlign: 'center' },
+  auctionStatValue: { fontSize: 13, fontWeight: '800', color: colors.text },
+  bidsList: { gap: 6 },
+  bidsTitle: { fontSize: 11, fontWeight: '700', color: colors.text2, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 },
+  bidRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.border },
+  bidName: { fontSize: 14, color: colors.text },
+  bidAmount: { fontSize: 14, color: colors.text, fontWeight: '600' },
+  bidInput: { flexDirection: 'row', gap: 10 },
+  bidTextInput: { flex: 1, backgroundColor: colors.surface2, borderWidth: 1, borderColor: '#FF6B0040', borderRadius: 10, padding: 12, color: colors.text, fontSize: 15 },
+  bidBtn: { backgroundColor: '#FF6B00', borderRadius: 10, paddingHorizontal: 20, justifyContent: 'center' },
+  bidBtnText: { color: 'white', fontWeight: '800', fontSize: 15 },
 })

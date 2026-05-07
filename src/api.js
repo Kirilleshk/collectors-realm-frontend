@@ -42,4 +42,9 @@ export const wishlist = {
   remove: (id) => api.delete(`/wishlist/${id}`),
 }
 
+export const bids = {
+  getForProduct: (productId) => api.get(`/products/${productId}/bids`),
+  place: (productId, amount) => api.post(`/products/${productId}/bids`, { amount }),
+}
+
 export default api

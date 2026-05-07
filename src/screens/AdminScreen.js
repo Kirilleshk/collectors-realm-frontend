@@ -11,7 +11,7 @@ const CLOUD_NAME = 'dqutmb1rm'
 const UPLOAD_PRESET = 'collectors_realm'
 const API = 'https://collectors-realm-backend.onrender.com/api'
 
-const EMPTY = { name: '', description: '', price: '', condition: 'NEW', manufacturer: '', franchise: '', character: '' }
+const EMPTY = { name: '', description: '', price: '', condition: 'NEW', manufacturer: '', franchise: '', character: '', isAuction: false, startPrice: '', priceStep: '', auctionDays: '1' }
 
 const STATUS_LABELS = {
   AVAILABLE: { label: 'Доступен', color: '#34C759' },
@@ -57,7 +57,11 @@ export default function AdminScreen() {
       condition: item.condition || 'NEW',
       manufacturer: item.manufacturer || '',
       franchise: item.franchise || '',
-      character: item.character || ''
+      character: item.character || '',
+      isAuction: item.isAuction || false,
+      startPrice: String(item.startPrice || ''),
+      priceStep: String(item.priceStep || ''),
+      auctionDays: '1',
     })
     setPhotos(item.images?.map(i => i.url) || [])
     setModal(true)
@@ -122,6 +126,14 @@ export default function AdminScreen() {
         franchise: form.franchise.trim(),
         character: form.character.trim(),
         imageUrls: photos,
+        isAuction: form.isAuction,
+        startPrice: form.isAuction ? Number(form.startPrice) || 0 : null,
+        priceStep: form.isAuction ? Number(form.priceStep) || 0 : null,
+        auctionEndTime: form.isAuction ? (() => {
+          const d = new Date()
+          d.setDate(d.getDate() + parseInt(form.auctionDays))
+          return d.toISOString()
+        })() : null,
       }
       const url = editItem ? `${API}/products/${editItem.id}` : `${API}/products`
       const method = editItem ? 'PUT' : 'POST'
@@ -323,6 +335,40 @@ export default function AdminScreen() {
                 </TouchableOpacity>
               ))}
             </View>
+
+            <Text style={s.label}>ТИП ПРОДАЖИ</Text>
+            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
+              {[{ v: false, icon: '💰', t: 'Обычная' }, { v: true, icon: '🔨', t: 'Аукцион' }].map(opt => (
+                <TouchableOpacity
+                  key={String(opt.v)}
+                  onPress={() => setForm(p => ({ ...p, isAuction: opt.v }))}
+                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 12, borderRadius: 12, borderWidth: 1.5, borderColor: form.isAuction === opt.v ? (opt.v ? '#FF6B00' : colors.accent) : colors.border, backgroundColor: form.isAuction === opt.v ? (opt.v ? '#FF6B0015' : `${colors.accent}15`) : colors.surface }}
+                >
+                  <Text style={{ fontSize: 16 }}>{opt.icon}</Text>
+                  <Text style={{ fontWeight: '700', color: form.isAuction === opt.v ? (opt.v ? '#FF6B00' : colors.accent) : colors.text2 }}>{opt.t}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {form.isAuction && (
+              <>
+                <Text style={s.label}>НАЧАЛЬНАЯ ЦЕНА (₽) *</Text>
+                <TextInput style={[s.input, { marginBottom: 16 }]} value={form.startPrice} onChangeText={v => setForm(p => ({ ...p, startPrice: v }))} placeholder="500" placeholderTextColor={colors.text2} keyboardType="numeric" />
+
+                <Text style={s.label}>ШАГ СТАВКИ (₽)</Text>
+                <TextInput style={[s.input, { marginBottom: 16 }]} value={form.priceStep} onChangeText={v => setForm(p => ({ ...p, priceStep: v }))} placeholder="100" placeholderTextColor={colors.text2} keyboardType="numeric" />
+
+                <Text style={s.label}>СРОК АУКЦИОНА</Text>
+                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+                  {['1', '2', '3'].map(d => (
+                    <TouchableOpacity key={d} onPress={() => setForm(p => ({ ...p, auctionDays: d }))}
+                      style={{ flex: 1, padding: 10, borderRadius: 10, alignItems: 'center', borderWidth: 1.5, borderColor: form.auctionDays === d ? '#FF6B00' : colors.border, backgroundColor: form.auctionDays === d ? '#FF6B0015' : colors.surface }}>
+                      <Text style={{ fontWeight: '700', color: form.auctionDays === d ? '#FF6B00' : colors.text2 }}>{d} {d === '1' ? 'день' : 'дня'}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </>
+            )}
 
             <Text style={s.label}>ОПИСАНИЕ</Text>
             <TextInput
