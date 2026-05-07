@@ -151,12 +151,21 @@ export default function AdminScreen() {
       ...options.map(o => ({
         text: o.label,
         onPress: async () => {
-          await fetch(`${API}/products/${id}/status`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ status: o.status })
-          })
-          load()
+          try {
+            const res = await fetch(`${API}/products/${id}/status`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ status: o.status })
+            })
+            const data = await res.json().catch(() => ({}))
+            if (!res.ok) {
+              Alert.alert('Ошибка', data.error || `Код ${res.status}`)
+              return
+            }
+            load()
+          } catch (e) {
+            Alert.alert('Ошибка сети', e.message)
+          }
         }
       })),
       { text: 'Отмена', style: 'cancel' }
