@@ -1,0 +1,12 @@
+export const colors = {
+  bg: '#0a0b0e',
+  surface: '#13141a',
+  surface2: '#1a1b22',
+  border: '#252730',
+  text: '#e8e5dc',
+  text2: '#8a8794',
+  accent: '#e04e28',
+  blue: '#2e7fd6',
+  green: '#2aaa60',
+  purple: '#8b4fd4',
+}

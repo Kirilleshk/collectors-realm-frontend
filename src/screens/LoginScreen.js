@@ -1,0 +1,217 @@
+import React, { useState, useEffect, useRef } from 'react'
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Animated } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { useAuth } from '../AuthContext'
+import { colors } from '../theme'
+
+const ALL_ROLES = [
+  { key: 'COLLECTOR', label: 'Коллекционер', icon: '🗿', color: '#4A90D9' },
+  { key: 'MASTER_REPAIR', label: 'Мастер по ремонту', icon: '🔧', color: '#E04E28' },
+  { key: 'CUSTOMIZER', label: 'Кастомизатор', icon: '🎨', color: '#AF52DE' },
+  { key: 'DIORAMA', label: 'Мастер диорам', icon: '🏔', color: '#34C759' },
+]
+
+export default function LoginScreen() {
+  const { login, register } = useAuth()
+  const [mode, setMode] = useState('login')
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [selectedRoles, setSelectedRoles] = useState(['COLLECTOR'])
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const fadeAnim = useRef(new Animated.Value(0)).current
+  const slideAnim = useRef(new Animated.Value(30)).current
+  const logoScale = useRef(new Animated.Value(0.8)).current
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 600, useNativeDriver: true }),
+      Animated.spring(logoScale, { toValue: 1, tension: 50, friction: 7, useNativeDriver: true }),
+    ]).start()
+  }, [])
+
+  function toggleRole(key) {
+    setSelectedRoles(prev =>
+      prev.includes(key) ? prev.filter(r => r !== key) : [...prev, key]
+    )
+  }
+
+  async function handleSubmit() {
+    setError('')
+    setLoading(true)
+    try {
+      if (mode === 'login') {
+        await login(email, password)
+      } else {
+        if (!name.trim()) { setError('Введите имя'); setLoading(false); return }
+        if (!email.trim()) { setError('Введите email'); setLoading(false); return }
+        if (!password.trim()) { setError('Введите пароль'); setLoading(false); return }
+        if (selectedRoles.length === 0) { setError('Выберите хотя бы одну роль'); setLoading(false); return }
+        await register(name.trim(), email.trim(), password, selectedRoles)
+      }
+    } catch (e) {
+      setError(e.response?.data?.error || 'Ошибка. Проверьте данные.')
+    }
+    setLoading(false)
+  }
+
+  return (
+    <SafeAreaView style={s.wrap}>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
+
+        {/* Логотип */}
+        <Animated.View style={[s.header, { opacity: fadeAnim, transform: [{ scale: logoScale }] }]}>
+          <View style={s.logoWrap}>
+            <Text style={s.logoIcon}>🗿</Text>
+          </View>
+          <Text style={s.logo}>Collector's Realm</Text>
+          <Text style={s.sub}>Сообщество коллекционеров</Text>
+          <View style={s.logoLine} />
+        </Animated.View>
+
+        {/* Карточка */}
+        <Animated.View style={[s.card, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+          {/* Переключатель */}
+          <View style={s.modeSwitch}>
+            <TouchableOpacity style={[s.modeBtn, mode === 'login' && s.modeBtnActive]} onPress={() => { setMode('login'); setError('') }}>
+              <Text style={[s.modeBtnText, mode === 'login' && s.modeBtnTextActive]}>Вход</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[s.modeBtn, mode === 'register' && s.modeBtnActive]} onPress={() => { setMode('register'); setError('') }}>
+              <Text style={[s.modeBtnText, mode === 'register' && s.modeBtnTextActive]}>Регистрация</Text>
+            </TouchableOpacity>
+          </View>
+
+          {error ? (
+            <View style={s.errorBox}>
+              <Text style={s.errorIcon}>⚠️</Text>
+              <Text style={s.errorText}>{error}</Text>
+            </View>
+          ) : null}
+
+          {/* Поля регистрации */}
+          {mode === 'register' && (
+            <View style={s.field}>
+              <Text style={s.label}>Имя</Text>
+              <TextInput style={s.input} value={name} onChangeText={setName} placeholder="Ваше имя" placeholderTextColor={colors.text2} />
+            </View>
+          )}
+
+          <View style={s.field}>
+            <Text style={s.label}>Email</Text>
+            <TextInput style={s.input} value={email} onChangeText={setEmail} placeholder="email@example.com" placeholderTextColor={colors.text2} keyboardType="email-address" autoCapitalize="none" />
+          </View>
+
+          <View style={s.field}>
+            <Text style={s.label}>Пароль</Text>
+            <TextInput style={s.input} value={password} onChangeText={setPassword} placeholder="••••••••" placeholderTextColor={colors.text2} secureTextEntry />
+          </View>
+
+          {/* Выбор роли при регистрации */}
+          {mode === 'register' && (
+            <View style={s.field}>
+              <Text style={s.label}>Кто вы? (можно выбрать несколько)</Text>
+              <View style={s.rolesGrid}>
+                {ALL_ROLES.map(role => {
+                  const active = selectedRoles.includes(role.key)
+                  return (
+                    <TouchableOpacity
+                      key={role.key}
+                      style={[s.roleCard, active && { borderColor: role.color, backgroundColor: `${role.color}15` }]}
+                      onPress={() => toggleRole(role.key)}
+                    >
+                      <Text style={s.roleIcon}>{role.icon}</Text>
+                      <Text style={[s.roleLabel, active && { color: role.color, fontWeight: '700' }]}>{role.label}</Text>
+                      {active && (
+                        <View style={[s.roleCheck, { backgroundColor: role.color }]}>
+                          <Text style={{ color: 'white', fontSize: 10, fontWeight: '700' }}>✓</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+            </View>
+          )}
+
+          <TouchableOpacity style={s.btn} onPress={handleSubmit} disabled={loading}>
+            {loading
+              ? <ActivityIndicator color="white" />
+              : <Text style={s.btnText}>{mode === 'login' ? '→ Войти' : '→ Создать аккаунт'}</Text>
+            }
+          </TouchableOpacity>
+        </Animated.View>
+
+        <Animated.View style={[s.footer, { opacity: fadeAnim }]}>
+          <Text style={s.footerText}>Collector's Realm © 2024</Text>
+        </Animated.View>
+
+      </ScrollView>
+    </KeyboardAvoidingView>
+    </SafeAreaView>
+  )
+}
+
+const s = StyleSheet.create({
+  wrap: { flex: 1, backgroundColor: colors.bg },
+  scroll: { flexGrow: 1, justifyContent: 'center', padding: 24 },
+  header: { alignItems: 'center', marginBottom: 36 },
+  logoWrap: {
+    width: 80, height: 80, borderRadius: 22,
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
+    justifyContent: 'center', alignItems: 'center', marginBottom: 16,
+    shadowColor: colors.accent, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12,
+  },
+  logoIcon: { fontSize: 40 },
+  logo: { fontSize: 26, fontWeight: '900', color: colors.text, letterSpacing: 0.5, marginBottom: 6 },
+  sub: { fontSize: 12, color: colors.accent, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 20 },
+  logoLine: { width: 40, height: 2, backgroundColor: colors.accent, borderRadius: 1 },
+  card: {
+    backgroundColor: colors.surface, borderRadius: 20, padding: 24,
+    borderWidth: 1, borderColor: colors.border,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 20,
+  },
+  modeSwitch: { flexDirection: 'row', backgroundColor: colors.surface2, borderRadius: 12, padding: 4, marginBottom: 24 },
+  modeBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center' },
+  modeBtnActive: { backgroundColor: colors.accent },
+  modeBtnText: { fontSize: 14, fontWeight: '600', color: colors.text2 },
+  modeBtnTextActive: { color: 'white' },
+  errorBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: 'rgba(224,78,40,0.1)', borderRadius: 10, padding: 12, marginBottom: 16,
+    borderWidth: 1, borderColor: 'rgba(224,78,40,0.3)',
+  },
+  errorIcon: { fontSize: 16 },
+  errorText: { color: colors.accent, fontSize: 13, flex: 1 },
+  field: { marginBottom: 16 },
+  label: { fontSize: 11, fontWeight: '700', color: colors.text2, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 8 },
+  input: {
+    backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.border,
+    borderRadius: 12, padding: 14, color: colors.text, fontSize: 15,
+  },
+  rolesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  roleCard: {
+    width: '47%', padding: 14, borderRadius: 14,
+    borderWidth: 1.5, borderColor: colors.border,
+    backgroundColor: colors.surface2, alignItems: 'center', gap: 6,
+    position: 'relative',
+  },
+  roleIcon: { fontSize: 28 },
+  roleLabel: { fontSize: 12, fontWeight: '500', color: colors.text2, textAlign: 'center' },
+  roleCheck: {
+    position: 'absolute', top: -6, right: -6,
+    width: 20, height: 20, borderRadius: 10,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  btn: {
+    backgroundColor: colors.accent, borderRadius: 12, padding: 16,
+    alignItems: 'center', marginTop: 8,
+    shadowColor: colors.accent, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 12,
+  },
+  btnText: { color: 'white', fontSize: 16, fontWeight: '700', letterSpacing: 0.5 },
+  footer: { alignItems: 'center', marginTop: 32 },
+  footerText: { fontSize: 12, color: colors.text2 },
+})
