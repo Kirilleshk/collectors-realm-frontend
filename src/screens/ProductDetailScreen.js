@@ -36,7 +36,7 @@ function getTimeLeft(endTime) {
 
 export default function ProductDetailScreen({ route, navigation }) {
   const { id } = route.params
-  const { user } = useAuth()
+  useAuth()
   const [item, setItem] = useState(null)
   const [loading, setLoading] = useState(true)
   const [addingToWishlist, setAddingToWishlist] = useState(false)
