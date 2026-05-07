@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView, Modal, Image, Platform } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView, Modal, Image, Platform, Alert } from 'react-native'
 import { WebView } from 'react-native-webview'
+import * as Location from 'expo-location'
 import { useAuth } from '../AuthContext'
 import { colors } from '../theme'
 
@@ -13,7 +14,16 @@ const roleMap = {
   DIORAMA: { label: 'Мастер диорам', icon: '🏔', color: '#34C759' },
 }
 
-function getMapHTML(users) {
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLon = (lon2 - lon1) * Math.PI / 180
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+function getMapHTML(users, myLocation = null, radius = null) {
   const markers = users.map(u => {
     const role = u.roles?.[0] || 'COLLECTOR'
     const r = roleMap[role] || roleMap.COLLECTOR
@@ -28,6 +38,28 @@ function getMapHTML(users) {
       color: ${JSON.stringify(r.color)}
     }`
   }).join(',')
+
+  const centerLat = myLocation ? myLocation.latitude : 55.7558
+  const centerLng = myLocation ? myLocation.longitude : 37.6173
+  const zoom = myLocation && radius ? (radius <= 5 ? 13 : 11) : 5
+
+  const nearbyCode = myLocation && radius ? `
+    L.circle([${myLocation.latitude}, ${myLocation.longitude}], {
+      radius: ${radius * 1000},
+      color: '#E04E28',
+      fillColor: '#E04E28',
+      fillOpacity: 0.06,
+      weight: 2,
+      dashArray: '6,4'
+    }).addTo(map);
+    var myIcon = L.divIcon({
+      html: '<div style="background:#E04E28;width:14px;height:14px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.5)"></div>',
+      iconSize: [14, 14], iconAnchor: [7, 7], className: ''
+    });
+    L.marker([${myLocation.latitude}, ${myLocation.longitude}], {icon: myIcon})
+      .bindPopup('<b>Вы здесь</b>')
+      .addTo(map);
+  ` : ''
 
   return `<!DOCTYPE html>
 <html>
@@ -56,24 +88,22 @@ html, body, #map { width: 100%; height: 100vh; }
 <body>
 <div id="map"></div>
 <script>
-var map = L.map('map').setView([55.7558, 37.6173], 5);
+var map = L.map('map').setView([${centerLat}, ${centerLng}], ${zoom});
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '© OpenStreetMap'
 }).addTo(map);
 
-var users = [${markers}];
+${nearbyCode}
 
+var users = [${markers}];
 users.forEach(function(u) {
   var icon = L.divIcon({
     html: '<div class="custom-marker" style="border-color:' + u.color + ';background:' + u.color + '22">' + u.icon + '</div>',
-    iconSize: [36, 36],
-    iconAnchor: [18, 18],
-    className: ''
+    iconSize: [36, 36], iconAnchor: [18, 18], className: ''
   });
   var marker = L.marker([u.lat, u.lng], {icon: icon}).addTo(map);
   marker.on('click', function() {
     window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'USER_CLICK', userId: u.id }));
-    // Для веб - используем кастомный ивент
     window.parent && window.parent.postMessage(JSON.stringify({ type: 'USER_CLICK', userId: u.id }), '*');
   });
   marker.bindPopup('<b>' + u.icon + ' ' + u.name + '</b><br/>' + u.role + (u.city ? '<br/>📍 ' + u.city : '') + (u.bio ? '<br/><i>' + u.bio + '</i>' : ''));
@@ -89,10 +119,12 @@ export default function MapScreen({ navigation }) {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState(null)
   const [selected, setSelected] = useState(null)
+  const [nearbyRadius, setNearbyRadius] = useState(null)
+  const [myLocation, setMyLocation] = useState(null)
+  const [gettingLocation, setGettingLocation] = useState(false)
 
   useEffect(() => {
     loadUsers()
-    // Слушаем сообщения от iframe (веб)
     if (Platform.OS === 'web') {
       window.addEventListener('message', handleWebMessage)
       return () => window.removeEventListener('message', handleWebMessage)
@@ -128,7 +160,35 @@ export default function MapScreen({ navigation }) {
     } catch (e) {}
   }
 
-  const filtered = filter ? users.filter(u => u.roles?.includes(filter)) : users
+  async function toggleNearby(radius) {
+    if (nearbyRadius === radius) {
+      setNearbyRadius(null)
+      setMyLocation(null)
+      return
+    }
+    setGettingLocation(true)
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync()
+      if (status !== 'granted') {
+        Alert.alert('Нужно разрешение', 'Разрешите доступ к геолокации в настройках')
+        setGettingLocation(false)
+        return
+      }
+      const loc = await Location.getCurrentPositionAsync({})
+      setMyLocation({ latitude: loc.coords.latitude, longitude: loc.coords.longitude })
+      setNearbyRadius(radius)
+    } catch (e) {
+      Alert.alert('Ошибка геолокации', e.message)
+    }
+    setGettingLocation(false)
+  }
+
+  const filtered = users
+    .filter(u => !filter || u.roles?.includes(filter))
+    .filter(u => {
+      if (!nearbyRadius || !myLocation) return true
+      return haversine(myLocation.latitude, myLocation.longitude, u.latitude, u.longitude) <= nearbyRadius
+    })
 
   if (loading) return (
     <View style={s.center}>
@@ -138,7 +198,7 @@ export default function MapScreen({ navigation }) {
   )
 
   const FilterBar = () => (
-    <View style={s.filters}>
+    <View style={s.filtersWrap}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}>
         <TouchableOpacity style={[s.filterBtn, !filter && s.filterBtnActive]} onPress={() => setFilter(null)}>
           <Text style={[s.filterText, !filter && s.filterTextActive]}>Все ({users.length})</Text>
@@ -154,6 +214,35 @@ export default function MapScreen({ navigation }) {
           )
         })}
       </ScrollView>
+
+      {/* Кнопки "Поблизости" */}
+      <View style={s.nearbyRow}>
+        <Text style={s.nearbyLabel}>
+          {gettingLocation ? '📡 Определяем...' : '📍 Поблизости:'}
+        </Text>
+        {gettingLocation ? (
+          <ActivityIndicator color={colors.accent} size="small" />
+        ) : (
+          <>
+            {[5, 20].map(r => (
+              <TouchableOpacity
+                key={r}
+                style={[s.radiusBtn, nearbyRadius === r && s.radiusBtnActive]}
+                onPress={() => toggleNearby(r)}
+              >
+                <Text style={[s.radiusText, nearbyRadius === r && s.radiusTextActive]}>
+                  {r} км {nearbyRadius === r ? `(${filtered.length})` : ''}
+                </Text>
+              </TouchableOpacity>
+            ))}
+            {nearbyRadius && (
+              <TouchableOpacity style={s.radiusClear} onPress={() => { setNearbyRadius(null); setMyLocation(null) }}>
+                <Text style={s.radiusClearText}>✕</Text>
+              </TouchableOpacity>
+            )}
+          </>
+        )}
+      </View>
     </View>
   )
 
@@ -169,13 +258,13 @@ export default function MapScreen({ navigation }) {
         </View>
       ) : Platform.OS === 'web' ? (
         <iframe
-          srcDoc={getMapHTML(filtered)}
+          srcDoc={getMapHTML(filtered, myLocation, nearbyRadius)}
           style={{ flex: 1, border: 'none', width: '100%', height: '100%' }}
           title="map"
         />
       ) : (
         <WebView
-          source={{ html: getMapHTML(filtered) }}
+          source={{ html: getMapHTML(filtered, myLocation, nearbyRadius) }}
           style={{ flex: 1 }}
           onMessage={handleWebViewMessage}
         />
@@ -196,6 +285,11 @@ export default function MapScreen({ navigation }) {
               <View style={{ flex: 1 }}>
                 <Text style={s.cardName}>{selected?.name}</Text>
                 {selected?.city ? <Text style={s.cardCity}>📍 {selected.city}</Text> : null}
+                {myLocation && selected?.latitude ? (
+                  <Text style={s.cardDist}>
+                    📏 {haversine(myLocation.latitude, myLocation.longitude, selected.latitude, selected.longitude).toFixed(1)} км от вас
+                  </Text>
+                ) : null}
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
                   {(selected?.roles || []).map(r => {
                     const role = roleMap[r]
@@ -231,11 +325,20 @@ export default function MapScreen({ navigation }) {
 const s = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.bg },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.bg },
-  filters: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface },
+  filtersWrap: { borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface },
+  filters: { paddingVertical: 10 },
   filterBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   filterBtnActive: { backgroundColor: `${colors.accent}20`, borderColor: colors.accent },
   filterText: { fontSize: 13, color: colors.text2, fontWeight: '500' },
   filterTextActive: { color: colors.accent },
+  nearbyRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, borderTopWidth: 1, borderTopColor: colors.border },
+  nearbyLabel: { fontSize: 12, color: colors.text2, fontWeight: '600' },
+  radiusBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface2 },
+  radiusBtnActive: { borderColor: colors.accent, backgroundColor: `${colors.accent}20` },
+  radiusText: { fontSize: 12, color: colors.text2, fontWeight: '600' },
+  radiusTextActive: { color: colors.accent },
+  radiusClear: { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.surface2, justifyContent: 'center', alignItems: 'center' },
+  radiusClearText: { fontSize: 11, color: colors.text2 },
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
   card: { backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, gap: 12 },
   cardHeader: { flexDirection: 'row', gap: 14, alignItems: 'flex-start' },
@@ -244,6 +347,7 @@ const s = StyleSheet.create({
   avatarText: { fontSize: 24, fontWeight: '800', color: colors.blue },
   cardName: { fontSize: 18, fontWeight: '800', color: colors.text },
   cardCity: { fontSize: 13, color: colors.text2, marginTop: 2 },
+  cardDist: { fontSize: 12, color: colors.accent, fontWeight: '600', marginTop: 2 },
   roleBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, borderWidth: 1 },
   cardBio: { fontSize: 14, color: colors.text2, lineHeight: 20 },
   profileBtn: { backgroundColor: colors.accent, borderRadius: 12, padding: 14, alignItems: 'center' },
