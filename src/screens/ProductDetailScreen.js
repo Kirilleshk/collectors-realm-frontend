@@ -370,14 +370,14 @@ export default function ProductDetailScreen({ route, navigation }) {
               }
             </TouchableOpacity>
           </View>
-        ) : (
+        ) : isSold ? (
           <View style={s.soldBanner}>
             <Text style={s.soldBannerText}>😔 Товар уже продан</Text>
             <TouchableOpacity style={s.wishlistBtn} onPress={handleAddToWishlist} disabled={addingToWishlist || addedToWishlist}>
               <Text style={s.wishlistBtnText}>{addedToWishlist ? '✓ В вишлисте' : '🎯 Слежу за похожим'}</Text>
             </TouchableOpacity>
           </View>
-        )}
+        ) : null}
       </View>
     </ScrollView>
   )
