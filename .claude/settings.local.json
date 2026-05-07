@@ -5,7 +5,8 @@
       "Bash(git commit -m ' *)",
       "Bash(gh api *)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "Bash(del \"c:\\\\Users\\\\ksele\\\\collectors-realm\\\\fix-db.js\")"
+      "Bash(del \"c:\\\\Users\\\\ksele\\\\collectors-realm\\\\fix-db.js\")",
+      "Bash(npx expo *)"
     ]
   }
 }
