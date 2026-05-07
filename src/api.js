@@ -37,7 +37,7 @@ export const products = {
 
 export const wishlist = {
   getAll: () => api.get('/wishlist'),
-  add: (name, priority, comment) => api.post('/wishlist', { name, priority, comment }),
+  add: (data) => api.post('/wishlist', data),
   update: (id, data) => api.put(`/wishlist/${id}`, data),
   remove: (id) => api.delete(`/wishlist/${id}`),
 }
