@@ -27,6 +27,8 @@ function getMapHTML(users, myLocation = null, radius = null) {
   const markers = users.map(u => {
     const role = u.roles?.[0] || 'COLLECTOR'
     const r = roleMap[role] || roleMap.COLLECTOR
+    const badgeLabel = u.badge === 'SHOP' ? '🏪 Магазин' : u.badge === 'BLOGGER' ? '✅ Блогер' : ''
+    const ratingLabel = u.avgRating ? `⭐ ${u.avgRating.toFixed(1)} (${u.reviewCount})` : ''
     return `{
       id: ${JSON.stringify(u.id)},
       lat: ${u.latitude}, lng: ${u.longitude},
@@ -35,7 +37,9 @@ function getMapHTML(users, myLocation = null, radius = null) {
       bio: ${JSON.stringify(u.bio || '')},
       role: ${JSON.stringify(r.label)},
       icon: ${JSON.stringify(r.icon)},
-      color: ${JSON.stringify(r.color)}
+      color: ${JSON.stringify(r.color)},
+      badge: ${JSON.stringify(badgeLabel)},
+      rating: ${JSON.stringify(ratingLabel)}
     }`
   }).join(',')
 
@@ -106,7 +110,7 @@ users.forEach(function(u) {
     window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'USER_CLICK', userId: u.id }));
     window.parent && window.parent.postMessage(JSON.stringify({ type: 'USER_CLICK', userId: u.id }), '*');
   });
-  marker.bindPopup('<b>' + u.icon + ' ' + u.name + '</b><br/>' + u.role + (u.city ? '<br/>📍 ' + u.city : '') + (u.bio ? '<br/><i>' + u.bio + '</i>' : ''));
+  marker.bindPopup('<b>' + u.icon + ' ' + u.name + '</b>' + (u.badge ? ' <span style="font-size:11px;color:#FF9700">' + u.badge + '</span>' : '') + '<br/>' + u.role + (u.rating ? ' · ' + u.rating : '') + (u.city ? '<br/>📍 ' + u.city : '') + (u.bio ? '<br/><i>' + u.bio + '</i>' : ''));
 });
 </script>
 </body>

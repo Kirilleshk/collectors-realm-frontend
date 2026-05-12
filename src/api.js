@@ -26,8 +26,10 @@ export const auth = {
 
 export const users = {
   me: () => api.get('/users/me'),
+  getAll: () => api.get('/users'),
   getById: (id) => api.get(`/users/${id}`),
   update: (data) => api.put('/users/me', data),
+  setBadge: (id, badge) => api.patch(`/users/${id}/badge`, { badge }),
 }
 
 export const products = {
@@ -40,6 +42,35 @@ export const wishlist = {
   add: (data) => api.post('/wishlist', data),
   update: (id, data) => api.put(`/wishlist/${id}`, data),
   remove: (id) => api.delete(`/wishlist/${id}`),
+}
+
+export const releases = {
+  getAll: () => api.get('/releases'),
+  create: (data) => api.post('/releases', data),
+  update: (id, data) => api.put(`/releases/${id}`, data),
+  remove: (id) => api.delete(`/releases/${id}`),
+  toggleRemind: (id) => api.post(`/releases/${id}/remind`),
+  sendReminders: () => api.post('/releases/send-reminders'),
+}
+
+export const reviews = {
+  getForUser: (userId) => api.get(`/reviews/${userId}`),
+  create: (userId, data) => api.post(`/reviews/${userId}`, data),
+  remove: (userId) => api.delete(`/reviews/${userId}`),
+}
+
+export const notifications = {
+  getAll: () => api.get('/notifications'),
+  markRead: (id) => api.patch(`/notifications/${id}/read`),
+  markAllRead: () => api.patch('/notifications/read-all'),
+  triggerReport: (type) => api.post('/notifications/trigger-report', { type }),
+}
+
+export const collection = {
+  getAll: () => api.get('/collection'),
+  add: (data) => api.post('/collection', data),
+  update: (id, data) => api.put(`/collection/${id}`, data),
+  remove: (id) => api.delete(`/collection/${id}`),
 }
 
 export const bids = {

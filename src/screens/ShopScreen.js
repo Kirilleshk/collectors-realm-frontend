@@ -26,6 +26,7 @@ const STATUS_BADGE = {
 }
 
 export default function ShopScreen({ navigation }) {
+
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -89,6 +90,11 @@ export default function ShopScreen({ navigation }) {
 
   return (
     <View style={s.wrap}>
+      {/* Кнопка Анонсы */}
+      <TouchableOpacity style={s.announceBanner} onPress={() => navigation.navigate('Releases')}>
+        <Text style={s.announceBannerText}>📅 Анонсы новых фигурок →</Text>
+      </TouchableOpacity>
+
       {/* Поиск */}
       <Animated.View style={[s.searchWrap, { opacity: searchAnim }]}>
         <Text style={s.searchIcon}>🔍</Text>
@@ -180,7 +186,10 @@ export default function ShopScreen({ navigation }) {
               <View style={s.cardBody}>
                 <Text style={s.cardName} numberOfLines={2}>{item.name}</Text>
                 {item.manufacturer ? <Text style={s.cardMfr} numberOfLines={1}>{item.manufacturer}</Text> : null}
-                <Text style={s.cardPrice}>{item.price?.toLocaleString('ru')} ₽</Text>
+                {item.isAuction
+                  ? <Text style={[s.cardPrice, { color: '#FF6B00' }]}>от {(item.startPrice || item.price)?.toLocaleString('ru')} ₽</Text>
+                  : <Text style={s.cardPrice}>{item.price?.toLocaleString('ru')} ₽</Text>
+                }
               </View>
             </TouchableOpacity>
           )
@@ -204,6 +213,8 @@ const s = StyleSheet.create({
   searchIcon: { fontSize: 16 },
   searchInput: { flex: 1, color: colors.text, fontSize: 14 },
   searchClear: { color: colors.text2, fontSize: 16, padding: 4 },
+  announceBanner: { marginHorizontal: 12, marginTop: 8, marginBottom: 4, backgroundColor: `${colors.blue}15`, borderRadius: 10, borderWidth: 1, borderColor: `${colors.blue}30`, paddingHorizontal: 14, paddingVertical: 10 },
+  announceBannerText: { fontSize: 13, fontWeight: '600', color: colors.blue },
   filtersWrap: { marginBottom: 4 },
   filterBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   filterBtnActive: { backgroundColor: colors.accent, borderColor: colors.accent },

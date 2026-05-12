@@ -5,6 +5,9 @@ import * as Location from 'expo-location'
 import { useAuth } from '../AuthContext'
 import { colors } from '../theme'
 
+let Updates = null
+try { Updates = require('expo-updates') } catch (e) {}
+
 const CLOUD_NAME = 'dqutmb1rm'
 const UPLOAD_PRESET = 'collectors_realm'
 const API = 'https://collectors-realm-backend.onrender.com/api'
@@ -25,6 +28,7 @@ export default function ProfileScreen() {
   const [form, setForm] = useState({ name: user?.name || '', city: user?.city || '', bio: user?.bio || '', roles: user?.roles || [] })
   const [saving, setSaving] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl || null)
+  const [checkingUpdate, setCheckingUpdate] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [locating, setLocating] = useState(false)
   const [portfolio, setPortfolio] = useState([])
@@ -146,6 +150,31 @@ export default function ProfileScreen() {
     setSaving(false)
   }
 
+  async function checkForUpdate() {
+    if (!Updates || __DEV__) {
+      Alert.alert('Обновления', 'OTA-обновления доступны только в production-сборке (APK/EAS Build)')
+      return
+    }
+    setCheckingUpdate(true)
+    try {
+      const result = await Updates.checkForUpdateAsync()
+      if (result.isAvailable) {
+        Alert.alert('Доступно обновление!', 'Загрузить и применить сейчас?', [
+          { text: 'Отмена', style: 'cancel' },
+          { text: 'Обновить', onPress: async () => {
+            await Updates.fetchUpdateAsync()
+            await Updates.reloadAsync()
+          }},
+        ])
+      } else {
+        Alert.alert('Обновлений нет', 'У вас последняя версия приложения')
+      }
+    } catch (e) {
+      Alert.alert('Ошибка', 'Не удалось проверить обновления')
+    }
+    setCheckingUpdate(false)
+  }
+
   function toggleRole(role) {
     setForm(p => ({
       ...p,
@@ -169,6 +198,16 @@ export default function ProfileScreen() {
         </TouchableOpacity>
 
         <Text style={s.name}>{user?.name}</Text>
+        {user?.badge === 'SHOP' && (
+          <View style={s.badgeWrap}>
+            <Text style={[s.badgeText, { color: '#FF9700', borderColor: '#FF970060', backgroundColor: '#FF970015' }]}>🏪 Магазин</Text>
+          </View>
+        )}
+        {user?.badge === 'BLOGGER' && (
+          <View style={s.badgeWrap}>
+            <Text style={[s.badgeText, { color: '#007AFF', borderColor: '#007AFF60', backgroundColor: '#007AFF15' }]}>✅ Блогер</Text>
+          </View>
+        )}
         {user?.city ? <Text style={s.city}>📍 {user.city}</Text> : null}
 
         <View style={s.roles}>
@@ -257,6 +296,15 @@ export default function ProfileScreen() {
         </View>
       </View>
 
+      {/* Обновление приложения */}
+      <TouchableOpacity style={s.updateBtn} onPress={checkForUpdate} disabled={checkingUpdate}>
+        {checkingUpdate
+          ? <ActivityIndicator color={colors.blue} size="small" />
+          : <Text style={s.updateIcon}>🔄</Text>
+        }
+        <Text style={s.updateText}>Проверить обновления</Text>
+      </TouchableOpacity>
+
       {/* Выход */}
       <TouchableOpacity style={s.logoutBtn} onPress={logout}>
         <Text style={s.logoutIcon}>🚪</Text>
@@ -320,6 +368,8 @@ const s = StyleSheet.create({
   avatarText: { fontSize: 32, fontWeight: '800', color: colors.blue },
   avatarEditBadge: { position: 'absolute', bottom: -4, right: -4, width: 24, height: 24, borderRadius: 12, backgroundColor: colors.accent, justifyContent: 'center', alignItems: 'center' },
   name: { fontSize: 24, fontWeight: '800', color: colors.text, marginBottom: 6 },
+  badgeWrap: { marginBottom: 8 },
+  badgeText: { fontSize: 12, fontWeight: '700', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, borderWidth: 1, overflow: 'hidden' },
   city: { fontSize: 13, color: colors.text2, marginBottom: 12 },
   roles: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 16 },
   roleBadge: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1 },
@@ -338,7 +388,10 @@ const s = StyleSheet.create({
   infoLabel: { fontSize: 11, color: colors.text2, fontWeight: '600', marginBottom: 2 },
   infoValue: { fontSize: 14, color: colors.text, fontWeight: '500' },
   divider: { height: 1, backgroundColor: colors.border, marginHorizontal: 16 },
-  logoutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, margin: 16, padding: 16, borderRadius: 14, borderWidth: 1, borderColor: `${colors.accent}40`, backgroundColor: `${colors.accent}10` },
+  updateBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginHorizontal: 16, marginBottom: 10, padding: 14, borderRadius: 14, borderWidth: 1, borderColor: `${colors.blue}40`, backgroundColor: `${colors.blue}10` },
+  updateIcon: { fontSize: 18 },
+  updateText: { color: colors.blue, fontSize: 15, fontWeight: '600' },
+  logoutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, margin: 16, marginTop: 0, padding: 16, borderRadius: 14, borderWidth: 1, borderColor: `${colors.accent}40`, backgroundColor: `${colors.accent}10` },
   logoutIcon: { fontSize: 18 },
   logoutText: { color: colors.accent, fontSize: 15, fontWeight: '600' },
   modal: { flex: 1, backgroundColor: colors.bg },

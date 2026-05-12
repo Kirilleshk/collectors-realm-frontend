@@ -3,6 +3,14 @@
     "name": "collectors-realm",
     "slug": "collectors-realm",
     "version": "1.1.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/ee592544-47bd-4d06-8f93-0070a93efe36",
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD"
+    },
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",

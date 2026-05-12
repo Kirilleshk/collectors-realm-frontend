@@ -6,12 +6,19 @@ import {
 import * as ImagePicker from 'expo-image-picker'
 import { useAuth } from '../AuthContext'
 import { colors } from '../theme'
+import { notifications as notifApi, releases as releasesApi } from '../api'
 
 const CLOUD_NAME = 'dqutmb1rm'
 const UPLOAD_PRESET = 'collectors_realm'
 const API = 'https://collectors-realm-backend.onrender.com/api'
 
-const EMPTY = { name: '', description: '', price: '', condition: 'NEW', manufacturer: '', franchise: '', character: '', isAuction: false, startPrice: '', priceStep: '', auctionDays: '1' }
+const EMPTY = { name: '', description: '', price: '', condition: 'NEW', manufacturer: '', franchise: '', character: '', yearMade: '', isAuction: false, startPrice: '', priceStep: '', auctionDays: '1' }
+
+const BADGE_OPTIONS = [
+  { value: null,      label: 'Нет',     icon: '—',  color: '#8E8E93' },
+  { value: 'SHOP',    label: 'Магазин', icon: '🏪', color: '#FF9700' },
+  { value: 'BLOGGER', label: 'Блогер',  icon: '✅', color: '#007AFF' },
+]
 
 const STATUS_LABELS = {
   AVAILABLE: { label: 'Доступен', color: '#34C759' },
@@ -34,7 +41,111 @@ export default function AdminScreen() {
 
   const isAdmin = user?.roles?.includes('ADMIN') || user?.email?.includes('admin') || user?.email?.includes('kirill')
 
+  const [tab, setTab] = useState('products')
+  const [allUsers, setAllUsers] = useState([])
+  const [usersLoading, setUsersLoading] = useState(false)
+  const [sendingReport, setSendingReport] = useState(false)
+  const [releasesList, setReleasesList] = useState([])
+  const [releasesLoading, setReleasesLoading] = useState(false)
+  const [releaseModal, setReleaseModal] = useState(false)
+  const [releaseForm, setReleaseForm] = useState({ name: '', manufacturer: '', releaseDate: '', description: '', imageUrl: '' })
+  const [editRelease, setEditRelease] = useState(null)
+  const [savingRelease, setSavingRelease] = useState(false)
+
   useEffect(() => { load() }, [])
+
+  useEffect(() => {
+    if (tab === 'users') loadUsers()
+    if (tab === 'releases') loadReleases()
+  }, [tab])
+
+  async function loadReleases() {
+    setReleasesLoading(true)
+    try {
+      const res = await releasesApi.getAll()
+      setReleasesList(Array.isArray(res.data) ? res.data : [])
+    } catch (e) {}
+    setReleasesLoading(false)
+  }
+
+  function openAddRelease() {
+    setEditRelease(null)
+    setReleaseForm({ name: '', manufacturer: '', releaseDate: '', description: '', imageUrl: '' })
+    setReleaseModal(true)
+  }
+
+  function openEditRelease(r) {
+    setEditRelease(r)
+    setReleaseForm({
+      name: r.name || '',
+      manufacturer: r.manufacturer || '',
+      releaseDate: r.releaseDate ? r.releaseDate.slice(0, 10) : '',
+      description: r.description || '',
+      imageUrl: r.imageUrl || '',
+    })
+    setReleaseModal(true)
+  }
+
+  async function handleSaveRelease() {
+    if (!releaseForm.name.trim() || !releaseForm.releaseDate) { Alert.alert('Заполните название и дату'); return }
+    setSavingRelease(true)
+    try {
+      const data = {
+        name: releaseForm.name.trim(),
+        manufacturer: releaseForm.manufacturer.trim() || undefined,
+        releaseDate: new Date(releaseForm.releaseDate).toISOString(),
+        description: releaseForm.description.trim() || undefined,
+        imageUrl: releaseForm.imageUrl.trim() || undefined,
+      }
+      if (editRelease) await releasesApi.update(editRelease.id, data)
+      else await releasesApi.create(data)
+      setReleaseModal(false)
+      loadReleases()
+    } catch (e) { Alert.alert('Ошибка', e.response?.data?.error || 'Не удалось сохранить') }
+    setSavingRelease(false)
+  }
+
+  async function handleDeleteRelease(id) {
+    Alert.alert('Удалить?', 'Нельзя отменить', [
+      { text: 'Отмена', style: 'cancel' },
+      { text: 'Удалить', style: 'destructive', onPress: async () => {
+        await releasesApi.remove(id).catch(() => {})
+        loadReleases()
+      }},
+    ])
+  }
+
+  async function loadUsers() {
+    setUsersLoading(true)
+    try {
+      const res = await fetch(`${API}/users`, { headers: { Authorization: `Bearer ${token}` } })
+      const data = await res.json()
+      setAllUsers(Array.isArray(data) ? data : [])
+    } catch (e) {}
+    setUsersLoading(false)
+  }
+
+  async function handleTriggerReport(type) {
+    setSendingReport(true)
+    try {
+      await notifApi.triggerReport(type)
+      Alert.alert('✅ Запущено', `Генерация ${type === 'MONTHLY' ? 'месячных' : 'годовых'} отчётов запущена. Пользователи получат уведомления через ~1 мин.`)
+    } catch (e) {
+      Alert.alert('Ошибка', e.response?.data?.error || 'Не удалось запустить')
+    }
+    setSendingReport(false)
+  }
+
+  async function handleSetBadge(userId, badge) {
+    try {
+      await fetch(`${API}/users/${userId}/badge`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ badge }),
+      })
+      loadUsers()
+    } catch (e) { Alert.alert('Ошибка', 'Не удалось изменить бейдж') }
+  }
 
   async function load() {
     setLoading(true)
@@ -58,6 +169,7 @@ export default function AdminScreen() {
       manufacturer: item.manufacturer || '',
       franchise: item.franchise || '',
       character: item.character || '',
+      yearMade: String(item.yearMade || ''),
       isAuction: item.isAuction || false,
       startPrice: String(item.startPrice || ''),
       priceStep: String(item.priceStep || ''),
@@ -114,17 +226,19 @@ export default function AdminScreen() {
 
   async function handleSave() {
     if (!form.name.trim()) { Alert.alert('Введите название'); return }
-    if (!form.price || isNaN(Number(form.price))) { Alert.alert('Введите цену'); return }
+    if (!form.isAuction && (!form.price || isNaN(Number(form.price)))) { Alert.alert('Введите цену'); return }
+    if (form.isAuction && (!form.startPrice || isNaN(Number(form.startPrice)))) { Alert.alert('Введите начальную цену аукциона'); return }
     setSaving(true)
     try {
       const body = {
         name: form.name.trim(),
         description: form.description.trim(),
-        price: Number(form.price),
+        price: form.isAuction ? (Number(form.startPrice) || 0) : Number(form.price),
         condition: form.condition,
         manufacturer: form.manufacturer.trim(),
         franchise: form.franchise.trim(),
         character: form.character.trim(),
+        yearMade: form.yearMade.trim() && !isNaN(parseInt(form.yearMade)) ? parseInt(form.yearMade) : undefined,
         imageUrls: photos,
         isAuction: form.isAuction,
         startPrice: form.isAuction ? Number(form.startPrice) || 0 : null,
@@ -208,6 +322,106 @@ export default function AdminScreen() {
 
   return (
     <View style={s.wrap}>
+      {/* Переключатель вкладок */}
+      <View style={s.tabs}>
+        <TouchableOpacity style={[s.tabBtn, tab === 'products' && s.tabBtnActive]} onPress={() => setTab('products')}>
+          <Text style={[s.tabText, tab === 'products' && s.tabTextActive]}>📦 Товары</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[s.tabBtn, tab === 'releases' && s.tabBtnActive]} onPress={() => setTab('releases')}>
+          <Text style={[s.tabText, tab === 'releases' && s.tabTextActive]}>📅 Релизы</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[s.tabBtn, tab === 'users' && s.tabBtnActive]} onPress={() => setTab('users')}>
+          <Text style={[s.tabText, tab === 'users' && s.tabTextActive]}>👥 Люди</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Вкладка релизов */}
+      {tab === 'releases' && (
+        releasesLoading ? <View style={s.center}><ActivityIndicator color={colors.accent} size="large" /></View> : (
+          <>
+          <View style={{ flexDirection: 'row', justifyContent: 'flex-end', padding: 12 }}>
+            <TouchableOpacity style={s.addBtn} onPress={openAddRelease}>
+              <Text style={s.addBtnText}>+ Добавить</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView contentContainerStyle={{ padding: 16, gap: 10 }}>
+            {releasesList.length === 0 && <Text style={{ color: colors.text2, textAlign: 'center', paddingTop: 40 }}>Релизов нет — добавьте первый!</Text>}
+            {releasesList.map(r => (
+              <View key={r.id} style={s.card}>
+                {r.imageUrl ? <Image source={{ uri: r.imageUrl }} style={s.thumb} /> : <View style={[s.thumb, { backgroundColor: colors.surface2, justifyContent: 'center', alignItems: 'center' }]}><Text style={{ fontSize: 28 }}>📅</Text></View>}
+                <View style={{ flex: 1, padding: 12 }}>
+                  <Text style={s.cardName} numberOfLines={1}>{r.name}</Text>
+                  <Text style={{ fontSize: 12, color: colors.text2 }}>{new Date(r.releaseDate).toLocaleDateString('ru')}</Text>
+                  {r.manufacturer ? <Text style={{ fontSize: 11, color: colors.text2 }}>{r.manufacturer}</Text> : null}
+                </View>
+                <View style={{ flexDirection: 'column', gap: 6, padding: 8 }}>
+                  <TouchableOpacity onPress={() => openEditRelease(r)} style={s.iconBtn}><Text>✏️</Text></TouchableOpacity>
+                  <TouchableOpacity onPress={() => handleDeleteRelease(r.id)} style={[s.iconBtn, { backgroundColor: 'rgba(255,59,48,0.15)' }]}><Text>🗑</Text></TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </ScrollView>
+          </>
+        )
+      )}
+
+      {/* Вкладка пользователей */}
+      {tab === 'users' ? (
+        usersLoading ? (
+          <View style={s.center}><ActivityIndicator color={colors.accent} size="large" /></View>
+        ) : (
+          <ScrollView contentContainerStyle={{ padding: 16, gap: 10 }}>
+            {/* Отчёты */}
+            <View style={s.reportCard}>
+              <Text style={s.reportTitle}>📊 Отчёты для пользователей</Text>
+              <Text style={s.reportSub}>Claude API сгенерирует персональное сообщение для каждого</Text>
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
+                <TouchableOpacity
+                  style={[s.reportBtn, { backgroundColor: `${colors.blue}20`, borderColor: `${colors.blue}50` }]}
+                  onPress={() => handleTriggerReport('MONTHLY')}
+                  disabled={sendingReport}
+                >
+                  {sendingReport ? <ActivityIndicator color={colors.blue} size="small" /> : <Text style={[s.reportBtnText, { color: colors.blue }]}>📅 Месячный</Text>}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[s.reportBtn, { backgroundColor: `${colors.purple}20`, borderColor: `${colors.purple}50` }]}
+                  onPress={() => handleTriggerReport('YEARLY')}
+                  disabled={sendingReport}
+                >
+                  {sendingReport ? <ActivityIndicator color={colors.purple} size="small" /> : <Text style={[s.reportBtnText, { color: colors.purple }]}>🏆 Годовой</Text>}
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {allUsers.map(u => (
+              <View key={u.id} style={s.userCard}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.cardName}>{u.name}</Text>
+                  <Text style={{ fontSize: 12, color: colors.text2 }}>{u.email}</Text>
+                  {u.badge && <Text style={{ fontSize: 11, color: '#FF9700', marginTop: 2 }}>
+                    {u.badge === 'SHOP' ? '🏪 Магазин' : '✅ Блогер'}
+                  </Text>}
+                </View>
+                <View style={{ flexDirection: 'row', gap: 6 }}>
+                  {BADGE_OPTIONS.map(opt => (
+                    <TouchableOpacity
+                      key={String(opt.value)}
+                      onPress={() => handleSetBadge(u.id, opt.value)}
+                      style={[s.badgeBtn, u.badge === opt.value && { borderColor: opt.color, backgroundColor: `${opt.color}20` }]}
+                    >
+                      <Text style={{ fontSize: 14 }}>{opt.icon}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            ))}
+          </ScrollView>
+        )
+      ) : null}
+
+      {/* Вкладка товаров */}
+      {tab === 'products' && (
+      <>
       <View style={s.header}>
         <View>
           <Text style={s.headerTitle}>Управление товарами</Text>
@@ -262,6 +476,48 @@ export default function AdminScreen() {
           })}
         </ScrollView>
       )}
+      </>
+      )}
+
+      {/* Модал релиза */}
+      <Modal visible={releaseModal} animationType="slide" transparent>
+        <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' }}>
+            <View style={{ backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, maxHeight: '90%' }}>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 20 }}>{editRelease ? 'Редактировать релиз' : 'Новый релиз'}</Text>
+              <ScrollView keyboardShouldPersistTaps="handled">
+                {[
+                  ['Название *', 'name', 'Evangelion Unit-01 ver.2.0'],
+                  ['Производитель', 'manufacturer', 'Bandai, Good Smile...'],
+                  ['Дата выхода * (ГГГГ-ММ-ДД)', 'releaseDate', '2025-12-01'],
+                  ['Описание', 'description', 'Краткое описание...'],
+                  ['Ссылка на фото (URL)', 'imageUrl', 'https://...'],
+                ].map(([label, key, placeholder]) => (
+                  <View key={key} style={{ marginBottom: 14 }}>
+                    <Text style={s.label}>{label.toUpperCase()}</Text>
+                    <TextInput
+                      style={s.input}
+                      value={releaseForm[key]}
+                      onChangeText={v => setReleaseForm(p => ({ ...p, [key]: v }))}
+                      placeholder={placeholder}
+                      placeholderTextColor={colors.text2}
+                    />
+                  </View>
+                ))}
+                <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
+                  <TouchableOpacity style={{ flex: 1, padding: 14, borderRadius: 10, borderWidth: 1, borderColor: colors.border, alignItems: 'center' }} onPress={() => setReleaseModal(false)}>
+                    <Text style={{ color: colors.text, fontWeight: '500' }}>Отмена</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[s.saveBtn, { flex: 1 }]} onPress={handleSaveRelease} disabled={savingRelease}>
+                    {savingRelease ? <ActivityIndicator color="white" /> : <Text style={{ color: 'white', fontWeight: '700' }}>{editRelease ? 'Сохранить' : 'Добавить'}</Text>}
+                  </TouchableOpacity>
+                </View>
+                <View style={{ height: 24 }} />
+              </ScrollView>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       <Modal visible={modal} animationType="slide" presentationStyle="pageSheet">
         <KeyboardAvoidingView style={s.modal} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -307,10 +563,10 @@ export default function AdminScreen() {
 
             {[
               ['Название *', 'name', 'Spider-Man Marvel Legends', 'default'],
-              ['Цена (₽) *', 'price', '1500', 'numeric'],
               ['Производитель', 'manufacturer', 'Hasbro, Bandai...', 'default'],
               ['Франшиза', 'franchise', 'Marvel, Star Wars...', 'default'],
               ['Персонаж', 'character', 'Spider-Man, Goku...', 'default'],
+              ['Год производства', 'yearMade', '2023', 'numeric'],
             ].map(([label, key, placeholder, kb]) => (
               <View key={key}>
                 <Text style={s.label}>{label.toUpperCase()}</Text>
@@ -324,6 +580,20 @@ export default function AdminScreen() {
                 />
               </View>
             ))}
+
+            {!form.isAuction && (
+              <View>
+                <Text style={s.label}>ЦЕНА (₽) *</Text>
+                <TextInput
+                  style={s.input}
+                  value={form.price}
+                  onChangeText={v => setForm(p => ({ ...p, price: v }))}
+                  placeholder="1500"
+                  placeholderTextColor={colors.text2}
+                  keyboardType="numeric"
+                />
+              </View>
+            )}
 
             <Text style={s.label}>СОСТОЯНИЕ</Text>
             <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
@@ -404,6 +674,18 @@ const s = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.bg },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.bg },
   empty: { alignItems: 'center', paddingTop: 60 },
+  tabs: { flexDirection: 'row', backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
+  tabBtn: { flex: 1, paddingVertical: 14, alignItems: 'center' },
+  tabBtnActive: { borderBottomWidth: 2, borderBottomColor: colors.accent },
+  tabText: { fontSize: 14, fontWeight: '600', color: colors.text2 },
+  tabTextActive: { color: colors.accent },
+  userCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1, borderColor: colors.border, padding: 12, gap: 10 },
+  badgeBtn: { width: 34, height: 34, borderRadius: 8, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface2, justifyContent: 'center', alignItems: 'center' },
+  reportCard: { backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 16 },
+  reportTitle: { fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 4 },
+  reportSub: { fontSize: 12, color: colors.text2 },
+  reportBtn: { flex: 1, padding: 12, borderRadius: 10, borderWidth: 1, alignItems: 'center' },
+  reportBtnText: { fontSize: 13, fontWeight: '700' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface },
   headerTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
   headerSub: { fontSize: 12, color: colors.text2, marginTop: 2 },

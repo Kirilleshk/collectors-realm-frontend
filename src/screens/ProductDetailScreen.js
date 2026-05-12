@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Image, Platform, Linking, Alert, TextInput } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
-import { products, wishlist, bids } from '../api'
+import { products, wishlist, bids, collection } from '../api'
 import { useAuth } from '../AuthContext'
 import { colors } from '../theme'
 
@@ -36,11 +36,14 @@ function getTimeLeft(endTime) {
 
 export default function ProductDetailScreen({ route, navigation }) {
   const { id } = route.params
-  useAuth()
+  const { user, token } = useAuth()
+  const isAdmin = user?.email?.includes('admin') || user?.email?.includes('kirill')
   const [item, setItem] = useState(null)
   const [loading, setLoading] = useState(true)
   const [addingToWishlist, setAddingToWishlist] = useState(false)
   const [addedToWishlist, setAddedToWishlist] = useState(false)
+  const [addingToCollection, setAddingToCollection] = useState(false)
+  const [addedToCollection, setAddedToCollection] = useState(false)
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0)
   const [uploading, setUploading] = useState(false)
   const [auctionBids, setAuctionBids] = useState([])
@@ -115,10 +118,17 @@ export default function ProductDetailScreen({ route, navigation }) {
       const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { method: 'POST', body: fd })
       const data = await res.json()
       if (data.secure_url) {
-        setItem(prev => ({
-          ...prev,
-          images: [...(prev.images || []), { url: data.secure_url, order: (prev.images || []).length }]
-        }))
+        const newImages = [...(item.images || []), { url: data.secure_url, order: (item.images || []).length }]
+        // Сохраняем в БД
+        await fetch(`https://collectors-realm-backend.onrender.com/api/products/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            name: item.name, price: item.price, condition: item.condition,
+            imageUrls: newImages.map(i => i.url),
+          }),
+        })
+        setItem(prev => ({ ...prev, images: newImages }))
       }
     } catch (e) { alert('Ошибка загрузки фото') }
     setUploading(false)
@@ -127,10 +137,30 @@ export default function ProductDetailScreen({ route, navigation }) {
   async function handleAddToWishlist() {
     setAddingToWishlist(true)
     try {
-      await wishlist.add({ name: item.name, priority: 'HIGH', comment: `Хочу купить: ${item.name}` })
+      await wishlist.add({
+        name: item.name,
+        priority: 'HIGH',
+        manufacturer: item.manufacturer || undefined,
+        productId: item.id,
+      })
       setAddedToWishlist(true)
     } catch (e) { console.error(e) }
     setAddingToWishlist(false)
+  }
+
+  async function handleAddToCollection() {
+    setAddingToCollection(true)
+    try {
+      await collection.add({
+        name: item.name,
+        manufacturer: item.manufacturer || undefined,
+        purchasePrice: item.price || undefined,
+        imageUrl: item.images?.[0]?.url || undefined,
+        condition: item.condition || 'NEW',
+      })
+      setAddedToCollection(true)
+    } catch (e) { Alert.alert('Ошибка', 'Не удалось добавить в коллекцию') }
+    setAddingToCollection(false)
   }
 
   async function openTelegram() {
@@ -174,21 +204,29 @@ export default function ProductDetailScreen({ route, navigation }) {
           ? <Image source={{ uri: currentPhoto }} style={s.image} resizeMode="cover" />
           : <Text style={s.imageIcon}>🗿</Text>
         }
-        {/* Бейдж статуса */}
-        <View style={[s.conditionBadge, {
-          backgroundColor: statusInfo.color ? `${statusInfo.color}25` : `${conditionColor}25`,
-          borderColor: statusInfo.color ? `${statusInfo.color}60` : `${conditionColor}60`
-        }]}>
-          <Text style={[s.conditionText, { color: statusInfo.color || conditionColor }]}>
-            {statusInfo.label || conditionLabel}
-          </Text>
-        </View>
-        <TouchableOpacity style={s.photoBtn} onPress={handlePickPhoto} disabled={uploading}>
-          {uploading
-            ? <ActivityIndicator color="white" size="small" />
-            : <Text style={s.photoBtnText}>📷 Добавить фото</Text>
-          }
-        </TouchableOpacity>
+        {/* Бейдж статуса / аукциона */}
+        {item.isAuction ? (
+          <View style={[s.conditionBadge, { backgroundColor: '#FF6B0025', borderColor: '#FF6B0060' }]}>
+            <Text style={[s.conditionText, { color: '#FF6B00' }]}>🔨 АУКЦИОН</Text>
+          </View>
+        ) : (
+          <View style={[s.conditionBadge, {
+            backgroundColor: statusInfo.color ? `${statusInfo.color}25` : `${conditionColor}25`,
+            borderColor: statusInfo.color ? `${statusInfo.color}60` : `${conditionColor}60`
+          }]}>
+            <Text style={[s.conditionText, { color: statusInfo.color || conditionColor }]}>
+              {statusInfo.label || conditionLabel}
+            </Text>
+          </View>
+        )}
+        {isAdmin && (
+          <TouchableOpacity style={s.photoBtn} onPress={handlePickPhoto} disabled={uploading}>
+            {uploading
+              ? <ActivityIndicator color="white" size="small" />
+              : <Text style={s.photoBtnText}>📷 Добавить фото</Text>
+            }
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Миниатюры */}
@@ -205,7 +243,10 @@ export default function ProductDetailScreen({ route, navigation }) {
       <View style={s.content}>
         <View style={s.titleRow}>
           <Text style={s.title}>{item.name}</Text>
-          <Text style={s.price}>{item.price?.toLocaleString('ru')} ₽</Text>
+          {item.isAuction
+            ? <Text style={[s.price, { color: '#FF6B00', fontSize: 16 }]}>от {item.startPrice?.toLocaleString('ru')} ₽</Text>
+            : <Text style={s.price}>{item.price?.toLocaleString('ru')} ₽</Text>
+          }
         </View>
 
         {item.manufacturer ? (
@@ -246,10 +287,17 @@ export default function ProductDetailScreen({ route, navigation }) {
               <Text style={s.specValue}>{item.character}</Text>
             </View>
           )}
-          <View style={s.specRow}>
-            <Text style={s.specLabel}>Цена</Text>
-            <Text style={[s.specValue, { color: colors.accent }]}>{item.price?.toLocaleString('ru')} ₽</Text>
-          </View>
+          {item.isAuction ? (
+            <View style={s.specRow}>
+              <Text style={s.specLabel}>Начальная цена</Text>
+              <Text style={[s.specValue, { color: '#FF6B00' }]}>{item.startPrice?.toLocaleString('ru')} ₽</Text>
+            </View>
+          ) : (
+            <View style={s.specRow}>
+              <Text style={s.specLabel}>Цена</Text>
+              <Text style={[s.specValue, { color: colors.accent }]}>{item.price?.toLocaleString('ru')} ₽</Text>
+            </View>
+          )}
         </View>
 
         {/* Описание */}
@@ -370,7 +418,22 @@ export default function ProductDetailScreen({ route, navigation }) {
               }
             </TouchableOpacity>
           </View>
-        ) : isSold ? (
+        ) : null}
+        {!item.isAuction ? (
+          <TouchableOpacity
+            style={[s.collectionBtn, addedToCollection && s.collectionBtnAdded]}
+            onPress={handleAddToCollection}
+            disabled={addingToCollection || addedToCollection}
+          >
+            {addingToCollection
+              ? <ActivityIndicator color={colors.blue} size="small" />
+              : <Text style={[s.collectionBtnText, addedToCollection && { color: colors.green }]}>
+                  {addedToCollection ? '✓ Добавлено в коллекцию' : '🗿 В мою коллекцию'}
+                </Text>
+            }
+          </TouchableOpacity>
+        ) : null}
+        {isSold ? (
           <View style={s.soldBanner}>
             <Text style={s.soldBannerText}>😔 Товар уже продан</Text>
             <TouchableOpacity style={s.wishlistBtn} onPress={handleAddToWishlist} disabled={addingToWishlist || addedToWishlist}>
@@ -428,6 +491,9 @@ const s = StyleSheet.create({
   wishlistBtn: { flex: 1, backgroundColor: colors.surface, borderRadius: 14, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: colors.border },
   wishlistBtnAdded: { borderColor: colors.green },
   wishlistBtnText: { color: colors.accent, fontSize: 15, fontWeight: '600' },
+  collectionBtn: { marginHorizontal: 0, marginTop: 10, backgroundColor: colors.surface, borderRadius: 14, padding: 14, alignItems: 'center', borderWidth: 1, borderColor: `${colors.blue}40` },
+  collectionBtnAdded: { borderColor: colors.green },
+  collectionBtnText: { color: colors.blue, fontSize: 15, fontWeight: '600' },
   soldBanner: { backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.border, padding: 16, alignItems: 'center', gap: 12 },
   soldBannerText: { fontSize: 16, color: colors.text2, fontWeight: '600' },
   auctionCard: { backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1.5, borderColor: '#FF6B0040', padding: 16, marginBottom: 16, gap: 14 },
