@@ -13,7 +13,7 @@ npx expo start --web --clear
 
 - **Фронтенд:** React Native + Expo SDK 54
 - **Бэкенд:** Node.js + TypeScript + Prisma + PostgreSQL (GitHub → Render.com, auto-deploy)
-- **БД:** PostgreSQL на Render (Oregon, Free план — засыпает через 15 мин)
+- **БД:** PostgreSQL на **Supabase** (eu-west-1 Ireland, Free план, бессрочно)
 - **Фото:** Cloudinary (unsigned upload)
 - **Навигация:** React Navigation (Stack + Bottom Tabs)
 
@@ -59,7 +59,15 @@ collectors-realm/
         ├── MapScreen.js            ← Leaflet (iframe веб / WebView мобайл), фильтры ролей
         ├── WishlistScreen.js       ← Вишлист с приоритетами
         ├── ChatScreen.js           ← Чат с продавцом
-        └── NotificationsScreen.js  ← Уведомления
+        ├── NotificationsScreen.js  ← Уведомления
+        ├── CollectionScreen.js     ← Моя коллекция
+        └── ReleasesScreen.js       ← Анонсы релизов
+    └── utils/
+        ├── uploadPhoto.js          ← Загрузка фото (web + mobile)
+        ├── SmartInput.js           ← TextInput с автоскроллом на web
+        ├── analytics.js            ← track() — отправка событий аналитики
+        ├── WhatsNewModal.js        ← Модал "Что нового" при обновлении
+        └── changelog.js            ← История версий (ОБНОВЛЯТЬ ПРИ КАЖДОМ РЕЛИЗЕ)
 ```
 
 ## Навигация (App.js)
@@ -82,7 +90,8 @@ COLLECTOR     → Коллекционер      🗿  синий
 MASTER_REPAIR → Мастер по ремонту 🔧  accent/оранжевый
 CUSTOMIZER    → Кастомизатор      🎨  фиолетовый
 DIORAMA       → Мастер диорам     🏔  зелёный
-ADMIN         → только на бэкенде
+ADMIN         → полная админка (ksele52@gmail.com)
+ANALYTICS     → только статистика (для клиента-заказчика)
 ```
 
 ## Статусы товаров
@@ -134,7 +143,7 @@ DELETE /api/wishlist/:id
 ## Схема БД (Prisma)
 
 ```prisma
-enum UserRole      { COLLECTOR, MASTER_REPAIR, CUSTOMIZER, DIORAMA, ADMIN }
+enum UserRole      { COLLECTOR, MASTER_REPAIR, CUSTOMIZER, DIORAMA, ADMIN, ANALYTICS }
 enum Condition     { NEW, USED }
 enum ProductStatus { AVAILABLE, SOLD, PREORDER, RESERVED, NEGOTIABLE }
 enum Priority      { HIGH, MEDIUM, LOW }
