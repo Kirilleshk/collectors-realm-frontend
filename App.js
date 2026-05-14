@@ -9,6 +9,8 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import { AuthProvider, useAuth } from './src/AuthContext'
 import { colors } from './src/theme'
 import * as Notifications from 'expo-notifications'
+import WhatsNewModal from './src/utils/WhatsNewModal'
+import { setAnalyticsUser, track } from './src/utils/analytics'
 
 import LoginScreen from './src/screens/LoginScreen'
 import ShopScreen from './src/screens/ShopScreen'
@@ -60,6 +62,8 @@ function MapStack() {
 
 function MainTabs() {
   const insets = useSafeAreaInsets()
+  const { user } = useAuth()
+  const isAdmin = user?.roles?.includes('ADMIN') || user?.roles?.includes('ANALYTICS')
   return (
     <Tab.Navigator screenOptions={({ route }) => ({
       tabBarIcon: ({ focused }) => (
@@ -79,12 +83,12 @@ function MainTabs() {
       headerTintColor: colors.text,
       headerTitleStyle: { fontWeight: '700' },
     })}>
-      <Tab.Screen name="Магазин" component={ShopStack} options={{ headerShown: false }} />
-      <Tab.Screen name="Карта" component={MapStack} options={{ headerShown: false }} />
-      <Tab.Screen name="Коллекция" component={CollectionScreen} />
-      <Tab.Screen name="Вишлист" component={WishlistScreen} />
-      <Tab.Screen name="Админ" component={AdminScreen} />
-      <Tab.Screen name="Профиль" component={ProfileScreen} />
+      <Tab.Screen name="Магазин" component={ShopStack} options={{ headerShown: false }} listeners={{ focus: () => track('screen_view', { screen: 'Shop' }) }} />
+      <Tab.Screen name="Карта" component={MapStack} options={{ headerShown: false }} listeners={{ focus: () => track('screen_view', { screen: 'Map' }) }} />
+      <Tab.Screen name="Коллекция" component={CollectionScreen} listeners={{ focus: () => track('screen_view', { screen: 'Collection' }) }} />
+      <Tab.Screen name="Вишлист" component={WishlistScreen} listeners={{ focus: () => track('screen_view', { screen: 'Wishlist' }) }} />
+      {isAdmin && <Tab.Screen name="Админ" component={AdminScreen} />}
+      <Tab.Screen name="Профиль" component={ProfileScreen} listeners={{ focus: () => track('screen_view', { screen: 'Profile' }) }} />
     </Tab.Navigator>
   )
 }
@@ -93,6 +97,10 @@ const navigationRef = React.createRef()
 
 function RootNav() {
   const { user, loading } = useAuth()
+
+  useEffect(() => {
+    if (user?.id) setAnalyticsUser(user.id)
+  }, [user?.id])
 
   useEffect(() => {
     if (Platform.OS === 'android') {
@@ -127,6 +135,7 @@ function RootNav() {
           <Stack.Screen name="Login" component={LoginScreen} />
         )}
       </Stack.Navigator>
+      {user && <WhatsNewModal />}
     </NavigationContainer>
   )
 }

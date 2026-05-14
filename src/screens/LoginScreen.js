@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Animated, Image } from 'react-native'
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Animated, Image } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import * as ImagePicker from 'expo-image-picker'
 import { useAuth } from '../AuthContext'
 import { colors } from '../theme'
+import { pickAndUploadPhoto } from '../utils/uploadPhoto'
+import SmartInput from '../utils/SmartInput'
+import { track } from '../utils/analytics'
 
 const CLOUD_NAME = 'dqutmb1rm'
 const UPLOAD_PRESET = 'collectors_realm'
@@ -56,25 +58,12 @@ export default function LoginScreen() {
 
   async function pickPhoto() {
     if (portfolioPhotos.length >= 5) return
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
-    if (status !== 'granted') { setError('Нужно разрешение на доступ к фото'); return }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true, aspect: [1, 1], quality: 0.8,
-    })
-    if (!result.canceled) {
-      setUploadingPhoto(true)
-      setError('')
-      try {
-        const fd = new FormData()
-        fd.append('file', { uri: result.assets[0].uri, type: 'image/jpeg', name: 'photo.jpg' })
-        fd.append('upload_preset', UPLOAD_PRESET)
-        const r = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { method: 'POST', body: fd })
-        const d = await r.json()
-        if (d.secure_url) setPortfolioPhotos(p => [...p, d.secure_url])
-      } catch (e) { setError('Ошибка загрузки фото') }
-      setUploadingPhoto(false)
-    }
+    setUploadingPhoto(true)
+    setError('')
+    const url = await pickAndUploadPhoto()
+    if (url) setPortfolioPhotos(p => [...p, url])
+    else setError('Ошибка загрузки фото')
+    setUploadingPhoto(false)
   }
 
   async function handleSubmit() {
@@ -84,6 +73,7 @@ export default function LoginScreen() {
       setLoading(true)
       try {
         await login(email, password)
+        track('login')
       } catch (e) {
         setError(e.response?.data?.error || 'Ошибка. Проверьте данные.')
       }
@@ -109,6 +99,7 @@ export default function LoginScreen() {
     setLoading(true)
     try {
       const { token: regToken } = await register(name.trim(), email.trim(), password, selectedRoles)
+      track('register', { roles: selectedRoles })
       await fetch(`${API}/users/me`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${regToken}` },
@@ -171,16 +162,16 @@ export default function LoginScreen() {
               {mode === 'register' && (
                 <View style={s.field}>
                   <Text style={s.label}>Имя</Text>
-                  <TextInput style={s.input} value={name} onChangeText={setName} placeholder="Ваше имя" placeholderTextColor={colors.text2} />
+                  <SmartInput style={s.input} value={name} onChangeText={setName} placeholder="Ваше имя" placeholderTextColor={colors.text2} />
                 </View>
               )}
               <View style={s.field}>
                 <Text style={s.label}>Email</Text>
-                <TextInput style={s.input} value={email} onChangeText={setEmail} placeholder="email@example.com" placeholderTextColor={colors.text2} keyboardType="email-address" autoCapitalize="none" />
+                <SmartInput style={s.input} value={email} onChangeText={setEmail} placeholder="email@example.com" placeholderTextColor={colors.text2} keyboardType="email-address" autoCapitalize="none" />
               </View>
               <View style={s.field}>
                 <Text style={s.label}>Пароль</Text>
-                <TextInput style={s.input} value={password} onChangeText={setPassword} placeholder="••••••••" placeholderTextColor={colors.text2} secureTextEntry />
+                <SmartInput style={s.input} value={password} onChangeText={setPassword} placeholder="••••••••" placeholderTextColor={colors.text2} secureTextEntry />
               </View>
               {mode === 'register' && (
                 <View style={s.field}>

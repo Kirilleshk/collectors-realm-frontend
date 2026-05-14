@@ -1,16 +1,14 @@
 import React, { useState, useEffect } from 'react'
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  ActivityIndicator, TextInput, Modal, RefreshControl,
+  ActivityIndicator, Modal, RefreshControl,
   Alert, KeyboardAvoidingView, Platform, ScrollView, Image,
 } from 'react-native'
-import * as ImagePicker from 'expo-image-picker'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { collection } from '../api'
 import { colors } from '../theme'
-
-const CLOUD_NAME = 'dqutmb1rm'
-const UPLOAD_PRESET = 'collectors_realm'
+import { pickAndUploadPhoto } from '../utils/uploadPhoto'
+import SmartInput from '../utils/SmartInput'
 
 const EMPTY = {
   name: '', manufacturer: '', purchasePrice: '',
@@ -63,44 +61,14 @@ export default function CollectionScreen() {
   }
 
   async function pickPhoto() {
-    if (Platform.OS === 'web') {
-      const input = document.createElement('input')
-      input.type = 'file'; input.accept = 'image/*'
-      input.onchange = async (e) => {
-        const file = e.target.files[0]; if (!file) return
-        setUploadingPhoto(true)
-        try {
-          const fd = new FormData()
-          fd.append('file', file); fd.append('upload_preset', UPLOAD_PRESET)
-          const r = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { method: 'POST', body: fd })
-          const d = await r.json()
-          if (d.secure_url) setField('imageUrl', d.secure_url)
-        } catch (e) { Alert.alert('Ошибка', e.message) }
-        setUploadingPhoto(false)
-      }
-      input.click(); return
-    }
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
-    if (status !== 'granted') { Alert.alert('Нужно разрешение'); return }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true, aspect: [1, 1], quality: 0.8,
-    })
-    if (!result.canceled) {
-      setUploadingPhoto(true)
-      try {
-        const fd = new FormData()
-        fd.append('file', { uri: result.assets[0].uri, type: 'image/jpeg', name: 'photo.jpg' })
-        fd.append('upload_preset', UPLOAD_PRESET)
-        const r = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { method: 'POST', body: fd })
-        const d = await r.json()
-        if (d.secure_url) setField('imageUrl', d.secure_url)
-      } catch (e) { Alert.alert('Ошибка', e.message) }
-      setUploadingPhoto(false)
-    }
+    setUploadingPhoto(true)
+    const url = await pickAndUploadPhoto()
+    if (url) setField('imageUrl', url)
+    setUploadingPhoto(false)
   }
 
   async function handleSave() {
+    if (saving) return
     const errs = {}
     if (!form.name.trim()) errs.name = true
     if (Object.keys(errs).length) { setErrors(errs); return }
@@ -225,7 +193,7 @@ export default function CollectionScreen() {
                   <Text style={[s.label, errors.name && { color: '#FF3B30' }]}>
                     Название <Text style={{ color: '#FF3B30' }}>* обязательно</Text>
                   </Text>
-                  <TextInput
+                  <SmartInput
                     style={[s.input, errors.name && s.inputError]}
                     value={form.name}
                     onChangeText={v => { setField('name', v); if (v.trim()) setErrors(p => ({ ...p, name: false })) }}
@@ -237,7 +205,7 @@ export default function CollectionScreen() {
 
                 <View style={s.field}>
                   <Text style={s.label}>Производитель</Text>
-                  <TextInput style={s.input} value={form.manufacturer} onChangeText={v => setField('manufacturer', v)} placeholder="Bandai, Good Smile..." placeholderTextColor={colors.text2} />
+                  <SmartInput style={s.input} value={form.manufacturer} onChangeText={v => setField('manufacturer', v)} placeholder="Bandai, Good Smile..." placeholderTextColor={colors.text2} />
                 </View>
 
                 <View style={s.field}>
@@ -257,17 +225,17 @@ export default function CollectionScreen() {
 
                 <View style={s.field}>
                   <Text style={s.label}>Цена покупки (₽)</Text>
-                  <TextInput style={s.input} value={form.purchasePrice} onChangeText={v => setField('purchasePrice', v)} placeholder="3500" placeholderTextColor={colors.text2} keyboardType="numeric" />
+                  <SmartInput style={s.input} value={form.purchasePrice} onChangeText={v => setField('purchasePrice', v)} placeholder="3500" placeholderTextColor={colors.text2} keyboardType="numeric" />
                 </View>
 
                 <View style={s.field}>
                   <Text style={s.label}>Дата покупки</Text>
-                  <TextInput style={s.input} value={form.purchaseDate} onChangeText={v => setField('purchaseDate', v)} placeholder="2024-03 или 2024-03-15" placeholderTextColor={colors.text2} />
+                  <SmartInput style={s.input} value={form.purchaseDate} onChangeText={v => setField('purchaseDate', v)} placeholder="2024-03 или 2024-03-15" placeholderTextColor={colors.text2} />
                 </View>
 
                 <View style={s.field}>
                   <Text style={s.label}>Заметки</Text>
-                  <TextInput
+                  <SmartInput
                     style={[s.input, { height: 80, textAlignVertical: 'top' }]}
                     value={form.notes}
                     onChangeText={v => setField('notes', v)}

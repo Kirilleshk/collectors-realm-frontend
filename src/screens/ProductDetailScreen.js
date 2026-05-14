@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Image, Platform, Linking, Alert, TextInput } from 'react-native'
-import * as ImagePicker from 'expo-image-picker'
 import { products, wishlist, bids, collection } from '../api'
 import { useAuth } from '../AuthContext'
 import { colors } from '../theme'
+import { pickAndUploadPhoto } from '../utils/uploadPhoto'
+import { track } from '../utils/analytics'
 
 const CLOUD_NAME = 'dqutmb1rm'
 const UPLOAD_PRESET = 'collectors_realm'
@@ -37,7 +38,7 @@ function getTimeLeft(endTime) {
 export default function ProductDetailScreen({ route, navigation }) {
   const { id } = route.params
   const { user, token } = useAuth()
-  const isAdmin = user?.email?.includes('admin') || user?.email?.includes('kirill')
+  const isAdmin = user?.roles?.includes('ADMIN')
   const [item, setItem] = useState(null)
   const [loading, setLoading] = useState(true)
   const [addingToWishlist, setAddingToWishlist] = useState(false)
@@ -63,7 +64,7 @@ export default function ProductDetailScreen({ route, navigation }) {
       }, 1000)
     }
     return () => clearInterval(timerRef.current)
-  }, [item?.id])
+  }, [item?.auctionEndTime])
 
   async function loadBids() {
     try {
@@ -83,6 +84,7 @@ export default function ProductDetailScreen({ route, navigation }) {
     setPlacingBid(true)
     try {
       await bids.place(id, amount)
+      track('bid_placed', { productId: id, amount: Number(amount) })
       setBidAmount('')
       await loadBids()
     } catch (e) {
@@ -100,26 +102,11 @@ export default function ProductDetailScreen({ route, navigation }) {
   }
 
   async function handlePickPhoto() {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
-    if (status !== 'granted') { alert('Нужно разрешение!'); return }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true, aspect: [1, 1], quality: 0.8,
-    })
-    if (!result.canceled) uploadPhoto(result.assets[0].uri)
-  }
-
-  async function uploadPhoto(uri) {
     setUploading(true)
-    try {
-      const fd = new FormData()
-      fd.append('file', { uri, type: 'image/jpeg', name: 'photo.jpg' })
-      fd.append('upload_preset', UPLOAD_PRESET)
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { method: 'POST', body: fd })
-      const data = await res.json()
-      if (data.secure_url) {
-        const newImages = [...(item.images || []), { url: data.secure_url, order: (item.images || []).length }]
-        // Сохраняем в БД
+    const url = await pickAndUploadPhoto()
+    if (url) {
+      const newImages = [...(item.images || []), { url, order: (item.images || []).length }]
+      try {
         await fetch(`https://collectors-realm-backend.onrender.com/api/products/${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -129,8 +116,8 @@ export default function ProductDetailScreen({ route, navigation }) {
           }),
         })
         setItem(prev => ({ ...prev, images: newImages }))
-      }
-    } catch (e) { alert('Ошибка загрузки фото') }
+      } catch (e) { Alert.alert('Ошибка', 'Не удалось сохранить фото') }
+    }
     setUploading(false)
   }
 
@@ -144,6 +131,7 @@ export default function ProductDetailScreen({ route, navigation }) {
         productId: item.id,
       })
       setAddedToWishlist(true)
+      track('add_to_wishlist', { productId: item.id, productName: item.name })
     } catch (e) { console.error(e) }
     setAddingToWishlist(false)
   }
@@ -159,17 +147,20 @@ export default function ProductDetailScreen({ route, navigation }) {
         condition: item.condition || 'NEW',
       })
       setAddedToCollection(true)
+      track('add_to_collection', { productId: item.id, productName: item.name })
     } catch (e) { Alert.alert('Ошибка', 'Не удалось добавить в коллекцию') }
     setAddingToCollection(false)
   }
 
   async function openTelegram() {
+    track('contact_seller', { method: 'telegram', productId: item.id })
     const msg = encodeURIComponent(`Здравствуйте! Меня интересует товар "${item.name}" за ${item.price?.toLocaleString('ru')} ₽`)
     const url = `https://t.me/${SELLER.telegram}?text=${msg}`
     try { await Linking.openURL(url) } catch { Linking.openURL(`https://t.me/${SELLER.telegram}`) }
   }
 
   async function openWhatsApp() {
+    track('contact_seller', { method: 'whatsapp', productId: item.id })
     const msg = encodeURIComponent(`Здравствуйте! Меня интересует товар "${item.name}" за ${item.price?.toLocaleString('ru')} ₽`)
     const url = `https://wa.me/${SELLER.whatsapp}?text=${msg}`
     try { await Linking.openURL(url) } catch { Linking.openURL(`https://wa.me/${SELLER.whatsapp}`) }

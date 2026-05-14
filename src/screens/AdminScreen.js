@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  TextInput, ActivityIndicator, Alert, Modal, Image, Platform, KeyboardAvoidingView
+  ActivityIndicator, Alert, Modal, Image, Platform, KeyboardAvoidingView
 } from 'react-native'
-import * as ImagePicker from 'expo-image-picker'
 import { useAuth } from '../AuthContext'
 import { colors } from '../theme'
 import { notifications as notifApi, releases as releasesApi } from '../api'
+import { pickAndUploadPhoto } from '../utils/uploadPhoto'
+import SmartInput from '../utils/SmartInput'
+import { track } from '../utils/analytics'
 
 const CLOUD_NAME = 'dqutmb1rm'
 const UPLOAD_PRESET = 'collectors_realm'
@@ -39,12 +41,15 @@ export default function AdminScreen() {
   const [saving, setSaving] = useState(false)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
 
-  const isAdmin = user?.roles?.includes('ADMIN') || user?.email?.includes('admin') || user?.email?.includes('kirill')
+  const isAdmin = user?.roles?.includes('ADMIN')
+  const isAnalytics = user?.roles?.includes('ANALYTICS') && !isAdmin
 
   const [tab, setTab] = useState('products')
   const [allUsers, setAllUsers] = useState([])
   const [usersLoading, setUsersLoading] = useState(false)
   const [sendingReport, setSendingReport] = useState(false)
+  const [analyticsSummary, setAnalyticsSummary] = useState(null)
+  const [analyticsLoading, setAnalyticsLoading] = useState(false)
   const [releasesList, setReleasesList] = useState([])
   const [releasesLoading, setReleasesLoading] = useState(false)
   const [releaseModal, setReleaseModal] = useState(false)
@@ -52,12 +57,30 @@ export default function AdminScreen() {
   const [editRelease, setEditRelease] = useState(null)
   const [savingRelease, setSavingRelease] = useState(false)
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    if (isAnalytics) { setTab('analytics'); return }
+    load()
+  }, [])
 
   useEffect(() => {
     if (tab === 'users') loadUsers()
     if (tab === 'releases') loadReleases()
+    if (tab === 'analytics') loadAnalytics()
   }, [tab])
+
+  async function loadAnalytics() {
+    setAnalyticsLoading(true)
+    try {
+      const res = await fetch(`${API}/analytics/summary`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) throw new Error('Ошибка загрузки')
+      setAnalyticsSummary(await res.json())
+    } catch (e) {
+      Alert.alert('Ошибка', 'Не удалось загрузить статистику')
+    }
+    setAnalyticsLoading(false)
+  }
 
   async function loadReleases() {
     setReleasesLoading(true)
@@ -181,47 +204,10 @@ export default function AdminScreen() {
 
   async function pickPhoto() {
     if (photos.length >= 5) { Alert.alert('Максимум 5 фото'); return }
-
-    if (Platform.OS === 'web') {
-      const input = document.createElement('input')
-      input.type = 'file'
-      input.accept = 'image/*'
-      input.onchange = async (e) => {
-        const file = e.target.files[0]
-        if (!file) return
-        setUploadingPhoto(true)
-        try {
-          const fd = new FormData()
-          fd.append('file', file)
-          fd.append('upload_preset', UPLOAD_PRESET)
-          const r = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { method: 'POST', body: fd })
-          const d = await r.json()
-          if (d.secure_url) setPhotos(p => [...p, d.secure_url])
-        } catch (e) { Alert.alert('Ошибка', e.message) }
-        setUploadingPhoto(false)
-      }
-      input.click()
-      return
-    }
-
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
-    if (status !== 'granted') { Alert.alert('Нужно разрешение'); return }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true, aspect: [1, 1], quality: 0.8
-    })
-    if (!result.canceled) {
-      setUploadingPhoto(true)
-      try {
-        const fd = new FormData()
-        fd.append('file', { uri: result.assets[0].uri, type: 'image/jpeg', name: 'photo.jpg' })
-        fd.append('upload_preset', UPLOAD_PRESET)
-        const r = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { method: 'POST', body: fd })
-        const d = await r.json()
-        if (d.secure_url) setPhotos(p => [...p, d.secure_url])
-      } catch (e) { Alert.alert('Ошибка', e.message) }
-      setUploadingPhoto(false)
-    }
+    setUploadingPhoto(true)
+    const url = await pickAndUploadPhoto()
+    if (url) setPhotos(p => [...p, url])
+    setUploadingPhoto(false)
   }
 
   async function handleSave() {
@@ -324,14 +310,19 @@ export default function AdminScreen() {
     <View style={s.wrap}>
       {/* Переключатель вкладок */}
       <View style={s.tabs}>
-        <TouchableOpacity style={[s.tabBtn, tab === 'products' && s.tabBtnActive]} onPress={() => setTab('products')}>
-          <Text style={[s.tabText, tab === 'products' && s.tabTextActive]}>📦 Товары</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[s.tabBtn, tab === 'releases' && s.tabBtnActive]} onPress={() => setTab('releases')}>
-          <Text style={[s.tabText, tab === 'releases' && s.tabTextActive]}>📅 Релизы</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[s.tabBtn, tab === 'users' && s.tabBtnActive]} onPress={() => setTab('users')}>
-          <Text style={[s.tabText, tab === 'users' && s.tabTextActive]}>👥 Люди</Text>
+        {!isAnalytics && <>
+          <TouchableOpacity style={[s.tabBtn, tab === 'products' && s.tabBtnActive]} onPress={() => setTab('products')}>
+            <Text style={[s.tabText, tab === 'products' && s.tabTextActive]}>📦 Товары</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[s.tabBtn, tab === 'releases' && s.tabBtnActive]} onPress={() => setTab('releases')}>
+            <Text style={[s.tabText, tab === 'releases' && s.tabTextActive]}>📅 Релизы</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[s.tabBtn, tab === 'users' && s.tabBtnActive]} onPress={() => setTab('users')}>
+            <Text style={[s.tabText, tab === 'users' && s.tabTextActive]}>👥 Люди</Text>
+          </TouchableOpacity>
+        </>}
+        <TouchableOpacity style={[s.tabBtn, tab === 'analytics' && s.tabBtnActive]} onPress={() => setTab('analytics')}>
+          <Text style={[s.tabText, tab === 'analytics' && s.tabTextActive]}>📊 Статистика</Text>
         </TouchableOpacity>
       </View>
 
@@ -419,6 +410,63 @@ export default function AdminScreen() {
         )
       ) : null}
 
+      {/* Вкладка аналитики */}
+      {tab === 'analytics' && (
+        analyticsLoading ? <View style={s.center}><ActivityIndicator color={colors.accent} size="large" /></View> :
+        !analyticsSummary ? <View style={s.center}><Text style={{ color: colors.text2 }}>Нет данных</Text></View> : (
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 16 }}>
+            {/* Общая сводка */}
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <View style={[s.statCard, { flex: 1 }]}>
+                <Text style={s.statNum}>{analyticsSummary.totalEvents}</Text>
+                <Text style={s.statLabel}>Событий</Text>
+              </View>
+              <View style={[s.statCard, { flex: 1 }]}>
+                <Text style={s.statNum}>{analyticsSummary.totalUsers}</Text>
+                <Text style={s.statLabel}>Пользователей</Text>
+              </View>
+            </View>
+
+            {/* Платформы */}
+            <View style={s.analyticsBlock}>
+              <Text style={s.analyticsTitle}>По платформам</Text>
+              {analyticsSummary.platformStats?.map(p => (
+                <View key={p.platform} style={s.analyticsRow}>
+                  <Text style={{ color: colors.text }}>{p.platform === 'web' ? '🌐 Web' : p.platform === 'android' ? '🤖 Android' : p.platform === 'ios' ? '🍎 iOS' : p.platform}</Text>
+                  <Text style={{ color: colors.accent, fontWeight: '700' }}>{p.count}</Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Топ событий */}
+            <View style={s.analyticsBlock}>
+              <Text style={s.analyticsTitle}>Топ действий</Text>
+              {analyticsSummary.eventCounts?.map((e, i) => (
+                <View key={e.event} style={s.analyticsRow}>
+                  <Text style={{ color: colors.text2, width: 20 }}>{i + 1}.</Text>
+                  <Text style={{ color: colors.text, flex: 1 }}>{e.event}</Text>
+                  <Text style={{ color: colors.accent, fontWeight: '700' }}>{e.count}</Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Активность по дням */}
+            <View style={s.analyticsBlock}>
+              <Text style={s.analyticsTitle}>Активность (7 дней)</Text>
+              {analyticsSummary.dailyStats?.map(d => (
+                <View key={d.date} style={s.analyticsRow}>
+                  <Text style={{ color: colors.text2 }}>{d.date}</Text>
+                  <View style={{ flex: 1, marginHorizontal: 10 }}>
+                    <View style={{ height: 8, borderRadius: 4, backgroundColor: colors.accent, width: `${Math.min(100, (d.count / (analyticsSummary.dailyStats[0]?.count || 1)) * 100)}%` }} />
+                  </View>
+                  <Text style={{ color: colors.accent, fontWeight: '700' }}>{d.count}</Text>
+                </View>
+              ))}
+            </View>
+          </ScrollView>
+        )
+      )}
+
       {/* Вкладка товаров */}
       {tab === 'products' && (
       <>
@@ -495,7 +543,7 @@ export default function AdminScreen() {
                 ].map(([label, key, placeholder]) => (
                   <View key={key} style={{ marginBottom: 14 }}>
                     <Text style={s.label}>{label.toUpperCase()}</Text>
-                    <TextInput
+                    <SmartInput
                       style={s.input}
                       value={releaseForm[key]}
                       onChangeText={v => setReleaseForm(p => ({ ...p, [key]: v }))}
@@ -570,7 +618,7 @@ export default function AdminScreen() {
             ].map(([label, key, placeholder, kb]) => (
               <View key={key}>
                 <Text style={s.label}>{label.toUpperCase()}</Text>
-                <TextInput
+                <SmartInput
                   style={s.input}
                   value={form[key]}
                   onChangeText={v => setForm(p => ({ ...p, [key]: v }))}
@@ -584,7 +632,7 @@ export default function AdminScreen() {
             {!form.isAuction && (
               <View>
                 <Text style={s.label}>ЦЕНА (₽) *</Text>
-                <TextInput
+                <SmartInput
                   style={s.input}
                   value={form.price}
                   onChangeText={v => setForm(p => ({ ...p, price: v }))}
@@ -627,10 +675,10 @@ export default function AdminScreen() {
             {form.isAuction && (
               <>
                 <Text style={s.label}>НАЧАЛЬНАЯ ЦЕНА (₽) *</Text>
-                <TextInput style={[s.input, { marginBottom: 16 }]} value={form.startPrice} onChangeText={v => setForm(p => ({ ...p, startPrice: v }))} placeholder="500" placeholderTextColor={colors.text2} keyboardType="numeric" />
+                <SmartInput style={[s.input, { marginBottom: 16 }]} value={form.startPrice} onChangeText={v => setForm(p => ({ ...p, startPrice: v }))} placeholder="500" placeholderTextColor={colors.text2} keyboardType="numeric" />
 
                 <Text style={s.label}>ШАГ СТАВКИ (₽)</Text>
-                <TextInput style={[s.input, { marginBottom: 16 }]} value={form.priceStep} onChangeText={v => setForm(p => ({ ...p, priceStep: v }))} placeholder="100" placeholderTextColor={colors.text2} keyboardType="numeric" />
+                <SmartInput style={[s.input, { marginBottom: 16 }]} value={form.priceStep} onChangeText={v => setForm(p => ({ ...p, priceStep: v }))} placeholder="100" placeholderTextColor={colors.text2} keyboardType="numeric" />
 
                 <Text style={s.label}>СРОК АУКЦИОНА</Text>
                 <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
@@ -645,7 +693,7 @@ export default function AdminScreen() {
             )}
 
             <Text style={s.label}>ОПИСАНИЕ</Text>
-            <TextInput
+            <SmartInput
               style={[s.input, { height: 100, textAlignVertical: 'top' }]}
               value={form.description}
               onChangeText={v => setForm(p => ({ ...p, description: v }))}
@@ -677,8 +725,14 @@ const s = StyleSheet.create({
   tabs: { flexDirection: 'row', backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
   tabBtn: { flex: 1, paddingVertical: 14, alignItems: 'center' },
   tabBtnActive: { borderBottomWidth: 2, borderBottomColor: colors.accent },
-  tabText: { fontSize: 14, fontWeight: '600', color: colors.text2 },
+  tabText: { fontSize: 13, fontWeight: '600', color: colors.text2 },
   tabTextActive: { color: colors.accent },
+  statCard: { backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 16, alignItems: 'center' },
+  statNum: { fontSize: 32, fontWeight: '900', color: colors.accent },
+  statLabel: { fontSize: 12, color: colors.text2, marginTop: 4 },
+  analyticsBlock: { backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 16, gap: 10 },
+  analyticsTitle: { fontSize: 14, fontWeight: '700', color: colors.text, marginBottom: 4 },
+  analyticsRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   userCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1, borderColor: colors.border, padding: 12, gap: 10 },
   badgeBtn: { width: 34, height: 34, borderRadius: 8, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface2, justifyContent: 'center', alignItems: 'center' },
   reportCard: { backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 16 },

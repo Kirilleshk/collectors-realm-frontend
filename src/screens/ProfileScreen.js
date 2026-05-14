@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, ActivityIndicator, Alert, Image, Modal, KeyboardAvoidingView, Platform } from 'react-native'
-import * as ImagePicker from 'expo-image-picker'
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Image, Modal, KeyboardAvoidingView, Platform } from 'react-native'
 import * as Location from 'expo-location'
 import { useAuth } from '../AuthContext'
 import { colors } from '../theme'
+import { pickAndUploadPhoto } from '../utils/uploadPhoto'
+import SmartInput from '../utils/SmartInput'
+import { HELP_ITEMS } from '../utils/WhatsNewModal'
+import { CHANGELOG, CURRENT_VERSION } from '../utils/changelog'
 
 let Updates = null
 try { Updates = require('expo-updates') } catch (e) {}
@@ -25,6 +28,7 @@ const MASTER_ROLES = ['MASTER_REPAIR', 'CUSTOMIZER', 'DIORAMA']
 export default function ProfileScreen() {
   const { user, token, logout, updateUser } = useAuth()
   const [editModal, setEditModal] = useState(false)
+  const [profileTab, setProfileTab] = useState('profile')
   const [form, setForm] = useState({ name: user?.name || '', city: user?.city || '', bio: user?.bio || '', roles: user?.roles || [] })
   const [saving, setSaving] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl || null)
@@ -42,64 +46,41 @@ export default function ProfileScreen() {
         }
       })
       .catch(() => {})
-  }, [])
+  }, [token])
   const [uploadingPortfolio, setUploadingPortfolio] = useState(false)
 
   const initials = (user?.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
   const isMaster = (user?.roles || []).some(r => MASTER_ROLES.includes(r))
 
   async function pickAvatar() {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
-    if (status !== 'granted') return
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.8 })
-    if (!result.canceled) {
-      setUploadingAvatar(true)
-      try {
-        const fd = new FormData()
-        fd.append('file', { uri: result.assets[0].uri, type: 'image/jpeg', name: 'avatar.jpg' })
-        fd.append('upload_preset', UPLOAD_PRESET)
-        const r = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { method: 'POST', body: fd })
-        const d = await r.json()
-        if (d.secure_url) {
-          setAvatarUrl(d.secure_url)
-          await fetch(`${API}/users/me`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ avatarUrl: d.secure_url })
-          })
-          await updateUser({ avatarUrl: d.secure_url })
-        }
-      } catch (e) { Alert.alert('Ошибка загрузки фото') }
-      setUploadingAvatar(false)
+    setUploadingAvatar(true)
+    const url = await pickAndUploadPhoto()
+    if (url) {
+      setAvatarUrl(url)
+      await fetch(`${API}/users/me`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ avatarUrl: url }),
+      })
+      await updateUser({ avatarUrl: url })
     }
+    setUploadingAvatar(false)
   }
 
   async function pickPortfolioPhoto() {
     if (portfolio.length >= 5) { Alert.alert('Максимум 5 фото в портфолио'); return }
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
-    if (status !== 'granted') return
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.8 })
-    if (!result.canceled) {
-      setUploadingPortfolio(true)
-      try {
-        const fd = new FormData()
-        fd.append('file', { uri: result.assets[0].uri, type: 'image/jpeg', name: 'portfolio.jpg' })
-        fd.append('upload_preset', UPLOAD_PRESET)
-        const r = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { method: 'POST', body: fd })
-        const d = await r.json()
-        if (d.secure_url) {
-          const newPortfolio = [...portfolio, d.secure_url]
-          setPortfolio(newPortfolio)
-          // Сохраняем на бэкенде
-          await fetch(`${API}/users/me`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ portfolioUrls: newPortfolio })
-          })
-        }
-      } catch (e) { Alert.alert('Ошибка загрузки фото') }
-      setUploadingPortfolio(false)
+    setUploadingPortfolio(true)
+    const url = await pickAndUploadPhoto()
+    if (url) {
+      const newPortfolio = [...portfolio, url]
+      setPortfolio(newPortfolio)
+      await fetch(`${API}/users/me`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ portfolioUrls: newPortfolio }),
+      })
     }
+    setUploadingPortfolio(false)
   }
 
   async function removePortfolioPhoto(index) {
@@ -184,6 +165,65 @@ export default function ProfileScreen() {
 
   return (
     <ScrollView style={s.wrap} showsVerticalScrollIndicator={false}>
+
+      {/* Переключатель вкладок профиля */}
+      <View style={s.profileTabs}>
+        <TouchableOpacity style={[s.profileTab, profileTab === 'profile' && s.profileTabActive]} onPress={() => setProfileTab('profile')}>
+          <Text style={[s.profileTabText, profileTab === 'profile' && s.profileTabTextActive]}>👤 Профиль</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[s.profileTab, profileTab === 'help' && s.profileTabActive]} onPress={() => setProfileTab('help')}>
+          <Text style={[s.profileTabText, profileTab === 'help' && s.profileTabTextActive]}>❓ Помощь</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Вкладка помощи */}
+      {profileTab === 'help' && (
+        <View style={{ padding: 16, gap: 20 }}>
+          {/* Все функции */}
+          <View>
+            <Text style={{ fontSize: 18, fontWeight: '800', color: colors.text, marginBottom: 12 }}>Как пользоваться приложением</Text>
+            <View style={{ gap: 10 }}>
+              {HELP_ITEMS.map((item, i) => (
+                <View key={i} style={{ backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 16, flexDirection: 'row', gap: 14 }}>
+                  <Text style={{ fontSize: 26 }}>{item.icon}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 4 }}>{item.title}</Text>
+                    <Text style={{ fontSize: 13, color: colors.text2, lineHeight: 18 }}>{item.desc}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          {/* История обновлений */}
+          <View>
+            <Text style={{ fontSize: 18, fontWeight: '800', color: colors.text, marginBottom: 12 }}>История обновлений</Text>
+            {CHANGELOG.map(release => (
+              <View key={release.version} style={{ marginBottom: 16 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                  <View style={{ backgroundColor: release.version === CURRENT_VERSION ? colors.accent : colors.surface2, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 }}>
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: release.version === CURRENT_VERSION ? 'white' : colors.text2 }}>v{release.version}</Text>
+                  </View>
+                  <Text style={{ fontSize: 12, color: colors.text2 }}>{release.date}</Text>
+                </View>
+                <View style={{ gap: 6 }}>
+                  {release.changes.map((c, i) => (
+                    <View key={i} style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
+                      <Text style={{ fontSize: 16 }}>{c.icon}</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>{c.title}</Text>
+                        <Text style={{ fontSize: 12, color: colors.text2, lineHeight: 17 }}>{c.desc}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
+
+      {profileTab !== 'help' && <>
       {/* Шапка */}
       <View style={s.headerWrap}>
         <TouchableOpacity onPress={pickAvatar} style={s.avatarWrap} disabled={uploadingAvatar}>
@@ -323,13 +363,13 @@ export default function ProfileScreen() {
           </View>
           <ScrollView style={{ padding: 20 }} keyboardShouldPersistTaps="handled">
             <Text style={s.label}>ИМЯ *</Text>
-            <TextInput style={s.input} value={form.name} onChangeText={v => setForm(p => ({ ...p, name: v }))} placeholder="Ваше имя" placeholderTextColor={colors.text2} />
+            <SmartInput style={s.input} value={form.name} onChangeText={v => setForm(p => ({ ...p, name: v }))} placeholder="Ваше имя" placeholderTextColor={colors.text2} />
 
             <Text style={s.label}>ГОРОД</Text>
-            <TextInput style={s.input} value={form.city} onChangeText={v => setForm(p => ({ ...p, city: v }))} placeholder="Москва, Санкт-Петербург..." placeholderTextColor={colors.text2} />
+            <SmartInput style={s.input} value={form.city} onChangeText={v => setForm(p => ({ ...p, city: v }))} placeholder="Москва, Санкт-Петербург..." placeholderTextColor={colors.text2} />
 
             <Text style={s.label}>О СЕБЕ</Text>
-            <TextInput style={[s.input, { height: 100, textAlignVertical: 'top' }]} value={form.bio} onChangeText={v => setForm(p => ({ ...p, bio: v }))} placeholder="Расскажите о себе (до 500 символов)" placeholderTextColor={colors.text2} multiline maxLength={500} />
+            <SmartInput style={[s.input, { height: 100, textAlignVertical: 'top' }]} value={form.bio} onChangeText={v => setForm(p => ({ ...p, bio: v }))} placeholder="Расскажите о себе (до 500 символов)" placeholderTextColor={colors.text2} multiline maxLength={500} />
 
             <Text style={s.label}>РОЛИ</Text>
             <View style={{ gap: 8, marginBottom: 16 }}>
@@ -355,12 +395,18 @@ export default function ProfileScreen() {
           </ScrollView>
         </KeyboardAvoidingView>
       </Modal>
+      </>}
     </ScrollView>
   )
 }
 
 const s = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.bg },
+  profileTabs: { flexDirection: 'row', backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
+  profileTab: { flex: 1, paddingVertical: 14, alignItems: 'center' },
+  profileTabActive: { borderBottomWidth: 2, borderBottomColor: colors.accent },
+  profileTabText: { fontSize: 14, fontWeight: '600', color: colors.text2 },
+  profileTabTextActive: { color: colors.accent },
   headerWrap: { alignItems: 'center', paddingTop: 40, paddingBottom: 24, paddingHorizontal: 24, borderBottomWidth: 1, borderBottomColor: colors.border },
   avatarWrap: { position: 'relative', marginBottom: 16 },
   avatar: { width: 88, height: 88, borderRadius: 24, backgroundColor: `${colors.blue}30`, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: `${colors.blue}60` },

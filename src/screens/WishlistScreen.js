@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react'
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, TextInput, Modal, RefreshControl, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Modal, RefreshControl, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { wishlist } from '../api'
 import { colors } from '../theme'
+import SmartInput from '../utils/SmartInput'
 
 const priorities = [
   { value: 'HIGH', label: 'Высокий', color: colors.accent },
@@ -196,7 +197,7 @@ export default function WishlistScreen() {
                     Название фигурки{' '}
                     <Text style={s.requiredMark}>* обязательно</Text>
                   </Text>
-                  <TextInput
+                  <SmartInput
                     style={[s.input, errors.name && s.inputError]}
                     value={form.name}
                     onChangeText={v => { setField('name', v); if (v.trim()) setErrors(p => ({ ...p, name: false })) }}
@@ -208,22 +209,22 @@ export default function WishlistScreen() {
 
                 <View style={s.field}>
                   <Text style={s.label}>Оригинальное название</Text>
-                  <TextInput style={s.input} value={form.originalName} onChangeText={v => setField('originalName', v)} placeholder="エヴァンゲリオン初号機" placeholderTextColor={colors.text2} />
+                  <SmartInput style={s.input} value={form.originalName} onChangeText={v => setField('originalName', v)} placeholder="エヴァンゲリオン初号機" placeholderTextColor={colors.text2} />
                 </View>
 
                 <View style={s.field}>
                   <Text style={s.label}>Персонаж (на русском)</Text>
-                  <TextInput style={s.input} value={form.characterRu} onChangeText={v => setField('characterRu', v)} placeholder="Синдзи Икари" placeholderTextColor={colors.text2} />
+                  <SmartInput style={s.input} value={form.characterRu} onChangeText={v => setField('characterRu', v)} placeholder="Синдзи Икари" placeholderTextColor={colors.text2} />
                 </View>
 
                 <View style={s.field}>
                   <Text style={s.label}>Производитель</Text>
-                  <TextInput style={s.input} value={form.manufacturer} onChangeText={v => setField('manufacturer', v)} placeholder="Bandai, Good Smile Company..." placeholderTextColor={colors.text2} />
+                  <SmartInput style={s.input} value={form.manufacturer} onChangeText={v => setField('manufacturer', v)} placeholder="Bandai, Good Smile Company..." placeholderTextColor={colors.text2} />
                 </View>
 
                 <View style={s.field}>
                   <Text style={s.label}>Год выпуска</Text>
-                  <TextInput style={s.input} value={form.releaseDate} onChangeText={v => setField('releaseDate', v)} placeholder="2023" placeholderTextColor={colors.text2} keyboardType="numeric" />
+                  <SmartInput style={s.input} value={form.releaseDate} onChangeText={v => setField('releaseDate', v)} placeholder="2023" placeholderTextColor={colors.text2} keyboardType="numeric" />
                 </View>
 
                 <View style={s.field}>
@@ -243,7 +244,7 @@ export default function WishlistScreen() {
 
                 <View style={s.field}>
                   <Text style={s.label}>Комментарий</Text>
-                  <TextInput style={s.input} value={form.comment} onChangeText={v => setField('comment', v)} placeholder="Версия, цвет, особенности..." placeholderTextColor={colors.text2} />
+                  <SmartInput style={s.input} value={form.comment} onChangeText={v => setField('comment', v)} placeholder="Версия, цвет, особенности..." placeholderTextColor={colors.text2} />
                 </View>
 
                 <View style={s.modalHint}>
