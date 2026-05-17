@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Image, Modal, KeyboardAvoidingView, Platform } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Image, Modal, KeyboardAvoidingView, Platform, FlatList, Dimensions } from 'react-native'
 import * as Location from 'expo-location'
 import { useAuth } from '../AuthContext'
 import { colors } from '../theme'
@@ -7,6 +7,10 @@ import { pickAndUploadPhoto } from '../utils/uploadPhoto'
 import SmartInput from '../utils/SmartInput'
 import { HELP_ITEMS } from '../utils/WhatsNewModal'
 import { CHANGELOG, CURRENT_VERSION } from '../utils/changelog'
+import { portfolioCollections as collectionsApi } from '../api'
+
+const { width } = Dimensions.get('window')
+const COLL_CARD = (width - 48) / 2
 
 let Updates = null
 try { Updates = require('expo-updates') } catch (e) {}
@@ -46,8 +50,122 @@ export default function ProfileScreen() {
         }
       })
       .catch(() => {})
+    loadCollections()
   }, [token])
+
+  async function loadCollections() {
+    try {
+      const res = await collectionsApi.getMine()
+      setCollections(res.data)
+    } catch {}
+  }
+
+  function openAddCollection() {
+    setEditingCollection(null)
+    setCollectionForm({ name: '', description: '', photos: [] })
+    setAddCollectionVisible(true)
+  }
+
+  function openEditCollection(col) {
+    setEditingCollection(col)
+    setCollectionForm({ name: col.name, description: col.description || '', photos: col.photos })
+    setAddCollectionVisible(true)
+  }
+
+  async function addPhotoToForm() {
+    if (collectionForm.photos.length >= 10) return
+    setUploadingCollPhoto(true)
+    const url = await pickAndUploadPhoto()
+    if (url) setCollectionForm(p => ({ ...p, photos: [...p.photos, { url, id: null }] }))
+    setUploadingCollPhoto(false)
+  }
+
+  async function saveCollection() {
+    if (!collectionForm.name.trim()) { Alert.alert('Введите название'); return }
+    setSavingCollection(true)
+    try {
+      if (editingCollection) {
+        // Обновляем название и описание
+        const res = await collectionsApi.update(editingCollection.id, {
+          name: collectionForm.name.trim(),
+          description: collectionForm.description.trim() || undefined,
+        })
+        setCollections(prev => prev.map(c => c.id === editingCollection.id ? res.data : c))
+      } else {
+        // Создаём новую коллекцию с фото
+        const res = await collectionsApi.create({
+          name: collectionForm.name.trim(),
+          description: collectionForm.description.trim() || undefined,
+          photoUrls: collectionForm.photos.map(p => p.url),
+        })
+        setCollections(prev => [...prev, res.data])
+      }
+      setAddCollectionVisible(false)
+    } catch (e) {
+      Alert.alert('Ошибка', 'Не удалось сохранить коллекцию')
+    }
+    setSavingCollection(false)
+  }
+
+  async function deleteCollection(id) {
+    Alert.alert('Удалить коллекцию?', 'Это действие нельзя отменить', [
+      { text: 'Отмена', style: 'cancel' },
+      { text: 'Удалить', style: 'destructive', onPress: async () => {
+        try {
+          await collectionsApi.remove(id)
+          setCollections(prev => prev.filter(c => c.id !== id))
+          setCollectionDetailVisible(false)
+        } catch {
+          Alert.alert('Ошибка', 'Не удалось удалить коллекцию')
+        }
+      }},
+    ])
+  }
+
+  async function addPhotoToCollection(collectionId) {
+    const col = collections.find(c => c.id === collectionId)
+    if (!col || col.photos.length >= 10) return
+    setUploadingCollPhoto(true)
+    const url = await pickAndUploadPhoto()
+    if (url) {
+      try {
+        const res = await collectionsApi.addPhoto(collectionId, url)
+        const newPhoto = res.data
+        setCollections(prev => prev.map(c =>
+          c.id === collectionId ? { ...c, photos: [...c.photos, newPhoto] } : c
+        ))
+        setActiveCollection(prev => prev?.id === collectionId
+          ? { ...prev, photos: [...prev.photos, newPhoto] }
+          : prev
+        )
+      } catch { Alert.alert('Ошибка загрузки фото') }
+    }
+    setUploadingCollPhoto(false)
+  }
+
+  async function removePhotoFromCollection(collectionId, photoId) {
+    try {
+      await collectionsApi.removePhoto(collectionId, photoId)
+      setCollections(prev => prev.map(c =>
+        c.id === collectionId ? { ...c, photos: c.photos.filter(p => p.id !== photoId) } : c
+      ))
+      setActiveCollection(prev => prev?.id === collectionId
+        ? { ...prev, photos: prev.photos.filter(p => p.id !== photoId) }
+        : prev
+      )
+    } catch { Alert.alert('Ошибка удаления фото') }
+  }
   const [uploadingPortfolio, setUploadingPortfolio] = useState(false)
+
+  // Коллекции
+  const [collections, setCollections] = useState([])
+  const [activeCollection, setActiveCollection] = useState(null)
+  const [collectionDetailVisible, setCollectionDetailVisible] = useState(false)
+  const [addCollectionVisible, setAddCollectionVisible] = useState(false)
+  const [editingCollection, setEditingCollection] = useState(null)
+  const [collectionForm, setCollectionForm] = useState({ name: '', description: '', photos: [] })
+  const [uploadingCollPhoto, setUploadingCollPhoto] = useState(false)
+  const [savingCollection, setSavingCollection] = useState(false)
 
   const initials = (user?.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
   const isMaster = (user?.roles || []).some(r => MASTER_ROLES.includes(r))
@@ -57,12 +175,12 @@ export default function ProfileScreen() {
     const url = await pickAndUploadPhoto()
     if (url) {
       setAvatarUrl(url)
-      await fetch(`${API}/users/me`, {
+      await updateUser({ avatarUrl: url })
+      fetch(`${API}/users/me`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ avatarUrl: url }),
-      })
-      await updateUser({ avatarUrl: url })
+      }).catch(() => {})
     }
     setUploadingAvatar(false)
   }
@@ -284,19 +402,45 @@ export default function ProfileScreen() {
         </View>
       ) : null}
 
-      {/* Портфолио — только для мастеров */}
-      {isMaster ? (
-        <View style={s.section}>
-          <Text style={s.sectionTitle}>Портфолио ({portfolio.length}/5)</Text>
+      {/* Портфолио */}
+      <View style={s.section}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <Text style={s.sectionTitle}>Моё портфолио ({portfolio.length}/5)</Text>
+          {portfolio.length < 5 && (
+            <TouchableOpacity
+              style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, backgroundColor: `${colors.blue}20`, borderWidth: 1, borderColor: `${colors.blue}40` }}
+              onPress={pickPortfolioPhoto}
+              disabled={uploadingPortfolio}
+            >
+              <Text style={{ color: colors.blue, fontSize: 13, fontWeight: '700' }}>
+                {uploadingPortfolio ? '...' : '+ Фото'}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {portfolio.length === 0 ? (
+          <TouchableOpacity
+            style={{ backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1.5, borderColor: colors.border, borderStyle: 'dashed', padding: 24, alignItems: 'center', gap: 8 }}
+            onPress={pickPortfolioPhoto}
+            disabled={uploadingPortfolio}
+          >
+            {uploadingPortfolio
+              ? <ActivityIndicator color={colors.accent} />
+              : <>
+                  <Text style={{ fontSize: 36 }}>📸</Text>
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text }}>Добавить фото коллекции</Text>
+                  <Text style={{ fontSize: 12, color: colors.text2, textAlign: 'center' }}>До 5 фото · видны всем в вашем профиле</Text>
+                </>
+            }
+          </TouchableOpacity>
+        ) : (
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={{ flexDirection: 'row', gap: 10 }}>
               {portfolio.map((url, i) => (
                 <View key={i} style={{ position: 'relative' }}>
                   <Image source={{ uri: url }} style={s.portfolioImg} />
-                  <TouchableOpacity
-                    style={s.portfolioRemove}
-                    onPress={() => removePortfolioPhoto(i)}
-                  >
+                  <TouchableOpacity style={s.portfolioRemove} onPress={() => removePortfolioPhoto(i)}>
                     <Text style={{ color: 'white', fontSize: 10, fontWeight: '700' }}>✕</Text>
                   </TouchableOpacity>
                 </View>
@@ -305,14 +449,56 @@ export default function ProfileScreen() {
                 <TouchableOpacity style={s.portfolioAdd} onPress={pickPortfolioPhoto} disabled={uploadingPortfolio}>
                   {uploadingPortfolio
                     ? <ActivityIndicator color={colors.accent} />
-                    : <Text style={{ fontSize: 28, color: colors.text2 }}>+</Text>
+                    : <>
+                        <Text style={{ fontSize: 28, color: colors.text2 }}>📷</Text>
+                        <Text style={{ fontSize: 11, color: colors.text2, marginTop: 4 }}>Добавить</Text>
+                      </>
                   }
                 </TouchableOpacity>
               )}
             </View>
           </ScrollView>
+        )}
+      </View>
+
+      {/* Коллекции */}
+      <View style={s.section}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <Text style={s.sectionTitle}>Коллекции</Text>
+          <TouchableOpacity style={s.addCollBtn} onPress={openAddCollection}>
+            <Text style={s.addCollBtnText}>+ Добавить</Text>
+          </TouchableOpacity>
         </View>
-      ) : null}
+
+        {collections.length === 0 ? (
+          <TouchableOpacity style={s.collEmpty} onPress={openAddCollection}>
+            <Text style={{ fontSize: 32, marginBottom: 8 }}>🗿</Text>
+            <Text style={{ color: colors.text2, fontSize: 14 }}>Добавьте первую коллекцию</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={s.collGrid}>
+            {collections.map(col => (
+              <TouchableOpacity
+                key={col.id}
+                style={s.collCard}
+                onPress={() => { setActiveCollection(col); setCollectionDetailVisible(true) }}
+              >
+                {col.photos[0] ? (
+                  <Image source={{ uri: col.photos[0].url }} style={s.collCover} />
+                ) : (
+                  <View style={[s.collCover, { justifyContent: 'center', alignItems: 'center', backgroundColor: colors.surface2 }]}>
+                    <Text style={{ fontSize: 32 }}>📷</Text>
+                  </View>
+                )}
+                <View style={s.collCardBody}>
+                  <Text style={s.collCardName} numberOfLines={1}>{col.name}</Text>
+                  <Text style={s.collCardCount}>{col.photos.length} фото</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+      </View>
 
       {/* Аккаунт */}
       <View style={s.section}>
@@ -372,7 +558,7 @@ export default function ProfileScreen() {
             <SmartInput style={[s.input, { height: 100, textAlignVertical: 'top' }]} value={form.bio} onChangeText={v => setForm(p => ({ ...p, bio: v }))} placeholder="Расскажите о себе (до 500 символов)" placeholderTextColor={colors.text2} multiline maxLength={500} />
 
             <Text style={s.label}>РОЛИ</Text>
-            <View style={{ gap: 8, marginBottom: 16 }}>
+            <View style={{ gap: 8, marginBottom: 20 }}>
               {ALL_ROLES.map(role => {
                 const r = roleMap[role]
                 const active = form.roles.includes(role)
@@ -388,6 +574,39 @@ export default function ProfileScreen() {
               })}
             </View>
 
+            <Text style={s.label}>ФОТО ПОРТФОЛИО ({portfolio.length}/5)</Text>
+            <Text style={{ fontSize: 12, color: colors.text2, marginBottom: 12, lineHeight: 17 }}>
+              Эти фото видят другие пользователи в вашем профиле
+            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 }}>
+              {portfolio.map((url, i) => (
+                <View key={i} style={{ position: 'relative' }}>
+                  <Image source={{ uri: url }} style={{ width: 90, height: 90, borderRadius: 10 }} />
+                  <TouchableOpacity
+                    style={s.portfolioRemove}
+                    onPress={() => removePortfolioPhoto(i)}
+                  >
+                    <Text style={{ color: 'white', fontSize: 10, fontWeight: '700' }}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+              {portfolio.length < 5 && (
+                <TouchableOpacity
+                  style={[s.portfolioAdd, { width: 90, height: 90 }]}
+                  onPress={pickPortfolioPhoto}
+                  disabled={uploadingPortfolio}
+                >
+                  {uploadingPortfolio
+                    ? <ActivityIndicator color={colors.accent} />
+                    : <>
+                        <Text style={{ fontSize: 26, color: colors.text2 }}>📷</Text>
+                        <Text style={{ fontSize: 10, color: colors.text2, marginTop: 4 }}>Добавить</Text>
+                      </>
+                  }
+                </TouchableOpacity>
+              )}
+            </View>
+
             <TouchableOpacity style={s.saveBtn} onPress={handleSave} disabled={saving}>
               {saving ? <ActivityIndicator color="white" /> : <Text style={{ color: 'white', fontSize: 16, fontWeight: '700' }}>Сохранить</Text>}
             </TouchableOpacity>
@@ -395,6 +614,133 @@ export default function ProfileScreen() {
           </ScrollView>
         </KeyboardAvoidingView>
       </Modal>
+      {/* Модал: детальный просмотр коллекции */}
+      <Modal visible={collectionDetailVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setCollectionDetailVisible(false)}>
+        <View style={s.modal}>
+          <View style={s.modalHead}>
+            <Text style={s.modalTitle} numberOfLines={1}>{activeCollection?.name}</Text>
+            <TouchableOpacity onPress={() => setCollectionDetailVisible(false)}>
+              <Text style={{ fontSize: 20, color: colors.text2 }}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
+            {activeCollection?.description ? (
+              <Text style={{ color: colors.text2, fontSize: 14, marginBottom: 16, lineHeight: 20 }}>{activeCollection.description}</Text>
+            ) : null}
+
+            {/* Фото в коллекции */}
+            <View style={s.collPhotoGrid}>
+              {(activeCollection?.photos || []).map(photo => (
+                <View key={photo.id} style={{ position: 'relative' }}>
+                  <Image source={{ uri: photo.url }} style={s.collPhoto} />
+                  <TouchableOpacity
+                    style={s.collPhotoRemove}
+                    onPress={() => removePhotoFromCollection(activeCollection.id, photo.id)}
+                  >
+                    <Text style={{ color: 'white', fontSize: 10, fontWeight: '700' }}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+              {(activeCollection?.photos?.length || 0) < 10 && (
+                <TouchableOpacity style={s.collPhotoAdd} onPress={() => addPhotoToCollection(activeCollection?.id)} disabled={uploadingCollPhoto}>
+                  {uploadingCollPhoto
+                    ? <ActivityIndicator color={colors.accent} />
+                    : <Text style={{ fontSize: 28, color: colors.text2 }}>+</Text>
+                  }
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Кнопки управления */}
+            <View style={{ gap: 10, marginTop: 24 }}>
+              <TouchableOpacity
+                style={[s.saveBtn, { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }]}
+                onPress={() => { setCollectionDetailVisible(false); openEditCollection(activeCollection) }}
+              >
+                <Text style={{ color: colors.text, fontSize: 15, fontWeight: '600' }}>✏️ Редактировать</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.saveBtn, { backgroundColor: 'rgba(255,59,48,0.1)', borderWidth: 1, borderColor: 'rgba(255,59,48,0.3)' }]}
+                onPress={() => deleteCollection(activeCollection?.id)}
+              >
+                <Text style={{ color: '#FF3B30', fontSize: 15, fontWeight: '600' }}>🗑 Удалить коллекцию</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={{ height: 40 }} />
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* Модал: добавить / редактировать коллекцию */}
+      <Modal visible={addCollectionVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setAddCollectionVisible(false)}>
+        <KeyboardAvoidingView style={s.modal} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <View style={s.modalHead}>
+            <Text style={s.modalTitle}>{editingCollection ? 'Редактировать' : 'Новая коллекция'}</Text>
+            <TouchableOpacity onPress={() => setAddCollectionVisible(false)}>
+              <Text style={{ fontSize: 20, color: colors.text2 }}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={{ padding: 20 }} keyboardShouldPersistTaps="handled">
+            <Text style={s.label}>НАЗВАНИЕ *</Text>
+            <SmartInput
+              style={s.input}
+              value={collectionForm.name}
+              onChangeText={v => setCollectionForm(p => ({ ...p, name: v }))}
+              placeholder="Например: Hot Toys Marvel"
+              placeholderTextColor={colors.text2}
+              maxLength={100}
+            />
+            <Text style={s.label}>ОПИСАНИЕ</Text>
+            <SmartInput
+              style={[s.input, { height: 90, textAlignVertical: 'top' }]}
+              value={collectionForm.description}
+              onChangeText={v => setCollectionForm(p => ({ ...p, description: v }))}
+              placeholder="Расскажите об этой коллекции..."
+              placeholderTextColor={colors.text2}
+              multiline
+              maxLength={500}
+            />
+
+            {!editingCollection && (
+              <>
+                <Text style={s.label}>ФОТО (до 10)</Text>
+                <View style={s.collPhotoGrid}>
+                  {collectionForm.photos.map((p, i) => (
+                    <View key={i} style={{ position: 'relative' }}>
+                      <Image source={{ uri: p.url }} style={s.collPhoto} />
+                      <TouchableOpacity
+                        style={s.collPhotoRemove}
+                        onPress={() => setCollectionForm(prev => ({ ...prev, photos: prev.photos.filter((_, j) => j !== i) }))}
+                      >
+                        <Text style={{ color: 'white', fontSize: 10, fontWeight: '700' }}>✕</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                  {collectionForm.photos.length < 10 && (
+                    <TouchableOpacity style={s.collPhotoAdd} onPress={addPhotoToForm} disabled={uploadingCollPhoto}>
+                      {uploadingCollPhoto
+                        ? <ActivityIndicator color={colors.accent} />
+                        : <Text style={{ fontSize: 28, color: colors.text2 }}>+</Text>
+                      }
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </>
+            )}
+
+            <TouchableOpacity style={[s.saveBtn, { marginTop: 24 }]} onPress={saveCollection} disabled={savingCollection}>
+              {savingCollection
+                ? <ActivityIndicator color="white" />
+                : <Text style={{ color: 'white', fontSize: 16, fontWeight: '700' }}>
+                    {editingCollection ? 'Сохранить изменения' : 'Создать коллекцию'}
+                  </Text>
+              }
+            </TouchableOpacity>
+            <View style={{ height: 40 }} />
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </Modal>
+
       </>}
     </ScrollView>
   )
@@ -446,4 +792,18 @@ const s = StyleSheet.create({
   label: { fontSize: 11, fontWeight: '700', color: colors.text2, letterSpacing: 1.5, marginBottom: 8, marginTop: 4 },
   input: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14, color: colors.text, fontSize: 15, marginBottom: 16 },
   saveBtn: { backgroundColor: colors.accent, borderRadius: 14, padding: 16, alignItems: 'center', marginTop: 8 },
+
+  addCollBtn: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 10, backgroundColor: `${colors.accent}20`, borderWidth: 1, borderColor: `${colors.accent}40` },
+  addCollBtnText: { color: colors.accent, fontSize: 13, fontWeight: '700' },
+  collEmpty: { alignItems: 'center', padding: 32, borderRadius: 14, borderWidth: 1.5, borderColor: colors.border, borderStyle: 'dashed', backgroundColor: colors.surface },
+  collGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  collCard: { width: COLL_CARD, borderRadius: 14, overflow: 'hidden', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  collCover: { width: COLL_CARD, height: COLL_CARD, resizeMode: 'cover' },
+  collCardBody: { padding: 10, gap: 2 },
+  collCardName: { fontSize: 13, fontWeight: '700', color: colors.text },
+  collCardCount: { fontSize: 11, color: colors.text2 },
+  collPhotoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  collPhoto: { width: 90, height: 90, borderRadius: 10 },
+  collPhotoRemove: { position: 'absolute', top: -6, right: -6, width: 20, height: 20, backgroundColor: 'rgba(255,59,48,0.9)', borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  collPhotoAdd: { width: 90, height: 90, borderRadius: 10, backgroundColor: colors.surface, borderWidth: 2, borderColor: colors.border, borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center' },
 })

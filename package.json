@@ -6,7 +6,8 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "deploy": "npx expo export --platform web && npx vercel dist --prod --yes"
   },
   "dependencies": {
     "@expo/metro-runtime": "^6.0.0",

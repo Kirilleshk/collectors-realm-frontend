@@ -32,7 +32,7 @@ function Stars({ rating, size = 16, onPress }) {
 
 export default function UserProfileScreen({ route, navigation }) {
   const { userId } = route.params
-  const { user: me } = useAuth()
+  const { user: me, token } = useAuth()
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [reviewData, setReviewData] = useState({ reviews: [], avgRating: null, count: 0 })
@@ -48,7 +48,9 @@ export default function UserProfileScreen({ route, navigation }) {
   async function load() {
     try {
       const [userRes, revRes] = await Promise.all([
-        fetch(`${API}/users/${userId}`).then(r => r.json()),
+        fetch(`${API}/users/${userId}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        }).then(r => r.json()),
         reviewsApi.getForUser(userId),
       ])
       setUser(userRes)

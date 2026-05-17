@@ -11,7 +11,7 @@ const getToken = async () => {
   } catch (e) { return null }
 }
 
-const api = axios.create({ baseURL: API_URL })
+const api = axios.create({ baseURL: API_URL, timeout: 65000 })
 
 api.interceptors.request.use(async (config) => {
   const token = await getToken()
@@ -71,6 +71,16 @@ export const collection = {
   add: (data) => api.post('/collection', data),
   update: (id, data) => api.put(`/collection/${id}`, data),
   remove: (id) => api.delete(`/collection/${id}`),
+}
+
+export const portfolioCollections = {
+  getForUser: (userId) => api.get(`/portfolio-collections/user/${userId}`),
+  getMine: () => api.get('/portfolio-collections/me'),
+  create: (data) => api.post('/portfolio-collections', data),
+  update: (id, data) => api.put(`/portfolio-collections/${id}`, data),
+  remove: (id) => api.delete(`/portfolio-collections/${id}`),
+  addPhoto: (id, url) => api.post(`/portfolio-collections/${id}/photos`, { url }),
+  removePhoto: (id, photoId) => api.delete(`/portfolio-collections/${id}/photos/${photoId}`),
 }
 
 export const bids = {

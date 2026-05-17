@@ -19,13 +19,15 @@ const ALL_ROLES = [
 ]
 
 export default function LoginScreen() {
-  const { login, register } = useAuth()
+  const { login, register, updateUser } = useAuth()
   const [mode, setMode] = useState('login')
   const [step, setStep] = useState('form') // 'form' | 'photos'
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [selectedRoles, setSelectedRoles] = useState(['COLLECTOR'])
+  const [avatarPhoto, setAvatarPhoto] = useState(null)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [portfolioPhotos, setPortfolioPhotos] = useState([])
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [error, setError] = useState('')
@@ -47,6 +49,7 @@ export default function LoginScreen() {
     setMode(m)
     setStep('form')
     setError('')
+    setAvatarPhoto(null)
     setPortfolioPhotos([])
   }
 
@@ -54,6 +57,15 @@ export default function LoginScreen() {
     setSelectedRoles(prev =>
       prev.includes(key) ? prev.filter(r => r !== key) : [...prev, key]
     )
+  }
+
+  async function pickAvatar() {
+    setUploadingAvatar(true)
+    setError('')
+    const url = await pickAndUploadPhoto()
+    if (url) setAvatarPhoto(url)
+    else setError('Ошибка загрузки фото')
+    setUploadingAvatar(false)
   }
 
   async function pickPhoto() {
@@ -91,11 +103,8 @@ export default function LoginScreen() {
       return
     }
 
-    // Регистрация — шаг 2: создание аккаунта
-    if (portfolioPhotos.length === 0) {
-      setError('Добавьте хотя бы 1 фото коллекции')
-      return
-    }
+    // Регистрация — шаг 2: проверяем аватарку и создаём аккаунт
+    if (!avatarPhoto) { setError('Добавьте фото профиля — это обязательно'); return }
     setLoading(true)
     try {
       const { token: regToken } = await register(name.trim(), email.trim(), password, selectedRoles)
@@ -103,8 +112,9 @@ export default function LoginScreen() {
       await fetch(`${API}/users/me`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${regToken}` },
-        body: JSON.stringify({ portfolioUrls: portfolioPhotos }),
+        body: JSON.stringify({ avatarUrl: avatarPhoto, portfolioUrls: portfolioPhotos }),
       })
+      await updateUser({ avatarUrl: avatarPhoto })
     } catch (e) {
       setError(e.response?.data?.error || 'Ошибка. Проверьте данные.')
     }
@@ -145,7 +155,7 @@ export default function LoginScreen() {
               <View style={[s.stepDot, { backgroundColor: colors.accent }]} />
               <View style={[s.stepLine, step === 'photos' && { backgroundColor: colors.accent }]} />
               <View style={[s.stepDot, step === 'photos' && { backgroundColor: colors.accent }]} />
-              <Text style={s.stepText}>{step === 'form' ? 'Шаг 1 из 2 — Данные' : 'Шаг 2 из 2 — Фото коллекции'}</Text>
+              <Text style={s.stepText}>{step === 'form' ? 'Шаг 1 из 2 — Данные' : 'Шаг 2 из 2 — Фото профиля'}</Text>
             </View>
           )}
 
@@ -201,9 +211,33 @@ export default function LoginScreen() {
             </>
           )}
 
-          {/* ШАГ 2: Фото коллекции */}
+          {/* ШАГ 2: Аватар + фото коллекции */}
           {mode === 'register' && step === 'photos' && (
             <View style={s.field}>
+              {/* Аватар — обязательно */}
+              <Text style={s.label}>ФОТО ПРОФИЛЯ *</Text>
+              <View style={{ alignItems: 'center', marginBottom: 20 }}>
+                <TouchableOpacity onPress={pickAvatar} disabled={uploadingAvatar} style={[s.avatarPickerWrap, avatarPhoto && { borderStyle: 'solid', borderColor: colors.accent }]}>
+                  {uploadingAvatar ? (
+                    <ActivityIndicator color={colors.accent} />
+                  ) : avatarPhoto ? (
+                    <>
+                      <Image source={{ uri: avatarPhoto }} style={s.avatarPickerImg} />
+                      <View style={s.avatarPickerBadge}><Text style={{ color: 'white', fontSize: 10 }}>📷</Text></View>
+                    </>
+                  ) : (
+                    <>
+                      <Text style={{ fontSize: 36, marginBottom: 4 }}>👤</Text>
+                      <Text style={{ fontSize: 11, color: colors.text2 }}>Выбрать фото</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+                {!avatarPhoto && (
+                  <Text style={{ fontSize: 11, color: colors.accent, marginTop: 6 }}>Обязательно для регистрации</Text>
+                )}
+              </View>
+
+              <Text style={s.label}>ФОТО КОЛЛЕКЦИИ</Text>
               <Text style={s.photoHint}>Покажи что ты коллекционируешь — это поможет найти единомышленников</Text>
               <View style={s.photoGrid}>
                 {portfolioPhotos.map((url, i) => (
@@ -230,7 +264,7 @@ export default function LoginScreen() {
                 )}
               </View>
               {portfolioPhotos.length === 0 && (
-                <Text style={s.photoRequired}>* Минимум 1 фото обязательно</Text>
+                <Text style={s.photoRequired}>Фото можно добавить позже в профиле</Text>
               )}
               <TouchableOpacity onPress={() => { setStep('form'); setError('') }} style={s.backBtn}>
                 <Text style={s.backBtnText}>← Назад к данным</Text>
@@ -311,6 +345,17 @@ const s = StyleSheet.create({
     position: 'absolute', top: -6, right: -6,
     width: 20, height: 20, borderRadius: 10,
     justifyContent: 'center', alignItems: 'center',
+  },
+  avatarPickerWrap: {
+    width: 100, height: 100, borderRadius: 50,
+    backgroundColor: colors.surface2, borderWidth: 2, borderColor: colors.border, borderStyle: 'dashed',
+    justifyContent: 'center', alignItems: 'center', position: 'relative',
+  },
+  avatarPickerImg: { width: 100, height: 100, borderRadius: 50 },
+  avatarPickerBadge: {
+    position: 'absolute', bottom: 0, right: 0,
+    width: 26, height: 26, borderRadius: 13,
+    backgroundColor: colors.accent, justifyContent: 'center', alignItems: 'center',
   },
   photoHint: { fontSize: 13, color: colors.text2, marginBottom: 14, lineHeight: 18 },
   photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 8 },

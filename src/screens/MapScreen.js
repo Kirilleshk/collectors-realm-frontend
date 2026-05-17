@@ -38,6 +38,7 @@ function getMapHTML(users, myLocation = null, radius = null) {
       role: ${JSON.stringify(r.label)},
       icon: ${JSON.stringify(r.icon)},
       color: ${JSON.stringify(r.color)},
+      avatar: ${JSON.stringify(u.avatarUrl || '')},
       badge: ${JSON.stringify(badgeLabel)},
       rating: ${JSON.stringify(ratingLabel)}
     }`
@@ -71,8 +72,10 @@ function getMapHTML(users, myLocation = null, radius = null) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<meta name="color-scheme" content="light">
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { background: #ffffff; }
 html, body, #map { width: 100%; height: 100vh; }
 .custom-marker {
   background: rgba(255,255,255,0.95);
@@ -82,10 +85,27 @@ html, body, #map { width: 100%; height: 100vh; }
   align-items: center;
   justify-content: center;
   font-size: 18px;
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.3);
   cursor: pointer;
+}
+.avatar-marker {
+  border-radius: 50%;
+  border: 2.5px solid;
+  display: block;
+  width: 38px;
+  height: 38px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+  cursor: pointer;
+  background: #eee;
+}
+.avatar-marker img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 </style>
 </head>
@@ -101,9 +121,12 @@ ${nearbyCode}
 
 var users = [${markers}];
 users.forEach(function(u) {
+  var markerHtml = u.avatar
+    ? '<div class="avatar-marker" style="border-color:' + u.color + '"><img src="' + u.avatar + '"/></div>'
+    : '<div class="custom-marker" style="border-color:' + u.color + ';background:' + u.color + '22">' + u.icon + '</div>';
   var icon = L.divIcon({
-    html: '<div class="custom-marker" style="border-color:' + u.color + ';background:' + u.color + '22">' + u.icon + '</div>',
-    iconSize: [36, 36], iconAnchor: [18, 18], className: ''
+    html: markerHtml,
+    iconSize: [38, 38], iconAnchor: [19, 19], className: ''
   });
   var marker = L.marker([u.lat, u.lng], {icon: icon}).addTo(map);
   marker.on('click', function() {
@@ -118,10 +141,12 @@ users.forEach(function(u) {
 }
 
 export default function MapScreen({ navigation }) {
-  const { token } = useAuth()
+  const { token, user: me } = useAuth()
   const [users, setUsers] = useState([])
   const usersRef = useRef([])
   const [loading, setLoading] = useState(true)
+  const [slowLoad, setSlowLoad] = useState(false)
+  const [error, setError] = useState(null)
   const [filter, setFilter] = useState(null)
   const [selected, setSelected] = useState(null)
   const [nearbyRadius, setNearbyRadius] = useState(null)
@@ -147,13 +172,29 @@ export default function MapScreen({ navigation }) {
   }
 
   async function loadUsers() {
+    setError(null)
+    setLoading(true)
+    const slowTimer = setTimeout(() => setSlowLoad(true), 8000)
     try {
-      const res = await fetch(`${API}/users`, { headers: { Authorization: `Bearer ${token}` } })
+      const res = await fetch(`${API}/users`, {
+        headers: { Authorization: `Bearer ${token}` },
+        signal: AbortSignal.timeout ? AbortSignal.timeout(65000) : undefined,
+      })
       const data = await res.json()
-      const list = Array.isArray(data) ? data.filter(u => u.latitude && u.longitude) : []
+      const list = Array.isArray(data)
+        ? data.filter(u => u.latitude && u.longitude).map(u =>
+            me && u.id === me.id && me.avatarUrl && !u.avatarUrl
+              ? { ...u, avatarUrl: me.avatarUrl }
+              : u
+          )
+        : []
       setUsers(list)
       usersRef.current = list
-    } catch (e) { console.error(e) }
+    } catch (e) {
+      setError('Не удалось загрузить карту')
+    }
+    clearTimeout(slowTimer)
+    setSlowLoad(false)
     setLoading(false)
   }
 
@@ -201,6 +242,25 @@ export default function MapScreen({ navigation }) {
     <View style={s.center}>
       <ActivityIndicator color={colors.accent} size="large" />
       <Text style={{ color: colors.text2, marginTop: 12 }}>Загружаем карту...</Text>
+      {slowLoad && (
+        <Text style={{ color: colors.text2, fontSize: 12, marginTop: 4, textAlign: 'center', paddingHorizontal: 32 }}>
+          Сервер просыпается, подождите немного...
+        </Text>
+      )}
+    </View>
+  )
+
+  if (error) return (
+    <View style={s.center}>
+      <Text style={{ fontSize: 40, marginBottom: 8 }}>⚠️</Text>
+      <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text }}>Нет соединения</Text>
+      <Text style={{ fontSize: 14, color: colors.text2, textAlign: 'center', paddingHorizontal: 32 }}>{error}</Text>
+      <TouchableOpacity
+        style={{ marginTop: 16, paddingHorizontal: 28, paddingVertical: 12, borderRadius: 12, backgroundColor: colors.accent }}
+        onPress={loadUsers}
+      >
+        <Text style={{ color: 'white', fontSize: 15, fontWeight: '700' }}>↻ Повторить</Text>
+      </TouchableOpacity>
     </View>
   )
 
@@ -331,7 +391,7 @@ export default function MapScreen({ navigation }) {
 
 const s = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.bg },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.bg },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.bg, gap: 12 },
   filtersWrap: { borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface },
   filters: { paddingVertical: 10 },
   filterBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },

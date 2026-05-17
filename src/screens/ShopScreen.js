@@ -29,6 +29,8 @@ export default function ShopScreen({ navigation }) {
 
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
+  const [slowLoad, setSlowLoad] = useState(false)
+  const [error, setError] = useState(null)
   const [refreshing, setRefreshing] = useState(false)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState(null)
@@ -43,11 +45,18 @@ export default function ShopScreen({ navigation }) {
   }, [])
 
   async function load() {
+    setError(null)
+    setLoading(true)
+    const slowTimer = setTimeout(() => setSlowLoad(true), 8000)
     try {
       const res = await products.getAll()
       const data = Array.isArray(res.data) ? res.data : (res.data.products || [])
       setItems(data)
-    } catch (e) { console.error(e) }
+    } catch (e) {
+      setError('Не удалось загрузить товары')
+    }
+    clearTimeout(slowTimer)
+    setSlowLoad(false)
     setLoading(false)
   }
 
@@ -85,6 +94,20 @@ export default function ShopScreen({ navigation }) {
     <View style={s.center}>
       <ActivityIndicator color={colors.accent} size="large" />
       <Text style={s.loadingText}>Загружаем коллекцию...</Text>
+      {slowLoad && (
+        <Text style={s.slowText}>Сервер просыпается, подождите немного...</Text>
+      )}
+    </View>
+  )
+
+  if (error) return (
+    <View style={s.center}>
+      <Text style={{ fontSize: 40, marginBottom: 8 }}>⚠️</Text>
+      <Text style={s.errorTitle}>Нет соединения</Text>
+      <Text style={s.errorSub}>{error}</Text>
+      <TouchableOpacity style={s.retryBtn} onPress={load}>
+        <Text style={s.retryText}>↻ Повторить</Text>
+      </TouchableOpacity>
     </View>
   )
 
@@ -203,6 +226,11 @@ const s = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.bg },
   center: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center', gap: 12 },
   loadingText: { color: colors.text2, fontSize: 14 },
+  slowText: { color: colors.text2, fontSize: 12, textAlign: 'center', paddingHorizontal: 32, marginTop: 4 },
+  errorTitle: { fontSize: 17, fontWeight: '700', color: colors.text },
+  errorSub: { fontSize: 14, color: colors.text2, textAlign: 'center', paddingHorizontal: 32 },
+  retryBtn: { marginTop: 8, paddingHorizontal: 28, paddingVertical: 12, borderRadius: 12, backgroundColor: colors.accent },
+  retryText: { color: 'white', fontSize: 15, fontWeight: '700' },
   searchWrap: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: colors.surface, borderRadius: 14,

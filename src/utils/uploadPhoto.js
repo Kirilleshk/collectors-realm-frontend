@@ -17,22 +17,40 @@ function webPick() {
     const input = document.createElement('input')
     input.type = 'file'
     input.accept = 'image/*'
+    // Скрываем через позицию — display:none и маленькие размеры ломают iOS Safari
+    input.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:100px;height:100px;opacity:0;'
+    document.body.appendChild(input)
+
+    let settled = false
+    function done(value) {
+      if (settled) return
+      settled = true
+      try { document.body.removeChild(input) } catch {}
+      resolve(value)
+    }
+
     input.onchange = async (e) => {
-      const file = e.target.files[0]
-      if (!file) return resolve(null)
+      const file = e.target.files?.[0]
+      if (!file) return done(null)
       try {
         const fd = new FormData()
         fd.append('file', file)
         fd.append('upload_preset', UPLOAD_PRESET)
         const r = await fetch(CLOUDINARY_URL, { method: 'POST', body: fd })
         const d = await r.json()
-        resolve(d.secure_url || null)
+        done(d.secure_url || null)
       } catch {
-        resolve(null)
+        done(null)
       }
     }
-    input.oncancel = () => resolve(null)
-    input.click()
+
+    // НЕ вешаем oncancel — на iOS Safari он срабатывает при открытии пикера
+    // и убирает input из DOM, из-за чего медиатека мгновенно закрывается.
+    // Если пользователь закрыл без выбора — спиннер остановится при следующем
+    // нажатии (вызов load() сбрасывает состояние).
+
+    // Небольшая задержка: даём React завершить ре-рендер до открытия пикера
+    setTimeout(() => input.click(), 50)
   })
 }
 
@@ -41,17 +59,21 @@ async function mobilePick(aspect) {
   if (status !== 'granted') return null
 
   const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    mediaTypes: 'images',
     allowsEditing: true,
     aspect,
     quality: 0.8,
   })
   if (result.canceled) return null
 
-  const fd = new FormData()
-  fd.append('file', { uri: result.assets[0].uri, type: 'image/jpeg', name: 'photo.jpg' })
-  fd.append('upload_preset', UPLOAD_PRESET)
-  const r = await fetch(CLOUDINARY_URL, { method: 'POST', body: fd })
-  const d = await r.json()
-  return d.secure_url || null
+  try {
+    const fd = new FormData()
+    fd.append('file', { uri: result.assets[0].uri, type: 'image/jpeg', name: 'photo.jpg' })
+    fd.append('upload_preset', UPLOAD_PRESET)
+    const r = await fetch(CLOUDINARY_URL, { method: 'POST', body: fd })
+    const d = await r.json()
+    return d.secure_url || null
+  } catch {
+    return null
+  }
 }
