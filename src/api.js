@@ -83,6 +83,10 @@ export const portfolioCollections = {
   removePhoto: (id, photoId) => api.delete(`/portfolio-collections/${id}/photos/${photoId}`),
 }
 
+export const news = {
+  getAll: (params) => api.get('/news', { params }),
+}
+
 export const bids = {
   getForProduct: (productId) => api.get(`/products/${productId}/bids`),
   place: (productId, amount) => api.post(`/products/${productId}/bids`, { amount }),

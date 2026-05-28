@@ -7,7 +7,7 @@ import { pickAndUploadPhoto } from '../utils/uploadPhoto'
 import SmartInput from '../utils/SmartInput'
 import { HELP_ITEMS } from '../utils/WhatsNewModal'
 import { CHANGELOG, CURRENT_VERSION } from '../utils/changelog'
-import { portfolioCollections as collectionsApi } from '../api'
+import { portfolioCollections as collectionsApi, reviews as reviewsApi } from '../api'
 
 const { width } = Dimensions.get('window')
 const COLL_CARD = (width - 48) / 2
@@ -28,6 +28,33 @@ const roleMap = {
 
 const ALL_ROLES = ['COLLECTOR', 'MASTER_REPAIR', 'CUSTOMIZER', 'DIORAMA']
 const MASTER_ROLES = ['MASTER_REPAIR', 'CUSTOMIZER', 'DIORAMA']
+
+function ReviewCardSmall({ review: r }) {
+  return (
+    <View style={{ backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1, borderColor: colors.border, padding: 14, marginBottom: 8 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          {r.fromUser?.avatarUrl
+            ? <Image source={{ uri: r.fromUser.avatarUrl }} style={{ width: 28, height: 28, borderRadius: 7 }} />
+            : <View style={{ width: 28, height: 28, borderRadius: 7, backgroundColor: `${colors.blue}25`, justifyContent: 'center', alignItems: 'center' }}>
+                <Text style={{ fontSize: 11, color: colors.blue, fontWeight: '700' }}>{(r.fromUser?.name || '?')[0]}</Text>
+              </View>
+          }
+          <View>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text }}>{r.fromUser?.name || 'Пользователь'}</Text>
+            <Text style={{ fontSize: 11, color: colors.text2 }}>{new Date(r.createdAt).toLocaleDateString('ru')}</Text>
+          </View>
+        </View>
+        <View style={{ flexDirection: 'row', gap: 1 }}>
+          {[1, 2, 3, 4, 5].map(i => (
+            <Text key={i} style={{ fontSize: 13, color: i <= r.rating ? '#FFB800' : colors.border }}>★</Text>
+          ))}
+        </View>
+      </View>
+      {r.comment ? <Text style={{ fontSize: 13, color: colors.text, lineHeight: 19 }}>{r.comment}</Text> : null}
+    </View>
+  )
+}
 
 export default function ProfileScreen() {
   const { user, token, logout, updateUser } = useAuth()
@@ -51,6 +78,11 @@ export default function ProfileScreen() {
       })
       .catch(() => {})
     loadCollections()
+    if (user?.id) {
+      reviewsApi.getForUser(user.id)
+        .then(r => { if (r.data) setMyReviewData(r.data) })
+        .catch(() => {})
+    }
   }, [token])
 
   async function loadCollections() {
@@ -156,6 +188,8 @@ export default function ProfileScreen() {
     } catch { Alert.alert('Ошибка удаления фото') }
   }
   const [uploadingPortfolio, setUploadingPortfolio] = useState(false)
+  const [myReviewData, setMyReviewData] = useState({ reviews: [], avgRating: null, count: 0 })
+  const [reviewsModalVisible, setReviewsModalVisible] = useState(false)
 
   // Коллекции
   const [collections, setCollections] = useState([])
@@ -401,6 +435,56 @@ export default function ProfileScreen() {
           <Text style={s.bio}>{user.bio}</Text>
         </View>
       ) : null}
+
+      {/* Отзывы */}
+      <View style={s.section}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <Text style={s.sectionTitle}>
+            Отзывы{myReviewData.count > 0 ? ` (${myReviewData.count})` : ''}
+          </Text>
+          {myReviewData.count > 0 && (
+            <TouchableOpacity
+              style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, backgroundColor: `${colors.accent}20`, borderWidth: 1, borderColor: `${colors.accent}40` }}
+              onPress={() => setReviewsModalVisible(true)}
+            >
+              <Text style={{ color: colors.accent, fontSize: 13, fontWeight: '700' }}>Все отзывы</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {myReviewData.count === 0 ? (
+          <Text style={{ fontSize: 14, color: colors.text2, fontStyle: 'italic' }}>Пока нет отзывов</Text>
+        ) : (
+          <>
+            {myReviewData.avgRating != null && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12, backgroundColor: colors.surface, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: colors.border }}>
+                <Text style={{ fontSize: 28, fontWeight: '800', color: colors.text }}>{myReviewData.avgRating.toFixed(1)}</Text>
+                <View>
+                  <View style={{ flexDirection: 'row', gap: 3 }}>
+                    {[1, 2, 3, 4, 5].map(i => (
+                      <Text key={i} style={{ fontSize: 16, color: i <= Math.round(myReviewData.avgRating) ? '#FFB800' : colors.border }}>★</Text>
+                    ))}
+                  </View>
+                  <Text style={{ fontSize: 12, color: colors.text2, marginTop: 2 }}>
+                    {myReviewData.count} {myReviewData.count === 1 ? 'отзыв' : myReviewData.count < 5 ? 'отзыва' : 'отзывов'}
+                  </Text>
+                </View>
+              </View>
+            )}
+            {myReviewData.reviews.slice(0, 3).map(r => (
+              <ReviewCardSmall key={r.id} review={r} />
+            ))}
+            {myReviewData.count > 3 && (
+              <TouchableOpacity
+                style={{ padding: 12, borderRadius: 12, borderWidth: 1, borderColor: colors.border, alignItems: 'center', backgroundColor: colors.surface }}
+                onPress={() => setReviewsModalVisible(true)}
+              >
+                <Text style={{ color: colors.text2, fontSize: 14, fontWeight: '600' }}>Ещё {myReviewData.count - 3} {myReviewData.count - 3 === 1 ? 'отзыв' : 'отзывов'} →</Text>
+              </TouchableOpacity>
+            )}
+          </>
+        )}
+      </View>
 
       {/* Портфолио */}
       <View style={s.section}>
@@ -666,6 +750,40 @@ export default function ProfileScreen() {
                 <Text style={{ color: '#FF3B30', fontSize: 15, fontWeight: '600' }}>🗑 Удалить коллекцию</Text>
               </TouchableOpacity>
             </View>
+            <View style={{ height: 40 }} />
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* Модал: все отзывы */}
+      <Modal visible={reviewsModalVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setReviewsModalVisible(false)}>
+        <View style={s.modal}>
+          <View style={s.modalHead}>
+            <Text style={s.modalTitle}>Отзывы {myReviewData.count > 0 ? `(${myReviewData.count})` : ''}</Text>
+            <TouchableOpacity onPress={() => setReviewsModalVisible(false)}>
+              <Text style={{ fontSize: 20, color: colors.text2 }}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          {myReviewData.avgRating != null && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+              <Text style={{ fontSize: 36, fontWeight: '800', color: colors.text }}>{myReviewData.avgRating.toFixed(1)}</Text>
+              <View>
+                <View style={{ flexDirection: 'row', gap: 3 }}>
+                  {[1, 2, 3, 4, 5].map(i => (
+                    <Text key={i} style={{ fontSize: 20, color: i <= Math.round(myReviewData.avgRating) ? '#FFB800' : colors.border }}>★</Text>
+                  ))}
+                </View>
+                <Text style={{ fontSize: 12, color: colors.text2, marginTop: 2 }}>
+                  {myReviewData.count} {myReviewData.count === 1 ? 'отзыв' : myReviewData.count < 5 ? 'отзыва' : 'отзывов'}
+                </Text>
+              </View>
+            </View>
+          )}
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
+            {myReviewData.reviews.map(r => <ReviewCardSmall key={r.id} review={r} />)}
+            {myReviewData.count === 0 && (
+              <Text style={{ fontSize: 14, color: colors.text2, fontStyle: 'italic', textAlign: 'center', marginTop: 32 }}>Пока нет отзывов</Text>
+            )}
             <View style={{ height: 40 }} />
           </ScrollView>
         </View>
