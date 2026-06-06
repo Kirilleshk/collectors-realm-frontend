@@ -87,6 +87,15 @@ export const news = {
   getAll: (params) => api.get('/news', { params }),
 }
 
+export const support = {
+  getMyMessages: () => api.get('/support'),
+  getUnread: () => api.get('/support/unread'),
+  sendMessage: (text) => api.post('/support', { text }),
+  getConversations: () => api.get('/support/conversations'),
+  getUserMessages: (userId) => api.get(`/support/${userId}`),
+  reply: (userId, text) => api.post(`/support/${userId}/reply`, { text }),
+}
+
 export const bids = {
   getForProduct: (productId) => api.get(`/products/${productId}/bids`),
   place: (productId, amount) => api.post(`/products/${productId}/bids`, { amount }),

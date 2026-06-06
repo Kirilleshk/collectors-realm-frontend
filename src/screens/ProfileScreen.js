@@ -7,7 +7,7 @@ import { pickAndUploadPhoto } from '../utils/uploadPhoto'
 import SmartInput from '../utils/SmartInput'
 import { HELP_ITEMS } from '../utils/WhatsNewModal'
 import { CHANGELOG, CURRENT_VERSION } from '../utils/changelog'
-import { portfolioCollections as collectionsApi, reviews as reviewsApi } from '../api'
+import { portfolioCollections as collectionsApi, reviews as reviewsApi, support as supportApi } from '../api'
 
 const { width } = Dimensions.get('window')
 const COLL_CARD = (width - 48) / 2
@@ -83,7 +83,29 @@ export default function ProfileScreen() {
         .then(r => { if (r.data) setMyReviewData(r.data) })
         .catch(() => {})
     }
+    supportApi.getUnread().then(r => setSupportUnread(r.data?.count || 0)).catch(() => {})
   }, [token])
+
+  async function loadSupportMessages() {
+    setSupportLoading(true)
+    try {
+      const res = await supportApi.getMyMessages()
+      setSupportMessages(Array.isArray(res.data) ? res.data : [])
+      setSupportUnread(0)
+    } catch (e) {}
+    setSupportLoading(false)
+  }
+
+  async function sendSupportMessage() {
+    if (!supportText.trim() || supportSending) return
+    setSupportSending(true)
+    try {
+      const res = await supportApi.sendMessage(supportText.trim())
+      setSupportMessages(prev => [...prev, res.data])
+      setSupportText('')
+    } catch (e) { Alert.alert('Ошибка', 'Не удалось отправить сообщение') }
+    setSupportSending(false)
+  }
 
   async function loadCollections() {
     try {
@@ -190,6 +212,14 @@ export default function ProfileScreen() {
   const [uploadingPortfolio, setUploadingPortfolio] = useState(false)
   const [myReviewData, setMyReviewData] = useState({ reviews: [], avgRating: null, count: 0 })
   const [reviewsModalVisible, setReviewsModalVisible] = useState(false)
+
+  // Связь с администрацией
+  const [supportModal, setSupportModal] = useState(false)
+  const [supportMessages, setSupportMessages] = useState([])
+  const [supportText, setSupportText] = useState('')
+  const [supportSending, setSupportSending] = useState(false)
+  const [supportLoading, setSupportLoading] = useState(false)
+  const [supportUnread, setSupportUnread] = useState(0)
 
   // Коллекции
   const [collections, setCollections] = useState([])
@@ -584,6 +614,21 @@ export default function ProfileScreen() {
         )}
       </View>
 
+      {/* Связь с администрацией */}
+      <View style={s.section}>
+        <TouchableOpacity style={s.supportBtn} onPress={() => { setSupportModal(true); loadSupportMessages() }}>
+          <Text style={{ fontSize: 22 }}>💬</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={s.supportBtnTitle}>Связь с администрацией</Text>
+            <Text style={s.supportBtnSub}>Вопросы, жалобы, предложения</Text>
+          </View>
+          {supportUnread > 0 && (
+            <View style={s.unreadBadge}><Text style={s.unreadBadgeText}>{supportUnread}</Text></View>
+          )}
+          <Text style={{ color: colors.text2, fontSize: 20 }}>›</Text>
+        </TouchableOpacity>
+      </View>
+
       {/* Аккаунт */}
       <View style={s.section}>
         <Text style={s.sectionTitle}>Аккаунт</Text>
@@ -859,6 +904,80 @@ export default function ProfileScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
+      {/* Модал: Связь с администрацией */}
+      <Modal visible={supportModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setSupportModal(false)}>
+        <View style={[s.modal, { flex: 1 }]}>
+          <View style={s.modalHead}>
+            <Text style={s.modalTitle}>💬 Связь с администрацией</Text>
+            <TouchableOpacity onPress={() => setSupportModal(false)}>
+              <Text style={{ fontSize: 20, color: colors.text2 }}>✕</Text>
+            </TouchableOpacity>
+          </View>
+
+          {supportLoading ? (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+              <ActivityIndicator color={colors.accent} size="large" />
+            </View>
+          ) : (
+            <FlatList
+              data={supportMessages}
+              keyExtractor={m => m.id}
+              style={{ flex: 1 }}
+              contentContainerStyle={{ padding: 16, gap: 10, flexGrow: 1 }}
+              ListEmptyComponent={
+                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60 }}>
+                  <Text style={{ fontSize: 48, marginBottom: 16 }}>💬</Text>
+                  <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 8 }}>Напишите нам</Text>
+                  <Text style={{ fontSize: 13, color: colors.text2, textAlign: 'center', lineHeight: 19 }}>
+                    Мы ответим как можно скорее
+                  </Text>
+                </View>
+              }
+              renderItem={({ item }) => (
+                <View style={[
+                  { maxWidth: '80%', padding: 12, borderRadius: 16, gap: 4 },
+                  item.fromAdmin
+                    ? { alignSelf: 'flex-start', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }
+                    : { alignSelf: 'flex-end', backgroundColor: colors.accent }
+                ]}>
+                  {item.fromAdmin && (
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: colors.accent, marginBottom: 2 }}>Администрация</Text>
+                  )}
+                  <Text style={{ fontSize: 14, color: item.fromAdmin ? colors.text : 'white', lineHeight: 20 }}>{item.text}</Text>
+                  <Text style={{ fontSize: 10, color: item.fromAdmin ? colors.text2 : 'rgba(255,255,255,0.7)', alignSelf: 'flex-end', marginTop: 2 }}>
+                    {new Date(item.createdAt).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}
+                  </Text>
+                </View>
+              )}
+            />
+          )}
+
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+            <View style={{ flexDirection: 'row', padding: 12, gap: 10, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.surface }}>
+              <SmartInput
+                style={{ flex: 1, backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.border, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, color: colors.text, fontSize: 14, maxHeight: 100 }}
+                value={supportText}
+                onChangeText={setSupportText}
+                placeholder="Сообщение..."
+                placeholderTextColor={colors.text2}
+                multiline
+                maxLength={1000}
+              />
+              <TouchableOpacity
+                style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: supportText.trim() ? colors.accent : colors.surface2, justifyContent: 'center', alignItems: 'center', alignSelf: 'flex-end' }}
+                onPress={sendSupportMessage}
+                disabled={!supportText.trim() || supportSending}
+              >
+                {supportSending
+                  ? <ActivityIndicator color="white" size="small" />
+                  : <Text style={{ color: 'white', fontSize: 18, fontWeight: '700' }}>↑</Text>
+                }
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
+
       </>}
     </ScrollView>
   )
@@ -924,4 +1043,9 @@ const s = StyleSheet.create({
   collPhoto: { width: 90, height: 90, borderRadius: 10 },
   collPhotoRemove: { position: 'absolute', top: -6, right: -6, width: 20, height: 20, backgroundColor: 'rgba(255,59,48,0.9)', borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
   collPhotoAdd: { width: 90, height: 90, borderRadius: 10, backgroundColor: colors.surface, borderWidth: 2, borderColor: colors.border, borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center' },
+  supportBtn: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 16 },
+  supportBtnTitle: { fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 2 },
+  supportBtnSub: { fontSize: 12, color: colors.text2 },
+  unreadBadge: { minWidth: 22, height: 22, borderRadius: 11, backgroundColor: colors.accent, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 6 },
+  unreadBadgeText: { color: 'white', fontSize: 11, fontWeight: '700' },
 })

@@ -5,7 +5,7 @@ import {
 } from 'react-native'
 import { useAuth } from '../AuthContext'
 import { colors } from '../theme'
-import { notifications as notifApi, releases as releasesApi } from '../api'
+import { notifications as notifApi, releases as releasesApi, support as supportApi } from '../api'
 import { pickAndUploadPhoto } from '../utils/uploadPhoto'
 import SmartInput from '../utils/SmartInput'
 import { track } from '../utils/analytics'
@@ -57,6 +57,15 @@ export default function AdminScreen() {
   const [editRelease, setEditRelease] = useState(null)
   const [savingRelease, setSavingRelease] = useState(false)
 
+  // Поддержка
+  const [conversations, setConversations] = useState([])
+  const [convLoading, setConvLoading] = useState(false)
+  const [activeConv, setActiveConv] = useState(null)
+  const [convMessages, setConvMessages] = useState([])
+  const [convMsgLoading, setConvMsgLoading] = useState(false)
+  const [replyText, setReplyText] = useState('')
+  const [replySending, setReplySending] = useState(false)
+
   useEffect(() => {
     if (isAnalytics) { setTab('analytics'); return }
     load()
@@ -66,7 +75,39 @@ export default function AdminScreen() {
     if (tab === 'users') loadUsers()
     if (tab === 'releases') loadReleases()
     if (tab === 'analytics') loadAnalytics()
+    if (tab === 'support') loadConversations()
   }, [tab])
+
+  async function loadConversations() {
+    setConvLoading(true)
+    try {
+      const res = await supportApi.getConversations()
+      setConversations(Array.isArray(res.data) ? res.data : [])
+    } catch (e) {}
+    setConvLoading(false)
+  }
+
+  async function openConversation(conv) {
+    setActiveConv(conv)
+    setConvMsgLoading(true)
+    try {
+      const res = await supportApi.getUserMessages(conv.user.id)
+      setConvMessages(Array.isArray(res.data) ? res.data : [])
+      setConversations(prev => prev.map(c => c.user.id === conv.user.id ? { ...c, unread: 0 } : c))
+    } catch (e) {}
+    setConvMsgLoading(false)
+  }
+
+  async function sendReply() {
+    if (!replyText.trim() || replySending || !activeConv) return
+    setReplySending(true)
+    try {
+      const res = await supportApi.reply(activeConv.user.id, replyText.trim())
+      setConvMessages(prev => [...prev, res.data])
+      setReplyText('')
+    } catch (e) { Alert.alert('Ошибка', 'Не удалось отправить') }
+    setReplySending(false)
+  }
 
   async function loadAnalytics() {
     setAnalyticsLoading(true)
@@ -324,6 +365,14 @@ export default function AdminScreen() {
         <TouchableOpacity style={[s.tabBtn, tab === 'analytics' && s.tabBtnActive]} onPress={() => setTab('analytics')}>
           <Text style={[s.tabText, tab === 'analytics' && s.tabTextActive]}>📊 Статистика</Text>
         </TouchableOpacity>
+        <TouchableOpacity style={[s.tabBtn, tab === 'support' && s.tabBtnActive]} onPress={() => setTab('support')}>
+          <View style={{ position: 'relative' }}>
+            <Text style={[s.tabText, tab === 'support' && s.tabTextActive]}>💬 Чат</Text>
+            {conversations.some(c => c.unread > 0) && (
+              <View style={{ position: 'absolute', top: -4, right: -8, width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent }} />
+            )}
+          </View>
+        </TouchableOpacity>
       </View>
 
       {/* Вкладка релизов */}
@@ -525,6 +574,86 @@ export default function AdminScreen() {
         </ScrollView>
       )}
       </>
+      )}
+
+      {/* Вкладка: Поддержка */}
+      {tab === 'support' && (
+        convLoading ? <View style={s.center}><ActivityIndicator color={colors.accent} size="large" /></View> :
+        activeConv ? (
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border, gap: 12 }}>
+              <TouchableOpacity onPress={() => { setActiveConv(null); setConvMessages([]) }}>
+                <Text style={{ fontSize: 24, color: colors.accent }}>‹</Text>
+              </TouchableOpacity>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, flex: 1 }}>{activeConv.user.name}</Text>
+            </View>
+            {convMsgLoading ? <View style={s.center}><ActivityIndicator color={colors.accent} /></View> : (
+              <ScrollView contentContainerStyle={{ padding: 16, gap: 10 }}>
+                {convMessages.map(msg => (
+                  <View key={msg.id} style={[
+                    { maxWidth: '80%', padding: 12, borderRadius: 16 },
+                    msg.fromAdmin
+                      ? { alignSelf: 'flex-end', backgroundColor: colors.accent }
+                      : { alignSelf: 'flex-start', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }
+                  ]}>
+                    <Text style={{ fontSize: 14, color: msg.fromAdmin ? 'white' : colors.text, lineHeight: 20 }}>{msg.text}</Text>
+                    <Text style={{ fontSize: 10, color: msg.fromAdmin ? 'rgba(255,255,255,0.7)' : colors.text2, marginTop: 4, alignSelf: 'flex-end' }}>
+                      {new Date(msg.createdAt).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}
+                    </Text>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+              <View style={{ flexDirection: 'row', padding: 12, gap: 10, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.surface }}>
+                <SmartInput
+                  style={{ flex: 1, backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.border, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, color: colors.text, fontSize: 14 }}
+                  value={replyText}
+                  onChangeText={setReplyText}
+                  placeholder="Ответ..."
+                  placeholderTextColor={colors.text2}
+                  multiline
+                />
+                <TouchableOpacity
+                  style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: replyText.trim() ? colors.accent : colors.surface2, justifyContent: 'center', alignItems: 'center', alignSelf: 'flex-end' }}
+                  onPress={sendReply}
+                  disabled={!replyText.trim() || replySending}
+                >
+                  {replySending ? <ActivityIndicator color="white" size="small" /> : <Text style={{ color: 'white', fontSize: 18, fontWeight: '700' }}>↑</Text>}
+                </TouchableOpacity>
+              </View>
+            </KeyboardAvoidingView>
+          </View>
+        ) : (
+          <ScrollView contentContainerStyle={{ padding: 16, gap: 10 }}>
+            {conversations.length === 0 && (
+              <View style={s.center}>
+                <Text style={{ fontSize: 40, marginBottom: 12 }}>💬</Text>
+                <Text style={{ color: colors.text2 }}>Обращений пока нет</Text>
+              </View>
+            )}
+            {conversations.map(conv => (
+              <TouchableOpacity key={conv.user.id} style={[s.userCard, { gap: 12 }]} onPress={() => openConversation(conv)}>
+                {conv.user.avatarUrl
+                  ? <Image source={{ uri: conv.user.avatarUrl }} style={{ width: 42, height: 42, borderRadius: 21 }} />
+                  : <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: `${colors.blue}30`, justifyContent: 'center', alignItems: 'center' }}>
+                      <Text style={{ fontWeight: '700', color: colors.blue }}>{(conv.user.name || '?')[0]}</Text>
+                    </View>
+                }
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text }}>{conv.user.name}</Text>
+                  <Text style={{ fontSize: 12, color: colors.text2 }} numberOfLines={1}>{conv.lastMessage}</Text>
+                </View>
+                {conv.unread > 0 && (
+                  <View style={{ minWidth: 22, height: 22, borderRadius: 11, backgroundColor: colors.accent, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 6 }}>
+                    <Text style={{ color: 'white', fontSize: 11, fontWeight: '700' }}>{conv.unread}</Text>
+                  </View>
+                )}
+                <Text style={{ color: colors.text2, fontSize: 18 }}>›</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )
       )}
 
       {/* Модал релиза */}
