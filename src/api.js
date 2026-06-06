@@ -30,6 +30,8 @@ export const users = {
   getById: (id) => api.get(`/users/${id}`),
   update: (data) => api.put('/users/me', data),
   setBadge: (id, badge) => api.patch(`/users/${id}/badge`, { badge }),
+  block: (id, reason) => api.patch(`/users/${id}/block`, { isBlocked: true, blockedReason: reason || null }),
+  unblock: (id) => api.patch(`/users/${id}/block`, { isBlocked: false, blockedReason: null }),
 }
 
 export const products = {

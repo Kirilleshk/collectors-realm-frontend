@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Animated, Image } from 'react-native'
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Animated, Image, Linking } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useAuth } from '../AuthContext'
 import { colors } from '../theme'
@@ -30,8 +30,14 @@ export default function LoginScreen() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [portfolioPhotos, setPortfolioPhotos] = useState([])
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [verificationCode, setVerificationCode] = useState('')
+  const [sendingCode, setSendingCode] = useState(false)
+  const [resendTimer, setResendTimer] = useState(0)
   const [error, setError] = useState('')
+  const [emailError, setEmailError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [blocked, setBlocked] = useState(false)
+  const [blockedReason, setBlockedReason] = useState('')
 
   const fadeAnim = useRef(new Animated.Value(0)).current
   const slideAnim = useRef(new Animated.Value(30)).current
@@ -45,12 +51,44 @@ export default function LoginScreen() {
     ]).start()
   }, [])
 
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+
+  function validateEmail(val) {
+    if (!val) { setEmailError(''); return }
+    setEmailError(EMAIL_RE.test(val) ? '' : 'Некорректный email')
+  }
+
   function switchMode(m) {
     setMode(m)
     setStep('form')
     setError('')
+    setEmailError('')
+    setVerificationCode('')
+    setResendTimer(0)
     setAvatarPhoto(null)
     setPortfolioPhotos([])
+  }
+
+  async function sendVerificationCode() {
+    setSendingCode(true)
+    setError('')
+    try {
+      const res = await fetch(`${API}/auth/send-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setError(data.error || 'Не удалось отправить код'); setSendingCode(false); return }
+      setStep('verify')
+      setResendTimer(60)
+      const interval = setInterval(() => {
+        setResendTimer(t => { if (t <= 1) { clearInterval(interval); return 0 } return t - 1 })
+      }, 1000)
+    } catch {
+      setError('Ошибка отправки. Проверьте интернет.')
+    }
+    setSendingCode(false)
   }
 
   function toggleRole(key) {
@@ -87,19 +125,46 @@ export default function LoginScreen() {
         await login(email, password)
         track('login')
       } catch (e) {
-        setError(e.response?.data?.error || 'Ошибка. Проверьте данные.')
+        const errData = e.response?.data
+        if (errData?.error === 'ACCOUNT_BLOCKED') {
+          setBlockedReason(errData?.message || 'Ваш аккаунт заблокирован за нарушение правил сообщества')
+          setBlocked(true)
+        } else {
+          setError(errData?.error || 'Ошибка. Проверьте данные.')
+        }
       }
       setLoading(false)
       return
     }
 
-    // Регистрация — шаг 1: валидация формы
+    // Регистрация — шаг 1: валидация формы → отправка кода
     if (step === 'form') {
       if (!name.trim()) { setError('Введите имя'); return }
       if (!email.trim()) { setError('Введите email'); return }
-      if (!password.trim()) { setError('Введите пароль'); return }
+      if (!EMAIL_RE.test(email.trim())) { setError('Введите корректный email'); return }
+      if (password.length < 6) { setError('Пароль должен быть не менее 6 символов'); return }
       if (selectedRoles.length === 0) { setError('Выберите хотя бы одну роль'); return }
-      setStep('photos')
+      await sendVerificationCode()
+      return
+    }
+
+    // Регистрация — шаг 1.5: проверка кода
+    if (step === 'verify') {
+      if (!verificationCode.trim()) { setError('Введите код из письма'); return }
+      setLoading(true)
+      try {
+        const res = await fetch(`${API}/auth/verify-code`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email.trim(), code: verificationCode.trim() }),
+        })
+        const data = await res.json()
+        if (!res.ok) { setError(data.error || 'Неверный код'); setLoading(false); return }
+        setStep('photos')
+      } catch {
+        setError('Ошибка проверки кода')
+      }
+      setLoading(false)
       return
     }
 
@@ -120,6 +185,31 @@ export default function LoginScreen() {
     }
     setLoading(false)
   }
+
+  if (blocked) return (
+    <SafeAreaView style={[s.wrap, { justifyContent: 'center' }]}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 }}>
+        <View style={{ width: 90, height: 90, borderRadius: 45, backgroundColor: 'rgba(255,59,48,0.1)', justifyContent: 'center', alignItems: 'center', marginBottom: 24 }}>
+          <Text style={{ fontSize: 44 }}>🚫</Text>
+        </View>
+        <Text style={{ fontSize: 22, fontWeight: '800', color: colors.text, marginBottom: 12, textAlign: 'center' }}>
+          Аккаунт заблокирован
+        </Text>
+        <Text style={{ fontSize: 15, color: colors.text2, textAlign: 'center', lineHeight: 22, marginBottom: 36 }}>
+          {blockedReason}
+        </Text>
+        <TouchableOpacity
+          style={{ backgroundColor: colors.accent, borderRadius: 14, padding: 16, width: '100%', alignItems: 'center', marginBottom: 12 }}
+          onPress={() => Linking.openURL('mailto:ksele52@gmail.com?subject=Разблокировка аккаунта')}
+        >
+          <Text style={{ color: 'white', fontWeight: '700', fontSize: 16 }}>💬 Связь с администрацией</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={{ padding: 12 }} onPress={() => { setBlocked(false); setError('') }}>
+          <Text style={{ color: colors.text2, fontSize: 14 }}>← Вернуться к входу</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
+  )
 
   return (
     <SafeAreaView style={s.wrap}>
@@ -153,9 +243,13 @@ export default function LoginScreen() {
           {mode === 'register' && (
             <View style={s.steps}>
               <View style={[s.stepDot, { backgroundColor: colors.accent }]} />
+              <View style={[s.stepLine, (step === 'verify' || step === 'photos') && { backgroundColor: colors.accent }]} />
+              <View style={[s.stepDot, (step === 'verify' || step === 'photos') && { backgroundColor: colors.accent }]} />
               <View style={[s.stepLine, step === 'photos' && { backgroundColor: colors.accent }]} />
               <View style={[s.stepDot, step === 'photos' && { backgroundColor: colors.accent }]} />
-              <Text style={s.stepText}>{step === 'form' ? 'Шаг 1 из 2 — Данные' : 'Шаг 2 из 2 — Фото профиля'}</Text>
+              <Text style={s.stepText}>
+                {step === 'form' ? 'Шаг 1 из 3 — Данные' : step === 'verify' ? 'Шаг 2 из 3 — Подтверждение email' : 'Шаг 3 из 3 — Фото профиля'}
+              </Text>
             </View>
           )}
 
@@ -177,7 +271,16 @@ export default function LoginScreen() {
               )}
               <View style={s.field}>
                 <Text style={s.label}>Email</Text>
-                <SmartInput style={s.input} value={email} onChangeText={setEmail} placeholder="email@example.com" placeholderTextColor={colors.text2} keyboardType="email-address" autoCapitalize="none" />
+                <SmartInput
+                  style={[s.input, emailError ? { borderColor: '#FF3B30' } : null]}
+                  value={email}
+                  onChangeText={v => { setEmail(v); validateEmail(v) }}
+                  placeholder="email@example.com"
+                  placeholderTextColor={colors.text2}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+                {emailError ? <Text style={s.fieldError}>{emailError}</Text> : null}
               </View>
               <View style={s.field}>
                 <Text style={s.label}>Пароль</Text>
@@ -209,6 +312,45 @@ export default function LoginScreen() {
                 </View>
               )}
             </>
+          )}
+
+          {/* ШАГ 1.5: Подтверждение email */}
+          {mode === 'register' && step === 'verify' && (
+            <View style={s.field}>
+              <View style={{ alignItems: 'center', marginBottom: 20 }}>
+                <Text style={{ fontSize: 40, marginBottom: 8 }}>📧</Text>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 6 }}>Проверьте почту</Text>
+                <Text style={{ fontSize: 13, color: colors.text2, textAlign: 'center', lineHeight: 18 }}>
+                  Мы отправили 6-значный код на{'\n'}
+                  <Text style={{ color: colors.accent, fontWeight: '600' }}>{email}</Text>
+                </Text>
+              </View>
+
+              <Text style={s.label}>КОД ПОДТВЕРЖДЕНИЯ</Text>
+              <SmartInput
+                style={[s.input, { fontSize: 24, letterSpacing: 8, textAlign: 'center' }]}
+                value={verificationCode}
+                onChangeText={v => { setVerificationCode(v.replace(/\D/g, '').slice(0, 6)); setError('') }}
+                placeholder="000000"
+                placeholderTextColor={colors.text2}
+                keyboardType="number-pad"
+                maxLength={6}
+              />
+
+              <TouchableOpacity
+                style={{ alignItems: 'center', marginTop: 8 }}
+                onPress={sendVerificationCode}
+                disabled={resendTimer > 0 || sendingCode}
+              >
+                <Text style={{ fontSize: 13, color: resendTimer > 0 ? colors.text2 : colors.accent, fontWeight: '500' }}>
+                  {resendTimer > 0 ? `Отправить повторно через ${resendTimer} сек` : 'Отправить код повторно'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={() => { setStep('form'); setError(''); setVerificationCode('') }} style={s.backBtn}>
+                <Text style={s.backBtnText}>← Изменить email</Text>
+              </TouchableOpacity>
+            </View>
           )}
 
           {/* ШАГ 2: Аватар + фото коллекции */}
@@ -276,7 +418,7 @@ export default function LoginScreen() {
             {loading
               ? <ActivityIndicator color="white" />
               : <Text style={s.btnText}>
-                  {mode === 'login' ? '→ Войти' : step === 'form' ? '→ Далее' : '→ Создать аккаунт'}
+                  {mode === 'login' ? '→ Войти' : step === 'form' ? (sendingCode ? 'Отправляем код...' : '→ Далее') : step === 'verify' ? '→ Подтвердить' : '→ Создать аккаунт'}
                 </Text>
             }
           </TouchableOpacity>
@@ -327,6 +469,7 @@ const s = StyleSheet.create({
   },
   errorIcon: { fontSize: 16 },
   errorText: { color: colors.accent, fontSize: 13, flex: 1 },
+  fieldError: { color: '#FF3B30', fontSize: 12, marginTop: 4, marginLeft: 2 },
   field: { marginBottom: 16 },
   label: { fontSize: 11, fontWeight: '700', color: colors.text2, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 8 },
   input: {

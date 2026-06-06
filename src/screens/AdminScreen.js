@@ -5,7 +5,7 @@ import {
 } from 'react-native'
 import { useAuth } from '../AuthContext'
 import { colors } from '../theme'
-import { notifications as notifApi, releases as releasesApi, support as supportApi } from '../api'
+import { notifications as notifApi, releases as releasesApi, support as supportApi, users } from '../api'
 import { pickAndUploadPhoto } from '../utils/uploadPhoto'
 import SmartInput from '../utils/SmartInput'
 import { track } from '../utils/analytics'
@@ -198,6 +198,27 @@ export default function AdminScreen() {
       Alert.alert('Ошибка', e.response?.data?.error || 'Не удалось запустить')
     }
     setSendingReport(false)
+  }
+
+  async function handleToggleBlock(u) {
+    const isBlocked = u.isBlocked
+    const action = isBlocked ? 'Разблокировать' : 'Заблокировать'
+    Alert.alert(
+      `${action} пользователя?`,
+      isBlocked
+        ? `${u.name} снова сможет войти в приложение.`
+        : `${u.name} получит сообщение о блокировке при попытке входа.`,
+      [
+        { text: 'Отмена', style: 'cancel' },
+        { text: action, style: isBlocked ? 'default' : 'destructive', onPress: async () => {
+          try {
+            if (isBlocked) await users.unblock(u.id)
+            else await users.block(u.id)
+            setAllUsers(prev => prev.map(p => p.id === u.id ? { ...p, isBlocked: !isBlocked } : p))
+          } catch (e) { Alert.alert('Ошибка', 'Не удалось изменить статус') }
+        }}
+      ]
+    )
   }
 
   async function handleSetBadge(userId, badge) {
@@ -434,9 +455,12 @@ export default function AdminScreen() {
             </View>
 
             {allUsers.map(u => (
-              <View key={u.id} style={s.userCard}>
+              <View key={u.id} style={[s.userCard, u.isBlocked && { opacity: 0.6, borderColor: 'rgba(255,59,48,0.3)' }]}>
                 <View style={{ flex: 1 }}>
-                  <Text style={s.cardName}>{u.name}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={s.cardName}>{u.name}</Text>
+                    {u.isBlocked && <Text style={{ fontSize: 10, color: '#FF3B30', fontWeight: '700' }}>БЛОК</Text>}
+                  </View>
                   <Text style={{ fontSize: 12, color: colors.text2 }}>{u.email}</Text>
                   {u.badge && <Text style={{ fontSize: 11, color: '#FF9700', marginTop: 2 }}>
                     {u.badge === 'SHOP' ? '🏪 Магазин' : '✅ Блогер'}
@@ -452,6 +476,14 @@ export default function AdminScreen() {
                       <Text style={{ fontSize: 14 }}>{opt.icon}</Text>
                     </TouchableOpacity>
                   ))}
+                  {!u.roles?.includes('ADMIN') && (
+                    <TouchableOpacity
+                      onPress={() => handleToggleBlock(u)}
+                      style={[s.badgeBtn, u.isBlocked && { borderColor: '#FF3B30', backgroundColor: 'rgba(255,59,48,0.15)' }]}
+                    >
+                      <Text style={{ fontSize: 14 }}>{u.isBlocked ? '🔓' : '🚫'}</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               </View>
             ))}
