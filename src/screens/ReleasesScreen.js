@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Image, RefreshControl, Linking
+  ActivityIndicator, Image, RefreshControl
 } from 'react-native'
 import { news as newsApi } from '../api'
 import { colors } from '../theme'
@@ -12,17 +12,14 @@ function FeedCard({ item }) {
   const timeStr = date.toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })
 
   return (
-    <TouchableOpacity style={s.card} onPress={() => Linking.openURL(item.url)} activeOpacity={0.92}>
+    <View style={s.card}>
       <View style={s.cardHeader}>
         <View style={s.avatar}>
           <Text style={{ fontSize: 18 }}>🗿</Text>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={s.channelName}>HappyGeek Store</Text>
+          <Text style={s.channelName}>Collector's Realm</Text>
           <Text style={s.date}>{dateStr} в {timeStr}</Text>
-        </View>
-        <View style={s.tgBadge}>
-          <Text style={s.tgBadgeText}>✈️ TG</Text>
         </View>
       </View>
 
@@ -33,9 +30,7 @@ function FeedCard({ item }) {
       {item.text ? (
         <Text style={[s.text, item.imageUrl && { paddingTop: 10 }]}>{item.text}</Text>
       ) : null}
-
-      <Text style={s.link}>Открыть в Telegram →</Text>
-    </TouchableOpacity>
+    </View>
   )
 }
 
@@ -146,11 +141,8 @@ const s = StyleSheet.create({
   avatar: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#229ED920', borderWidth: 1, borderColor: '#229ED940', justifyContent: 'center', alignItems: 'center' },
   channelName: { fontSize: 14, fontWeight: '700', color: colors.text },
   date: { fontSize: 11, color: colors.text2, marginTop: 1 },
-  tgBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: '#229ED920', borderWidth: 1, borderColor: '#229ED940' },
-  tgBadgeText: { fontSize: 11, fontWeight: '700', color: '#229ED9' },
   img: { width: '100%', aspectRatio: 4 / 3 },
-  text: { fontSize: 14, color: colors.text, lineHeight: 21, paddingHorizontal: 16 },
-  link: { fontSize: 12, color: '#229ED9', fontWeight: '600', paddingHorizontal: 16, paddingTop: 10 },
+  text: { fontSize: 14, color: colors.text, lineHeight: 21, paddingHorizontal: 16, paddingBottom: 14 },
 
   separator: { height: 1, backgroundColor: colors.border, marginHorizontal: 16 },
   endText: { textAlign: 'center', color: colors.text2, fontSize: 12, paddingVertical: 20 },

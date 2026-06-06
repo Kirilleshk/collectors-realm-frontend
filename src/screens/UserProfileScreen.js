@@ -192,16 +192,7 @@ export default function UserProfileScreen({ route, navigation }) {
         ))}
       </View>
 
-      {/* Связаться */}
-      {!isMe && (
-        <View style={s.section}>
-          <Text style={s.sectionTitle}>Связаться</Text>
-          <TouchableOpacity style={s.contactBtn} onPress={() => Linking.openURL(`https://t.me/collector_realm_shop`)}>
-            <Text style={s.contactBtnIcon}>✈️</Text>
-            <Text style={s.contactBtnText}>Написать в Telegram</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+      {/* Связаться — будет внутренний чат (задача в бэклоге) */}
 
       <View style={{ height: 32 }} />
 

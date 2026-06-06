@@ -374,10 +374,6 @@ export default function ProductDetailScreen({ route, navigation }) {
           <View style={s.contactCard}>
             <Text style={s.contactTitle}>Связаться с продавцом</Text>
             <View style={s.contactRow}>
-              <TouchableOpacity style={s.telegramBtn} onPress={openTelegram}>
-                <Text style={s.contactBtnIcon}>✈️</Text>
-                <Text style={s.telegramBtnText}>Telegram</Text>
-              </TouchableOpacity>
               <TouchableOpacity style={s.whatsappBtn} onPress={openWhatsApp}>
                 <Text style={s.contactBtnIcon}>💬</Text>
                 <Text style={s.whatsappBtnText}>WhatsApp</Text>
