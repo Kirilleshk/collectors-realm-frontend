@@ -92,10 +92,11 @@ export const news = {
 export const support = {
   getMyMessages: () => api.get('/support'),
   getUnread: () => api.get('/support/unread'),
-  sendMessage: (text) => api.post('/support', { text }),
+  sendMessage: (text, product) => api.post('/support', { text, productId: product?.id || null, productName: product?.name || null }),
   getConversations: () => api.get('/support/conversations'),
   getUserMessages: (userId) => api.get(`/support/${userId}`),
   reply: (userId, text) => api.post(`/support/${userId}/reply`, { text }),
+  deleteMessage: (id) => api.delete(`/support/message/${id}`),
 }
 
 export const bids = {

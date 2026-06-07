@@ -63,7 +63,7 @@ function MapStack() {
 function MainTabs() {
   const insets = useSafeAreaInsets()
   const { user } = useAuth()
-  const isAdmin = user?.roles?.includes('ADMIN') || user?.roles?.includes('ANALYTICS')
+  const isAdmin = user?.roles?.includes('ADMIN') || user?.roles?.includes('ANALYTICS') || user?.roles?.includes('MODERATOR')
   return (
     <Tab.Navigator screenOptions={({ route }) => ({
       tabBarIcon: ({ focused }) => (

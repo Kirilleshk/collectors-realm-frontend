@@ -42,7 +42,9 @@ export default function AdminScreen() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
 
   const isAdmin = user?.roles?.includes('ADMIN')
-  const isAnalytics = user?.roles?.includes('ANALYTICS') && !isAdmin
+  const isModerator = user?.roles?.includes('MODERATOR') && !isAdmin
+  const isAnalytics = user?.roles?.includes('ANALYTICS') && !isAdmin && !isModerator
+  const isStaff = isAdmin || isModerator
 
   const [tab, setTab] = useState('products')
   const [allUsers, setAllUsers] = useState([])
@@ -68,6 +70,7 @@ export default function AdminScreen() {
 
   useEffect(() => {
     if (isAnalytics) { setTab('analytics'); return }
+    if (isModerator) { setTab('users'); return }
     load()
   }, [])
 
@@ -107,6 +110,18 @@ export default function AdminScreen() {
       setReplyText('')
     } catch (e) { Alert.alert('Ошибка', 'Не удалось отправить') }
     setReplySending(false)
+  }
+
+  function handleDeleteMessage(msg) {
+    Alert.alert('Удалить сообщение?', 'Нельзя отменить', [
+      { text: 'Отмена', style: 'cancel' },
+      { text: 'Удалить', style: 'destructive', onPress: async () => {
+        try {
+          await supportApi.deleteMessage(msg.id)
+          setConvMessages(prev => prev.filter(m => m.id !== msg.id))
+        } catch (e) { Alert.alert('Ошибка', 'Не удалось удалить') }
+      } },
+    ])
   }
 
   async function loadAnalytics() {
@@ -360,7 +375,7 @@ export default function AdminScreen() {
     ])
   }
 
-  if (!isAdmin) return (
+  if (!isAdmin && !isModerator && !isAnalytics) return (
     <View style={s.center}>
       <Text style={{ fontSize: 48, marginBottom: 16 }}>🔒</Text>
       <Text style={{ fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: 8 }}>Нет доступа</Text>
@@ -372,28 +387,32 @@ export default function AdminScreen() {
     <View style={s.wrap}>
       {/* Переключатель вкладок */}
       <View style={s.tabs}>
-        {!isAnalytics && <>
+        {isAdmin && <>
           <TouchableOpacity style={[s.tabBtn, tab === 'products' && s.tabBtnActive]} onPress={() => setTab('products')}>
             <Text style={[s.tabText, tab === 'products' && s.tabTextActive]}>📦 Товары</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[s.tabBtn, tab === 'releases' && s.tabBtnActive]} onPress={() => setTab('releases')}>
             <Text style={[s.tabText, tab === 'releases' && s.tabTextActive]}>📅 Релизы</Text>
           </TouchableOpacity>
+        </>}
+        {isStaff && (
           <TouchableOpacity style={[s.tabBtn, tab === 'users' && s.tabBtnActive]} onPress={() => setTab('users')}>
             <Text style={[s.tabText, tab === 'users' && s.tabTextActive]}>👥 Люди</Text>
           </TouchableOpacity>
-        </>}
+        )}
         <TouchableOpacity style={[s.tabBtn, tab === 'analytics' && s.tabBtnActive]} onPress={() => setTab('analytics')}>
           <Text style={[s.tabText, tab === 'analytics' && s.tabTextActive]}>📊 Статистика</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[s.tabBtn, tab === 'support' && s.tabBtnActive]} onPress={() => setTab('support')}>
-          <View style={{ position: 'relative' }}>
-            <Text style={[s.tabText, tab === 'support' && s.tabTextActive]}>💬 Чат</Text>
-            {conversations.some(c => c.unread > 0) && (
-              <View style={{ position: 'absolute', top: -4, right: -8, width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent }} />
-            )}
-          </View>
-        </TouchableOpacity>
+        {isStaff && (
+          <TouchableOpacity style={[s.tabBtn, tab === 'support' && s.tabBtnActive]} onPress={() => setTab('support')}>
+            <View style={{ position: 'relative' }}>
+              <Text style={[s.tabText, tab === 'support' && s.tabTextActive]}>💬 Чат</Text>
+              {conversations.some(c => c.unread > 0) && (
+                <View style={{ position: 'absolute', top: -4, right: -8, width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent }} />
+              )}
+            </View>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Вкладка релизов */}
@@ -506,7 +525,23 @@ export default function AdminScreen() {
                 <Text style={s.statNum}>{analyticsSummary.totalUsers}</Text>
                 <Text style={s.statLabel}>Пользователей</Text>
               </View>
+              {analyticsSummary.newUsersThisWeek != null && (
+                <View style={[s.statCard, { flex: 1 }]}>
+                  <Text style={s.statNum}>+{analyticsSummary.newUsersThisWeek}</Text>
+                  <Text style={s.statLabel}>Новых за неделю</Text>
+                </View>
+              )}
             </View>
+
+            {analyticsSummary.avgSessionMinutes != null && (
+              <View style={s.analyticsBlock}>
+                <Text style={s.analyticsTitle}>Среднее время в приложении</Text>
+                <View style={s.analyticsRow}>
+                  <Text style={{ color: colors.text }}>За сессию в день</Text>
+                  <Text style={{ color: colors.accent, fontWeight: '700' }}>{analyticsSummary.avgSessionMinutes} мин</Text>
+                </View>
+              </View>
+            )}
 
             {/* Платформы */}
             <View style={s.analyticsBlock}>
@@ -530,6 +565,20 @@ export default function AdminScreen() {
                 </View>
               ))}
             </View>
+
+            {/* Популярные разделы */}
+            {analyticsSummary.screenStats?.length > 0 && (
+              <View style={s.analyticsBlock}>
+                <Text style={s.analyticsTitle}>Популярные разделы</Text>
+                {analyticsSummary.screenStats.map((sc, i) => (
+                  <View key={sc.screen} style={s.analyticsRow}>
+                    <Text style={{ color: colors.text2, width: 20 }}>{i + 1}.</Text>
+                    <Text style={{ color: colors.text, flex: 1 }}>{sc.screen}</Text>
+                    <Text style={{ color: colors.accent, fontWeight: '700' }}>{sc.count}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
 
             {/* Активность по дням */}
             <View style={s.analyticsBlock}>
@@ -622,17 +671,22 @@ export default function AdminScreen() {
             {convMsgLoading ? <View style={s.center}><ActivityIndicator color={colors.accent} /></View> : (
               <ScrollView contentContainerStyle={{ padding: 16, gap: 10 }}>
                 {convMessages.map(msg => (
-                  <View key={msg.id} style={[
+                  <TouchableOpacity key={msg.id} activeOpacity={0.8} onLongPress={() => handleDeleteMessage(msg)} style={[
                     { maxWidth: '80%', padding: 12, borderRadius: 16 },
                     msg.fromAdmin
                       ? { alignSelf: 'flex-end', backgroundColor: colors.accent }
                       : { alignSelf: 'flex-start', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }
                   ]}>
+                    {!!msg.productName && (
+                      <Text style={{ fontSize: 11, fontStyle: 'italic', marginBottom: 4, color: msg.fromAdmin ? 'rgba(255,255,255,0.75)' : colors.text2 }}>
+                        по товару «{msg.productName}»
+                      </Text>
+                    )}
                     <Text style={{ fontSize: 14, color: msg.fromAdmin ? 'white' : colors.text, lineHeight: 20 }}>{msg.text}</Text>
                     <Text style={{ fontSize: 10, color: msg.fromAdmin ? 'rgba(255,255,255,0.7)' : colors.text2, marginTop: 4, alignSelf: 'flex-end' }}>
                       {new Date(msg.createdAt).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}
                     </Text>
-                  </View>
+                  </TouchableOpacity>
                 ))}
               </ScrollView>
             )}
@@ -674,6 +728,9 @@ export default function AdminScreen() {
                 }
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text }}>{conv.user.name}</Text>
+                  {!!conv.lastProductName && (
+                    <Text style={{ fontSize: 11, fontStyle: 'italic', color: colors.text2 }} numberOfLines={1}>по товару «{conv.lastProductName}»</Text>
+                  )}
                   <Text style={{ fontSize: 12, color: colors.text2 }} numberOfLines={1}>{conv.lastMessage}</Text>
                 </View>
                 {conv.unread > 0 && (
