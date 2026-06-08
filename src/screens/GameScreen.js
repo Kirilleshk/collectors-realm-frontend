@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native'
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, RefreshControl, Pressable, Alert } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useNavigation } from '@react-navigation/native'
 import { game } from '../api'
 import { colors } from '../theme'
 
@@ -13,9 +14,11 @@ const RARITY = {
 
 export default function GameScreen() {
   const insets = useSafeAreaInsets()
+  const navigation = useNavigation()
   const [userCards, setUserCards] = useState([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [startingBattle, setStartingBattle] = useState(false)
 
   useEffect(() => { load() }, [])
 
@@ -34,6 +37,17 @@ export default function GameScreen() {
 
   async function onRefresh() { setRefreshing(true); await load(); setRefreshing(false) }
 
+  async function onStartBattle() {
+    setStartingBattle(true)
+    try {
+      const res = await game.startBattle()
+      navigation.navigate('Battle', { battleId: res.data.battle.id })
+    } catch (e) {
+      Alert.alert('Ошибка', 'Не удалось начать бой. Попробуйте ещё раз.')
+    }
+    setStartingBattle(false)
+  }
+
   if (loading) return <View style={s.center}><ActivityIndicator color={colors.accent} size="large" /></View>
 
   return (
@@ -49,6 +63,15 @@ export default function GameScreen() {
           <View style={s.header}>
             <Text style={s.headerTitle}>🃏 Карты Чужой против Хищника</Text>
             <Text style={s.headerSub}>{userCards.length} карт в коллекции</Text>
+            <Pressable
+              style={({ pressed }) => [s.battleBtn, pressed && { opacity: 0.8 }]}
+              onPress={onStartBattle}
+              disabled={startingBattle}
+            >
+              {startingBattle
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <Text style={s.battleBtnText}>⚔️ Бой с боссом</Text>}
+            </Pressable>
           </View>
         }
         ListEmptyComponent={
@@ -88,7 +111,9 @@ const s = StyleSheet.create({
   list: { padding: 16 },
   header: { marginBottom: 16 },
   headerTitle: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 4 },
-  headerSub: { fontSize: 13, color: colors.text2 },
+  headerSub: { fontSize: 13, color: colors.text2, marginBottom: 12 },
+  battleBtn: { backgroundColor: colors.accent, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
+  battleBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
   card: { flex: 1, backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1.5, padding: 12, marginBottom: 12, minHeight: 150 },
   rarityBadge: { alignSelf: 'flex-start', borderWidth: 1, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2, marginBottom: 8 },
   rarityText: { fontSize: 10, fontWeight: '700' },

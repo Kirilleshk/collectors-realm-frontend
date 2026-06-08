@@ -100,9 +100,13 @@ export const support = {
 }
 
 export const game = {
-  getThemes:    () => api.get('/cards/themes'),
-  getMyCards:   () => api.get('/cards/my'),
-  claimStarter: () => api.post('/cards/starter'),
+  getThemes:       () => api.get('/cards/themes'),
+  getMyCards:      () => api.get('/cards/my'),
+  claimStarter:    () => api.post('/cards/starter'),
+  getActiveBattle: () => api.get('/cards/battle/active'),
+  startBattle:     (themeId) => api.post('/cards/battle/start', { themeId }),
+  playCard:        (battleId, cardId) => api.post(`/cards/battle/${battleId}/play`, { cardId }),
+  endTurn:         (battleId) => api.post(`/cards/battle/${battleId}/end-turn`),
 }
 
 export const bids = {

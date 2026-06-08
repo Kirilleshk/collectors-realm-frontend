@@ -25,6 +25,7 @@ import UserProfileScreen from './src/screens/UserProfileScreen'
 import CollectionScreen from './src/screens/CollectionScreen'
 import ReleasesScreen from './src/screens/ReleasesScreen'
 import GameScreen from './src/screens/GameScreen'
+import BattleScreen from './src/screens/BattleScreen'
 
 // Флаг видимости карточной игры — поставить false, чтобы мгновенно скрыть вкладку
 const SHOW_GAME = true
@@ -64,6 +65,19 @@ function MapStack() {
   )
 }
 
+function GameStack() {
+  return (
+    <Stack.Navigator screenOptions={{
+      headerStyle: { backgroundColor: colors.surface },
+      headerTintColor: colors.text,
+      headerTitleStyle: { fontWeight: '700' },
+    }}>
+      <Stack.Screen name="GameMain" component={GameScreen} options={{ title: 'Игра' }} />
+      <Stack.Screen name="Battle" component={BattleScreen} options={{ title: 'Бой' }} />
+    </Stack.Navigator>
+  )
+}
+
 function MainTabs() {
   const insets = useSafeAreaInsets()
   const { user } = useAuth()
@@ -91,7 +105,7 @@ function MainTabs() {
       <Tab.Screen name="Карта" component={MapStack} options={{ headerShown: false }} listeners={{ focus: () => track('screen_view', { screen: 'Map' }) }} />
       <Tab.Screen name="Коллекция" component={CollectionScreen} listeners={{ focus: () => track('screen_view', { screen: 'Collection' }) }} />
       <Tab.Screen name="Вишлист" component={WishlistScreen} listeners={{ focus: () => track('screen_view', { screen: 'Wishlist' }) }} />
-      {SHOW_GAME && <Tab.Screen name="Игра" component={GameScreen} listeners={{ focus: () => track('screen_view', { screen: 'Game' }) }} />}
+      {SHOW_GAME && <Tab.Screen name="Игра" component={GameStack} options={{ headerShown: false }} listeners={{ focus: () => track('screen_view', { screen: 'Game' }) }} />}
       {isAdmin && <Tab.Screen name="Админ" component={AdminScreen} />}
       <Tab.Screen name="Профиль" component={ProfileScreen} listeners={{ focus: () => track('screen_view', { screen: 'Profile' }) }} />
     </Tab.Navigator>
