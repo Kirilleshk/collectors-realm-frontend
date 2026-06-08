@@ -15,14 +15,13 @@ import { setAnalyticsUser, track } from './src/utils/analytics'
 import LoginScreen from './src/screens/LoginScreen'
 import ShopScreen from './src/screens/ShopScreen'
 import ProductDetailScreen from './src/screens/ProductDetailScreen'
-import WishlistScreen from './src/screens/WishlistScreen'
 import ProfileScreen from './src/screens/ProfileScreen'
 import ChatScreen from './src/screens/ChatScreen'
 import NotificationsScreen from './src/screens/NotificationsScreen'
 import AdminScreen from './src/screens/AdminScreen'
 import MapScreen from './src/screens/MapScreen'
 import UserProfileScreen from './src/screens/UserProfileScreen'
-import CollectionScreen from './src/screens/CollectionScreen'
+import MyItemsScreen from './src/screens/MyItemsScreen'
 import ReleasesScreen from './src/screens/ReleasesScreen'
 import GameScreen from './src/screens/GameScreen'
 import BattleScreen from './src/screens/BattleScreen'
@@ -33,7 +32,7 @@ const SHOW_GAME = true
 const Tab = createBottomTabNavigator()
 const Stack = createNativeStackNavigator()
 
-const tabIcons = { Магазин: '🛍', Карта: '🗺', Коллекция: '🗿', Вишлист: '🎯', Игра: '🎮', Админ: '⚙️', Профиль: '👤' }
+const tabIcons = { Магазин: '🛍', Карта: '🗺', Моё: '🗿', Игра: '🎮', Админ: '⚙️', Профиль: '👤' }
 
 function ShopStack() {
   return (
@@ -103,8 +102,7 @@ function MainTabs() {
     })}>
       <Tab.Screen name="Магазин" component={ShopStack} options={{ headerShown: false }} listeners={{ focus: () => track('screen_view', { screen: 'Shop' }) }} />
       <Tab.Screen name="Карта" component={MapStack} options={{ headerShown: false }} listeners={{ focus: () => track('screen_view', { screen: 'Map' }) }} />
-      <Tab.Screen name="Коллекция" component={CollectionScreen} listeners={{ focus: () => track('screen_view', { screen: 'Collection' }) }} />
-      <Tab.Screen name="Вишлист" component={WishlistScreen} listeners={{ focus: () => track('screen_view', { screen: 'Wishlist' }) }} />
+      <Tab.Screen name="Моё" component={MyItemsScreen} options={{ headerShown: false }} listeners={{ focus: () => track('screen_view', { screen: 'MyItems' }) }} />
       {SHOW_GAME && <Tab.Screen name="Игра" component={GameStack} options={{ headerShown: false }} listeners={{ focus: () => track('screen_view', { screen: 'Game' }) }} />}
       {isAdmin && <Tab.Screen name="Админ" component={AdminScreen} />}
       <Tab.Screen name="Профиль" component={ProfileScreen} listeners={{ focus: () => track('screen_view', { screen: 'Profile' }) }} />

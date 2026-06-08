@@ -155,7 +155,7 @@ export default function BattleScreen({ route, navigation }) {
                   disabled={!playable}
                 >
                   <View style={[s.cardArtArea, { backgroundColor: `${r.color}15` }]}>
-                    <CardArt card={card} size={36} />
+                    <CardArt card={card} size={28} />
                     <View style={[s.costBadge, { backgroundColor: colors.blue }]}>
                       <Text style={s.costBadgeText}>{card.cost}</Text>
                     </View>
@@ -284,17 +284,17 @@ const s = StyleSheet.create({
   logIconBadge: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   logIconBadgeText: { fontSize: 11 },
   logBubbleText: { fontSize: 13, color: colors.text, lineHeight: 18, flexShrink: 1 },
-  hand: { paddingHorizontal: 16, paddingVertical: 12, gap: 10 },
-  card: { width: 116, backgroundColor: colors.surface, borderRadius: 14, borderWidth: 2, overflow: 'hidden' },
+  hand: { paddingHorizontal: 16, paddingVertical: 8, gap: 8 },
+  card: { width: 88, backgroundColor: colors.surface, borderRadius: 12, borderWidth: 2, overflow: 'hidden' },
   cardOff: { opacity: 0.4 },
-  cardArtArea: { height: 64, alignItems: 'center', justifyContent: 'center' },
-  costBadge: { position: 'absolute', top: 6, left: 6, width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
-  costBadgeText: { fontSize: 12, fontWeight: '700', color: '#fff' },
-  cardNameBanner: { paddingHorizontal: 8, paddingVertical: 6, borderTopWidth: 1 },
-  cardName: { fontSize: 12, fontWeight: '700', color: colors.text, minHeight: 32 },
-  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 8 },
-  cardStatText: { fontSize: 12, color: colors.text2, fontWeight: '700' },
-  rarityDot: { width: 8, height: 8, borderRadius: 4 },
+  cardArtArea: { height: 48, alignItems: 'center', justifyContent: 'center' },
+  costBadge: { position: 'absolute', top: 4, left: 4, width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  costBadgeText: { fontSize: 10, fontWeight: '700', color: '#fff' },
+  cardNameBanner: { paddingHorizontal: 6, paddingVertical: 4, borderTopWidth: 1 },
+  cardName: { fontSize: 10, fontWeight: '700', color: colors.text, minHeight: 26 },
+  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 6 },
+  cardStatText: { fontSize: 11, color: colors.text2, fontWeight: '700' },
+  rarityDot: { width: 7, height: 7, borderRadius: 3.5 },
   actions: { paddingHorizontal: 16, paddingTop: 4, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border },
   endTurnBtn: { backgroundColor: colors.accent, borderRadius: 10, paddingVertical: 14, alignItems: 'center' },
   endTurnBtnText: { fontSize: 15, fontWeight: '700', color: '#fff' },
