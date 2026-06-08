@@ -4,13 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import { game } from '../api'
 import { colors } from '../theme'
-
-const RARITY = {
-  COMMON: { label: 'Обычная', color: colors.blue },
-  EPIC: { label: 'Эпическая', color: colors.purple },
-  SILVER: { label: 'Серебряная', color: colors.silver },
-  GOLD: { label: 'Золотая', color: colors.gold },
-}
+import { RARITY, CardArt } from '../utils/cardArt'
 
 export default function GameScreen() {
   const insets = useSafeAreaInsets()
@@ -86,8 +80,11 @@ export default function GameScreen() {
           const r = RARITY[card.rarity] || RARITY.COMMON
           return (
             <View style={[s.card, { borderColor: r.color }]}>
-              <View style={[s.rarityBadge, { backgroundColor: `${r.color}25`, borderColor: r.color }]}>
-                <Text style={[s.rarityText, { color: r.color }]}>{r.label}</Text>
+              <View style={s.cardTopRow}>
+                <CardArt card={card} size={44} />
+                <View style={[s.rarityBadge, { backgroundColor: `${r.color}25`, borderColor: r.color }]}>
+                  <Text style={[s.rarityText, { color: r.color }]}>{r.label}</Text>
+                </View>
               </View>
               <Text style={s.cardName} numberOfLines={2}>{card.name}</Text>
               <View style={s.statsRow}>
@@ -115,7 +112,8 @@ const s = StyleSheet.create({
   battleBtn: { backgroundColor: colors.accent, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
   battleBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
   card: { flex: 1, backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1.5, padding: 12, marginBottom: 12, minHeight: 150 },
-  rarityBadge: { alignSelf: 'flex-start', borderWidth: 1, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2, marginBottom: 8 },
+  cardTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
+  rarityBadge: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2 },
   rarityText: { fontSize: 10, fontWeight: '700' },
   cardName: { fontSize: 14, fontWeight: '700', color: colors.text, marginBottom: 8 },
   statsRow: { flexDirection: 'row', gap: 10, marginBottom: 8 },

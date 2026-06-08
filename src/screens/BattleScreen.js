@@ -1,15 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, Pressable, Alert } from 'react-native'
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, Pressable, Alert, Animated } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { game } from '../api'
 import { colors } from '../theme'
-
-const RARITY = {
-  COMMON: { label: 'Обычная', color: colors.blue },
-  EPIC: { label: 'Эпическая', color: colors.purple },
-  SILVER: { label: 'Серебряная', color: colors.silver },
-  GOLD: { label: 'Золотая', color: colors.gold },
-}
+import { RARITY, CardArt, BossArt } from '../utils/cardArt'
 
 const MANA_CAP = 10
 
@@ -19,7 +13,15 @@ export default function BattleScreen({ route, navigation }) {
   const [hand, setHand] = useState([])
   const [loading, setLoading] = useState(true)
   const [acting, setActing] = useState(false)
+  const [popups, setPopups] = useState([])
   const logRef = useRef(null)
+  const popupId = useRef(0)
+
+  function popDamage(target, amount) {
+    const id = ++popupId.current
+    setPopups(prev => [...prev, { id, target, amount }])
+    setTimeout(() => setPopups(prev => prev.filter(p => p.id !== id)), 850)
+  }
 
   useEffect(() => { load() }, [])
 
@@ -40,7 +42,14 @@ export default function BattleScreen({ route, navigation }) {
   }
 
   function applyResult(data) {
-    setBattle(data.battle)
+    const next = data.battle
+    if (battle) {
+      const bossDmg = battle.bossHp - next.bossHp
+      const playerDmg = battle.playerHp - next.playerHp
+      if (bossDmg > 0) popDamage('boss', bossDmg)
+      if (playerDmg > 0) popDamage('player', playerDmg)
+    }
+    setBattle(next)
     setHand(data.userCards)
     setTimeout(() => logRef.current?.scrollToEnd({ animated: true }), 100)
   }
@@ -91,9 +100,14 @@ export default function BattleScreen({ route, navigation }) {
   return (
     <View style={s.wrap}>
       <View style={s.header}>
-        <Text style={s.bossName}>{theme.bossName}</Text>
-        <HpBar label="Босс" value={battle.bossHp} max={battle.bossMaxHp} color={colors.accent} />
-        <HpBar label="Вы" value={battle.playerHp} max={battle.playerMaxHp} color={colors.green} />
+        <View style={s.headerTopRow}>
+          <BossArt size={64} />
+          <View style={s.headerInfo}>
+            <Text style={s.bossName}>{theme.bossName}</Text>
+            <HpBar label="Босс" value={battle.bossHp} max={battle.bossMaxHp} color={colors.accent} popups={popups.filter(p => p.target === 'boss')} />
+            <HpBar label="Вы" value={battle.playerHp} max={battle.playerMaxHp} color={colors.green} popups={popups.filter(p => p.target === 'player')} />
+          </View>
+        </View>
         <View style={s.statsRow}>
           <Text style={s.statText}>💧 Мана: {battle.mana}/{MANA_CAP}</Text>
           <Text style={s.statText}>🔄 Ход: {battle.turn}</Text>
@@ -136,6 +150,7 @@ export default function BattleScreen({ route, navigation }) {
                   onPress={() => onPlayCard(card.id)}
                   disabled={!playable}
                 >
+                  <View style={s.cardArtWrap}><CardArt card={card} size={40} /></View>
                   <Text style={s.cardName} numberOfLines={2}>{card.name}</Text>
                   <View style={s.cardStatsRow}>
                     <Text style={s.cardStatText}>⚔️ {card.attack}</Text>
@@ -160,16 +175,36 @@ export default function BattleScreen({ route, navigation }) {
   )
 }
 
-function HpBar({ label, value, max, color }) {
+function HpBar({ label, value, max, color, popups = [] }) {
   const pct = max > 0 ? Math.max(0, Math.min(1, value / max)) : 0
   return (
     <View style={s.hpRow}>
       <Text style={s.hpLabel}>{label}</Text>
-      <View style={s.hpTrack}>
-        <View style={[s.hpFill, { width: `${pct * 100}%`, backgroundColor: color }]} />
+      <View style={s.hpTrackWrap}>
+        <View style={s.hpTrack}>
+          <View style={[s.hpFill, { width: `${pct * 100}%`, backgroundColor: color }]} />
+        </View>
+        {popups.map(p => <DamagePopup key={p.id} amount={p.amount} />)}
       </View>
       <Text style={s.hpValue}>{value}/{max}</Text>
     </View>
+  )
+}
+
+function DamagePopup({ amount }) {
+  const anim = useRef(new Animated.Value(0)).current
+
+  useEffect(() => {
+    Animated.timing(anim, { toValue: 1, duration: 850, useNativeDriver: false }).start()
+  }, [])
+
+  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [0, -26] })
+  const opacity = anim.interpolate({ inputRange: [0, 0.15, 1], outputRange: [0, 1, 0] })
+
+  return (
+    <Animated.Text style={[s.popup, { transform: [{ translateY }], opacity }]}>
+      −{amount}
+    </Animated.Text>
   )
 }
 
@@ -177,12 +212,16 @@ const s = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.bg },
   center: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center' },
   header: { padding: 16, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
+  headerTopRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 },
+  headerInfo: { flex: 1 },
   bossName: { fontSize: 17, fontWeight: '700', color: colors.text, marginBottom: 10 },
   hpRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
   hpLabel: { fontSize: 12, color: colors.text2, width: 36 },
-  hpTrack: { flex: 1, height: 10, borderRadius: 5, backgroundColor: colors.surface2, overflow: 'hidden' },
+  hpTrackWrap: { flex: 1 },
+  hpTrack: { height: 10, borderRadius: 5, backgroundColor: colors.surface2, overflow: 'hidden' },
   hpFill: { height: '100%', borderRadius: 5 },
   hpValue: { fontSize: 12, color: colors.text2, width: 56, textAlign: 'right' },
+  popup: { position: 'absolute', right: 4, top: 0, fontSize: 13, fontWeight: '700', color: colors.text },
   statsRow: { flexDirection: 'row', gap: 16, marginTop: 4 },
   statText: { fontSize: 13, color: colors.text, fontWeight: '600' },
   log: { flex: 1 },
@@ -191,6 +230,7 @@ const s = StyleSheet.create({
   hand: { paddingHorizontal: 16, paddingVertical: 12, gap: 10 },
   card: { width: 110, backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1.5, padding: 10 },
   cardOff: { opacity: 0.4 },
+  cardArtWrap: { marginBottom: 6 },
   cardName: { fontSize: 13, fontWeight: '700', color: colors.text, marginBottom: 8, minHeight: 34 },
   cardStatsRow: { flexDirection: 'row', gap: 10 },
   cardStatText: { fontSize: 12, color: colors.text2, fontWeight: '600' },
