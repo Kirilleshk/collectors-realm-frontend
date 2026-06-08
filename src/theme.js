@@ -9,4 +9,6 @@ export const colors = {
   blue: '#2e7fd6',
   green: '#2aaa60',
   purple: '#8b4fd4',
+  silver: '#b9bdc6',
+  gold: '#e0b144',
 }

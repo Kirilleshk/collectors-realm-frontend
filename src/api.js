@@ -99,6 +99,12 @@ export const support = {
   deleteMessage: (id) => api.delete(`/support/message/${id}`),
 }
 
+export const game = {
+  getThemes:    () => api.get('/cards/themes'),
+  getMyCards:   () => api.get('/cards/my'),
+  claimStarter: () => api.post('/cards/starter'),
+}
+
 export const bids = {
   getForProduct: (productId) => api.get(`/products/${productId}/bids`),
   place: (productId, amount) => api.post(`/products/${productId}/bids`, { amount }),
