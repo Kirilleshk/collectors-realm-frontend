@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { View, Text, ActivityIndicator, Platform } from 'react-native'
 import { NavigationContainer } from '@react-navigation/native'
 import * as NavigationBar from 'expo-navigation-bar'
@@ -10,6 +10,7 @@ import { AuthProvider, useAuth } from './src/AuthContext'
 import { colors } from './src/theme'
 import * as Notifications from 'expo-notifications'
 import WhatsNewModal from './src/utils/WhatsNewModal'
+import OnboardingTour from './src/utils/OnboardingTour'
 import { setAnalyticsUser, track } from './src/utils/analytics'
 
 import LoginScreen from './src/screens/LoginScreen'
@@ -114,6 +115,8 @@ const navigationRef = React.createRef()
 
 function RootNav() {
   const { user, loading } = useAuth()
+  const [tourDone, setTourDone] = useState(false)
+  const isAdmin = user?.roles?.includes('ADMIN') || user?.roles?.includes('ANALYTICS') || user?.roles?.includes('MODERATOR')
 
   useEffect(() => {
     if (user?.id) setAnalyticsUser(user.id)
@@ -152,7 +155,15 @@ function RootNav() {
           <Stack.Screen name="Login" component={LoginScreen} />
         )}
       </Stack.Navigator>
-      {user && <WhatsNewModal />}
+      {user && (
+        <OnboardingTour
+          navigationRef={navigationRef}
+          showGame={SHOW_GAME}
+          isAdmin={isAdmin}
+          onFinish={() => setTourDone(true)}
+        />
+      )}
+      {user && tourDone && <WhatsNewModal />}
     </NavigationContainer>
   )
 }
