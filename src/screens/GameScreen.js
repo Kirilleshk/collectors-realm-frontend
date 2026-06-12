@@ -5,6 +5,7 @@ import { useNavigation } from '@react-navigation/native'
 import { game } from '../api'
 import { colors } from '../theme'
 import { RARITY, CardArt } from '../utils/cardArt'
+import StarterPackModal from '../utils/StarterPackModal'
 
 export default function GameScreen() {
   const insets = useSafeAreaInsets()
@@ -13,6 +14,7 @@ export default function GameScreen() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [startingBattle, setStartingBattle] = useState(false)
+  const [starterGrant, setStarterGrant] = useState(null)
 
   useEffect(() => { load() }, [])
 
@@ -23,6 +25,7 @@ export default function GameScreen() {
       if (data.length === 0) {
         const starter = await game.claimStarter()
         data = Array.isArray(starter.data) ? starter.data : []
+        if (starter.status === 201) setStarterGrant(data)
       }
       setUserCards(data)
     } catch (e) { console.error(e) }
@@ -98,6 +101,7 @@ export default function GameScreen() {
           )
         }}
       />
+      <StarterPackModal cards={starterGrant} onClose={() => setStarterGrant(null)} />
     </View>
   )
 }
