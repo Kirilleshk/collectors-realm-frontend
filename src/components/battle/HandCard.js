@@ -1,33 +1,56 @@
-import React from 'react'
-import { View, Text, Pressable, StyleSheet } from 'react-native'
+import React, { useRef, useState } from 'react'
+import { View, Text, Pressable, Animated, StyleSheet } from 'react-native'
 import { colors } from '../../theme'
 import { RARITY, CardArt } from '../../utils/cardArt'
 
 // Карта в руке игрока. entry = { cardId, card }
+// onPress — async, возвращает true/false (успех розыгрыша); при false карта
+// возвращается в руку (например, сервер отказал из-за гонки запросов)
 export default function HandCard({ entry, playable, onPress }) {
   const card = entry.card
   const r = RARITY[card.rarity] || RARITY.COMMON
+  const [busy, setBusy] = useState(false)
+  const lift = useRef(new Animated.Value(0)).current
+
+  async function handlePress() {
+    if (!playable || busy) return
+    setBusy(true)
+    await new Promise(resolve => {
+      Animated.timing(lift, { toValue: 1, duration: 180, useNativeDriver: false }).start(() => resolve())
+    })
+    const ok = await onPress()
+    if (!ok) {
+      Animated.timing(lift, { toValue: 0, duration: 150, useNativeDriver: false }).start()
+      setBusy(false)
+    }
+  }
+
+  const translateY = lift.interpolate({ inputRange: [0, 1], outputRange: [0, -32] })
+  const scale = lift.interpolate({ inputRange: [0, 1], outputRange: [1, 0.85] })
+  const opacity = lift.interpolate({ inputRange: [0, 1], outputRange: [1, 0] })
 
   return (
-    <Pressable
-      style={({ pressed }) => [s.card, { borderColor: r.color }, !playable && s.cardOff, pressed && playable && { opacity: 0.8 }]}
-      onPress={onPress}
-      disabled={!playable}
-    >
-      <View style={[s.cardArtArea, { backgroundColor: `${r.color}15` }]}>
-        <CardArt card={card} size={28} />
-        <View style={[s.costBadge, { backgroundColor: colors.blue }]}>
-          <Text style={s.costBadgeText}>{card.cost}</Text>
+    <Animated.View style={{ transform: [{ translateY }, { scale }], opacity }}>
+      <Pressable
+        style={({ pressed }) => [s.card, { borderColor: r.color }, !playable && s.cardOff, pressed && playable && { opacity: 0.8 }]}
+        onPress={handlePress}
+        disabled={!playable || busy}
+      >
+        <View style={[s.cardArtArea, { backgroundColor: `${r.color}15` }]}>
+          <CardArt card={card} size={28} />
+          <View style={[s.costBadge, { backgroundColor: colors.blue }]}>
+            <Text style={s.costBadgeText}>{card.cost}</Text>
+          </View>
         </View>
-      </View>
-      <View style={[s.cardNameBanner, { borderTopColor: r.color }]}>
-        <Text style={s.cardName} numberOfLines={2}>{card.name}</Text>
-      </View>
-      <View style={s.cardFooter}>
-        <Text style={s.cardStatText}>⚔️{card.attack} ❤️{card.health}</Text>
-        <View style={[s.rarityDot, { backgroundColor: r.color }]} />
-      </View>
-    </Pressable>
+        <View style={[s.cardNameBanner, { borderTopColor: r.color }]}>
+          <Text style={s.cardName} numberOfLines={2}>{card.name}</Text>
+        </View>
+        <View style={s.cardFooter}>
+          <Text style={s.cardStatText}>⚔️{card.attack} ❤️{card.health}</Text>
+          <View style={[s.rarityDot, { backgroundColor: r.color }]} />
+        </View>
+      </Pressable>
+    </Animated.View>
   )
 }
 

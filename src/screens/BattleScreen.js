@@ -13,6 +13,8 @@ import LogEntry from '../components/battle/LogEntry'
 const MANA_CAP = 10
 const EMPTY_DECK_COUNTS = { playerDeck: 0, playerDiscard: 0, bossDeck: 0, bossDiscard: 0 }
 
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
+
 export default function BattleScreen({ route, navigation }) {
   const insets = useSafeAreaInsets()
   const [battle, setBattle] = useState(null)
@@ -21,6 +23,11 @@ export default function BattleScreen({ route, navigation }) {
   const [loading, setLoading] = useState(true)
   const [acting, setActing] = useState(false)
   const [popups, setPopups] = useState([])
+  // Во время анимации боя показываем "рабочую" копию столов (до результата
+  // end-turn), а финальное состояние из ответа сервера применяем в самом конце
+  const [displayBoard, setDisplayBoard] = useState(null)
+  // Разовые триггеры анимаций по instanceId существа: { kind: 'attack'|'hit'|'death'|'spawn', dir, token }
+  const [effects, setEffects] = useState({})
   const logRef = useRef(null)
   const popupId = useRef(0)
 
@@ -28,6 +35,11 @@ export default function BattleScreen({ route, navigation }) {
     const id = ++popupId.current
     setPopups(prev => [...prev, { id, target, amount }])
     setTimeout(() => setPopups(prev => prev.filter(p => p.id !== id)), 850)
+  }
+
+  function triggerEffect(instanceId, kind, dir) {
+    if (!instanceId) return
+    setEffects(prev => ({ ...prev, [instanceId]: { kind, dir, token: Math.random() } }))
   }
 
   useEffect(() => { load() }, [])
@@ -39,6 +51,8 @@ export default function BattleScreen({ route, navigation }) {
   }
 
   async function load() {
+    setDisplayBoard(null)
+    setEffects({})
     try {
       const res = await game.getActiveBattle()
       let data = res.data
@@ -53,28 +67,86 @@ export default function BattleScreen({ route, navigation }) {
     setLoading(false)
   }
 
-  function applyResult(data) {
-    const next = data.battle
-    if (battle) {
-      const bossDmg = battle.bossHp - next.bossHp
-      const playerDmg = battle.playerHp - next.playerHp
-      if (bossDmg > 0) popDamage('boss', bossDmg)
-      if (playerDmg > 0) popDamage('player', playerDmg)
+  // Пошагово проигрывает события боя (атаки, удары в лицо, смерти, выход карты
+  // босса), затем применяет финальное состояние из ответа сервера
+  async function playEvents(data) {
+    const events = Array.isArray(data.events) ? data.events : []
+    if (events.length === 0) {
+      applyData(data)
+      setTimeout(() => logRef.current?.scrollToEnd({ animated: true }), 100)
+      return
     }
+
+    const cardsById = new Map()
+    const collect = list => { for (const e of list || []) if (e?.card) cardsById.set(e.cardId, e.card) }
+    collect(resolved.playerBoard); collect(resolved.bossBoard); collect(resolved.playerHand)
+    collect(data.resolved.playerBoard); collect(data.resolved.bossBoard); collect(data.resolved.playerHand)
+
+    let dPlayer = resolved.playerBoard.map(c => ({ ...c }))
+    let dBoss = resolved.bossBoard.map(c => ({ ...c }))
+    setDisplayBoard({ playerBoard: dPlayer, bossBoard: dBoss })
+
+    for (const ev of events) {
+      if (ev.type === 'boss_play') {
+        const card = cardsById.get(ev.cardId) ?? null
+        dBoss = [...dBoss, { instanceId: ev.instanceId, cardId: ev.cardId, currentHealth: card?.health ?? 0, card }]
+        setDisplayBoard({ playerBoard: dPlayer, bossBoard: dBoss })
+        triggerEffect(ev.instanceId, 'spawn')
+        await sleep(420)
+        continue
+      }
+
+      // Игрок бьёт вверх (в сторону стола босса), босс — вниз (в сторону стола игрока).
+      // Сброс расположен между столами, поэтому погибшее существо "улетает"
+      // в ту же сторону, что и его атака.
+      const lungeDir = ev.attackerSide === 'player' ? 'up' : 'down'
+      const enemyDeathDir = lungeDir === 'up' ? 'down' : 'up'
+
+      triggerEffect(ev.attackerInstanceId, 'attack', lungeDir)
+      await sleep(200)
+
+      if (ev.targetInstanceId) {
+        triggerEffect(ev.targetInstanceId, 'hit')
+        popDamage(ev.targetInstanceId, ev.damageToTarget)
+      } else {
+        popDamage(ev.attackerSide === 'player' ? 'boss' : 'player', ev.damageToTarget)
+      }
+      if (ev.damageToAttacker > 0) {
+        triggerEffect(ev.attackerInstanceId, 'hit')
+        popDamage(ev.attackerInstanceId, ev.damageToAttacker)
+      }
+      await sleep(260)
+
+      if (ev.targetDied) triggerEffect(ev.targetInstanceId, 'death', enemyDeathDir)
+      if (ev.attackerDied) triggerEffect(ev.attackerInstanceId, 'death', lungeDir)
+      if (ev.targetDied || ev.attackerDied) await sleep(380)
+    }
+
     applyData(data)
+    setDisplayBoard(null)
+    setEffects({})
     setTimeout(() => logRef.current?.scrollToEnd({ animated: true }), 100)
   }
 
+  // Возвращает true при успехе — HandCard так понимает, что карту не нужно
+  // возвращать обратно в руку
   async function onPlayCard(cardId) {
-    if (acting || battle.status !== 'ACTIVE') return
+    if (acting || battle.status !== 'ACTIVE') return false
     setActing(true)
+    let ok = false
     try {
       const res = await game.playCard(battle.id, cardId)
-      applyResult(res.data)
+      const oldIds = new Set(battle.playerBoard.map(c => c.instanceId))
+      const added = res.data.battle.playerBoard.find(c => !oldIds.has(c.instanceId))
+      applyData(res.data)
+      if (added) triggerEffect(added.instanceId, 'spawn')
+      setTimeout(() => logRef.current?.scrollToEnd({ animated: true }), 100)
+      ok = true
     } catch (e) {
       Alert.alert('Ошибка', e?.response?.data?.error || 'Не удалось разыграть карту.')
     }
     setActing(false)
+    return ok
   }
 
   async function onEndTurn() {
@@ -82,7 +154,7 @@ export default function BattleScreen({ route, navigation }) {
     setActing(true)
     try {
       const res = await game.endTurn(battle.id)
-      applyResult(res.data)
+      await playEvents(res.data)
     } catch (e) {
       Alert.alert('Ошибка', 'Не удалось закончить ход.')
     }
@@ -93,6 +165,8 @@ export default function BattleScreen({ route, navigation }) {
     setLoading(true)
     setBattle(null)
     setResolved(null)
+    setDisplayBoard(null)
+    setEffects({})
     try {
       const res = await game.startBattle()
       applyData(res.data)
@@ -107,8 +181,9 @@ export default function BattleScreen({ route, navigation }) {
   const theme = battle.theme
   const isOver = battle.status !== 'ACTIVE'
   const lastLog = Array.isArray(battle.log) ? battle.log[battle.log.length - 1] : null
-  const bossSlots = [0, 1, 2].map(i => resolved.bossBoard[i] || null)
-  const playerSlots = [0, 1, 2].map(i => resolved.playerBoard[i] || null)
+  const board = displayBoard || resolved
+  const bossSlots = [0, 1, 2].map(i => board.bossBoard[i] || null)
+  const playerSlots = [0, 1, 2].map(i => board.playerBoard[i] || null)
   const boardFull = resolved.playerBoard.length >= 3
 
   return (
@@ -122,7 +197,14 @@ export default function BattleScreen({ route, navigation }) {
       </View>
 
       <View style={s.boardRow}>
-        {bossSlots.map((entry, i) => <BoardSlot key={`boss-${i}`} entry={entry} />)}
+        {bossSlots.map((entry, i) => (
+          <BoardSlot
+            key={`boss-${i}`}
+            entry={entry}
+            effect={entry ? effects[entry.instanceId] : null}
+            popups={entry ? popups.filter(p => p.target === entry.instanceId) : []}
+          />
+        ))}
       </View>
 
       <View style={s.deckRow}>
@@ -131,7 +213,14 @@ export default function BattleScreen({ route, navigation }) {
       </View>
 
       <View style={s.boardRow}>
-        {playerSlots.map((entry, i) => <BoardSlot key={`player-${i}`} entry={entry} />)}
+        {playerSlots.map((entry, i) => (
+          <BoardSlot
+            key={`player-${i}`}
+            entry={entry}
+            effect={entry ? effects[entry.instanceId] : null}
+            popups={entry ? popups.filter(p => p.target === entry.instanceId) : []}
+          />
+        ))}
       </View>
 
       <View style={s.playerBar}>
