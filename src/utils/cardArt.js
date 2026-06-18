@@ -1,5 +1,5 @@
 import React from 'react'
-import { View, Text, StyleSheet } from 'react-native'
+import { View, Text, Image, StyleSheet } from 'react-native'
 import { colors } from '../theme'
 
 // Палитра редкости — общая для экрана коллекции и боя
@@ -10,8 +10,8 @@ export const RARITY = {
   GOLD: { label: 'Золотая', color: colors.gold },
 }
 
-// У карт нет своих изображений (юридически рискованно тянуть арт франшиз) —
-// вместо этого подбираем иконку по геймплейным признакам карты:
+// Пока не у всех карт есть нейросгенерированный арт (рисуется постепенно) —
+// для карт без imageUrl подбираем иконку по геймплейным признакам:
 // тип эффекта говорит о фракции, а её отсутствие — о «простой» карте.
 export function cardIcon(card) {
   const effect = card.effectType || ''
@@ -23,16 +23,20 @@ export function cardIcon(card) {
 export function CardArt({ card, size = 56 }) {
   const r = RARITY[card.rarity] || RARITY.COMMON
   return (
-    <View style={[s.wrap, { width: size, height: size, borderRadius: size * 0.22, backgroundColor: `${r.color}1f`, borderColor: r.color }]}>
-      <Text style={{ fontSize: size * 0.5 }}>{cardIcon(card)}</Text>
+    <View style={[s.wrap, { width: size, height: size, borderRadius: size * 0.22, backgroundColor: `${r.color}1f`, borderColor: r.color, overflow: 'hidden' }]}>
+      {card.imageUrl
+        ? <Image source={{ uri: card.imageUrl }} style={{ width: size, height: size }} resizeMode="cover" />
+        : <Text style={{ fontSize: size * 0.5 }}>{cardIcon(card)}</Text>}
     </View>
   )
 }
 
-export function BossArt({ size = 88 }) {
+export function BossArt({ size = 88, imageUrl }) {
   return (
-    <View style={[s.wrap, s.boss, { width: size, height: size, borderRadius: size * 0.22 }]}>
-      <Text style={{ fontSize: size * 0.5 }}>👹</Text>
+    <View style={[s.wrap, s.boss, { width: size, height: size, borderRadius: size * 0.22, overflow: 'hidden' }]}>
+      {imageUrl
+        ? <Image source={{ uri: imageUrl }} style={{ width: size, height: size }} resizeMode="cover" />
+        : <Text style={{ fontSize: size * 0.5 }}>👹</Text>}
     </View>
   )
 }

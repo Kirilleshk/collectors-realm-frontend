@@ -189,7 +189,7 @@ export default function BattleScreen({ route, navigation }) {
   return (
     <View style={s.wrap}>
       <View style={s.bossSection}>
-        <BossArt size={52} />
+        <BossArt size={52} imageUrl={theme.bossImageUrl} />
         <View style={s.bossInfo}>
           <Text style={s.bossName}>{theme.bossName}</Text>
           <HpBar label="Босс" value={battle.bossHp} max={battle.bossMaxHp} color={colors.accent} popups={popups.filter(p => p.target === 'boss')} />
@@ -209,7 +209,7 @@ export default function BattleScreen({ route, navigation }) {
 
       <View style={s.deckRow}>
         <DeckPile count={deckCounts.playerDiscard} label="Сброс" icon="🗑️" color={colors.text2} />
-        <DeckPile count={deckCounts.playerDeck} label="Колода" icon="🂠" color={colors.blue} />
+        <DeckPile count={deckCounts.playerDeck} label="Колода" icon="🂠" color={colors.blue} backImageUrl={theme.backImageUrl} />
       </View>
 
       <View style={s.boardRow}>
