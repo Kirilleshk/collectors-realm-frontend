@@ -14,6 +14,7 @@ export default function GameScreen() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [startingBattle, setStartingBattle] = useState(false)
+  const [claimingStarter, setClaimingStarter] = useState(false)
   const [starterGrant, setStarterGrant] = useState(null)
 
   useEffect(() => { load() }, [])
@@ -21,18 +22,25 @@ export default function GameScreen() {
   async function load() {
     try {
       const res = await game.getMyCards()
-      let data = Array.isArray(res.data) ? res.data : []
-      if (data.length === 0) {
-        const starter = await game.claimStarter()
-        data = Array.isArray(starter.data) ? starter.data : []
-        if (starter.status === 201) setStarterGrant(data)
-      }
-      setUserCards(data)
+      setUserCards(Array.isArray(res.data) ? res.data : [])
     } catch (e) { console.error(e) }
     setLoading(false)
   }
 
   async function onRefresh() { setRefreshing(true); await load(); setRefreshing(false) }
+
+  async function onClaimStarter() {
+    setClaimingStarter(true)
+    try {
+      const starter = await game.claimStarter()
+      const data = Array.isArray(starter.data) ? starter.data : []
+      if (starter.status === 201) setStarterGrant(data)
+      setUserCards(data)
+    } catch (e) {
+      Alert.alert('Ошибка', 'Не удалось получить стартовый набор. Попробуйте ещё раз.')
+    }
+    setClaimingStarter(false)
+  }
 
   async function onStartBattle() {
     setStartingBattle(true)
@@ -75,7 +83,16 @@ export default function GameScreen() {
           <View style={s.empty}>
             <Text style={s.emptyIcon}>🎴</Text>
             <Text style={s.emptyTitle}>Коллекция пуста</Text>
-            <Text style={s.emptySub}>Потяните вниз, чтобы получить стартовый набор карт</Text>
+            <Text style={s.emptySub}>Получите стартовый набор из 10 карт, чтобы начать игру</Text>
+            <Pressable
+              style={({ pressed }) => [s.claimBtn, pressed && { opacity: 0.8 }]}
+              onPress={onClaimStarter}
+              disabled={claimingStarter}
+            >
+              {claimingStarter
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <Text style={s.claimBtnText}>🎁 Получить стартовый набор</Text>}
+            </Pressable>
           </View>
         }
         renderItem={({ item }) => {
@@ -127,5 +144,7 @@ const s = StyleSheet.create({
   empty: { alignItems: 'center', paddingTop: 80 },
   emptyIcon: { fontSize: 48, marginBottom: 12 },
   emptyTitle: { fontSize: 17, fontWeight: '700', color: colors.text, marginBottom: 6 },
-  emptySub: { fontSize: 13, color: colors.text2, textAlign: 'center', paddingHorizontal: 32 },
+  emptySub: { fontSize: 13, color: colors.text2, textAlign: 'center', paddingHorizontal: 32, marginBottom: 20 },
+  claimBtn: { backgroundColor: colors.accent, borderRadius: 10, paddingVertical: 12, paddingHorizontal: 24 },
+  claimBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
 })
