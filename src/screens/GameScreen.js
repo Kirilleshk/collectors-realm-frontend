@@ -15,6 +15,7 @@ export default function GameScreen() {
   const [refreshing, setRefreshing] = useState(false)
   const [startingBattle, setStartingBattle] = useState(false)
   const [claimingStarter, setClaimingStarter] = useState(false)
+  const [claimError, setClaimError] = useState(null)
   const [starterGrant, setStarterGrant] = useState(null)
 
   useEffect(() => { load() }, [])
@@ -31,13 +32,20 @@ export default function GameScreen() {
 
   async function onClaimStarter() {
     setClaimingStarter(true)
+    setClaimError(null)
     try {
       const starter = await game.claimStarter()
       const data = Array.isArray(starter.data) ? starter.data : []
       if (starter.status === 201) setStarterGrant(data)
       setUserCards(data)
     } catch (e) {
-      Alert.alert('Ошибка', 'Не удалось получить стартовый набор. Попробуйте ещё раз.')
+      // Alert.alert — no-op в веб-сборке (react-native-web), поэтому
+      // ошибку дублируем видимым текстом под кнопкой
+      const msg = e?.response
+        ? 'Не удалось получить стартовый набор. Попробуйте ещё раз.'
+        : 'Сервер долго отвечает (Render просыпается до минуты) — подождите и нажмите ещё раз.'
+      Alert.alert('Ошибка', msg)
+      setClaimError(msg)
     }
     setClaimingStarter(false)
   }
@@ -93,6 +101,7 @@ export default function GameScreen() {
                 ? <ActivityIndicator color="#fff" size="small" />
                 : <Text style={s.claimBtnText}>🎁 Получить стартовый набор</Text>}
             </Pressable>
+            {claimError ? <Text style={s.claimErrorText}>{claimError}</Text> : null}
           </View>
         }
         renderItem={({ item }) => {
@@ -147,4 +156,5 @@ const s = StyleSheet.create({
   emptySub: { fontSize: 13, color: colors.text2, textAlign: 'center', paddingHorizontal: 32, marginBottom: 20 },
   claimBtn: { backgroundColor: colors.accent, borderRadius: 10, paddingVertical: 12, paddingHorizontal: 24 },
   claimBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  claimErrorText: { fontSize: 12, color: colors.accent, textAlign: 'center', marginTop: 12, paddingHorizontal: 24 },
 })
