@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Platform } from 'react-native'
-import { auth } from './api'
+import { auth, setUnauthorizedHandler } from './api'
 import { registerForPushNotifications } from './notifications'
 import * as Notifications from 'expo-notifications'
 
@@ -16,6 +16,9 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     checkAuth()
+    // Просроченный токен (7 дней) даёт 401 на любой запрос — разлогиниваем,
+    // чтобы пользователь увидел экран входа вместо тихо «пустых» экранов
+    setUnauthorizedHandler(() => logout())
 
     if (Platform.OS !== 'web') {
       notificationListener.current = Notifications.addNotificationReceivedListener(notification => {

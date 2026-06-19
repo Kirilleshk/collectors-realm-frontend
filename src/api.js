@@ -19,6 +19,20 @@ api.interceptors.request.use(async (config) => {
   return config
 })
 
+// Токен истекает через 7 дней (см. backend auth.service.ts). Без этого
+// перехватчика просроченный токен давал 401 на каждый запрос, а экраны
+// тихо проглатывали ошибку и показывали "пусто" вместо разлогина.
+let onUnauthorized = null
+export const setUnauthorizedHandler = (fn) => { onUnauthorized = fn }
+
+api.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    if (err.response?.status === 401) onUnauthorized?.()
+    return Promise.reject(err)
+  }
+)
+
 export const auth = {
   login: (email, password) => api.post('/auth/login', { email, password }),
   register: (name, email, password, roles = ['COLLECTOR']) => api.post('/auth/register', { name, email, password, roles }),
