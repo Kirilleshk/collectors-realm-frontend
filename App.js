@@ -2,9 +2,11 @@ import React, { useEffect, useState } from 'react'
 import { View, Text, ActivityIndicator, Platform } from 'react-native'
 import { NavigationContainer } from '@react-navigation/native'
 import * as NavigationBar from 'expo-navigation-bar'
+import * as ScreenOrientation from 'expo-screen-orientation'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context'
+import { GestureHandlerRootView } from 'react-native-gesture-handler'
 
 import { AuthProvider, useAuth } from './src/AuthContext'
 import { colors } from './src/theme'
@@ -129,6 +131,15 @@ function RootNav() {
     }
   }, [])
 
+  // app.json теперь "orientation": "default" (нужно для ландшафта в BattleScreen),
+  // поэтому весь остальной интерфейс на нативных платформах фиксируем портретом —
+  // BattleScreen сам разлочит и залочит экран обратно на своих mount/unmount
+  useEffect(() => {
+    if (Platform.OS !== 'web') {
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {})
+    }
+  }, [])
+
   useEffect(() => {
     const sub = Notifications.addNotificationResponseReceivedListener(response => {
       const data = response.notification.request.content.data
@@ -170,10 +181,12 @@ function RootNav() {
 
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <AuthProvider>
-        <RootNav />
-      </AuthProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <AuthProvider>
+          <RootNav />
+        </AuthProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   )
 }

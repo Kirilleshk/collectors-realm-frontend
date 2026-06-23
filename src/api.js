@@ -120,6 +120,7 @@ export const game = {
   getActiveBattle: () => api.get('/cards/battle/active'),
   startBattle:     (themeId) => api.post('/cards/battle/start', { themeId }),
   playCard:        (battleId, cardId) => api.post(`/cards/battle/${battleId}/play`, { cardId }),
+  attack:          (battleId, attackerInstanceId, targetInstanceId) => api.post(`/cards/battle/${battleId}/attack`, { attackerInstanceId, targetInstanceId }),
   endTurn:         (battleId) => api.post(`/cards/battle/${battleId}/end-turn`),
 }
 

@@ -11,7 +11,7 @@
       "enabled": true,
       "checkAutomatically": "ON_LOAD"
     },
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {

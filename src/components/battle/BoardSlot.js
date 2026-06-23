@@ -1,13 +1,15 @@
 import React, { useEffect, useLayoutEffect, useRef } from 'react'
-import { View, Text, Animated, StyleSheet } from 'react-native'
+import { View, Text, Animated, Pressable, StyleSheet } from 'react-native'
 import { colors } from '../../theme'
-import { RARITY, CardArt } from '../../utils/cardArt'
+import { RARITY, CardArt, rarityFrameStyle, RarityInnerRing, RarityCorners } from '../../utils/cardArt'
 import DamagePopup from './DamagePopup'
 
-// Один слот стола (3 на сторону). entry = { instanceId, cardId, currentHealth, card } | null
+// Один слот стола. entry = { instanceId, cardId, currentHealth, card } | null
 // effect = { kind: 'attack'|'hit'|'death'|'spawn', dir: 'up'|'down', token } | null —
 // разовый триггер анимации (token меняется при каждом новом срабатывании)
-export default function BoardSlot({ entry, size = 60, effect, popups = [] }) {
+// selectable — существо можно выбрать (свой атакующий или валидная цель атаки),
+// selected — это текущий выбранный атакующий (более яркая подсветка)
+export default function BoardSlot({ entry, size = 60, effect, popups = [], onPress, selectable, selected }) {
   const scale = useRef(new Animated.Value(1)).current
   const opacity = useRef(new Animated.Value(1)).current
   const translateY = useRef(new Animated.Value(0)).current
@@ -61,27 +63,36 @@ export default function BoardSlot({ entry, size = 60, effect, popups = [] }) {
   const r = RARITY[card.rarity] || RARITY.COMMON
   const damaged = currentHealth < card.health
   const flashOpacity = flash.interpolate({ inputRange: [0, 1], outputRange: [0, 0.55] })
+  const ringColor = selected ? colors.gold : selectable ? colors.green : r.color
+  const frame = rarityFrameStyle(card.rarity)
+  const borderRadius = size * 0.18
 
   return (
-    <Animated.View
-      style={[
-        s.slot,
-        { width: size, height: size, borderRadius: size * 0.18, borderColor: r.color, backgroundColor: `${r.color}15` },
-        { transform: [{ translateY }, { scale }], opacity },
-      ]}
-    >
-      <CardArt card={card} size={size * 0.5} />
-      <View style={s.statsRow}>
-        <View style={[s.statBadge, { backgroundColor: colors.blue }]}>
-          <Text style={s.statText}>⚔️{card.attack}</Text>
+    <Pressable onPress={onPress} disabled={!onPress}>
+      <Animated.View
+        style={[
+          s.slot,
+          frame,
+          { width: size, height: size, borderRadius, borderColor: ringColor, backgroundColor: `${r.color}15` },
+          (selected || selectable) && { borderWidth: 2.5 },
+          { transform: [{ translateY }, { scale }], opacity },
+        ]}
+      >
+        <CardArt card={card} size={size * 0.5} />
+        <View style={s.statsRow}>
+          <View style={[s.statBadge, { backgroundColor: colors.blue }]}>
+            <Text style={s.statText}>⚔️{card.attack}</Text>
+          </View>
+          <View style={[s.statBadge, { backgroundColor: damaged ? colors.accent : colors.green }]}>
+            <Text style={s.statText}>❤️{currentHealth}</Text>
+          </View>
         </View>
-        <View style={[s.statBadge, { backgroundColor: damaged ? colors.accent : colors.green }]}>
-          <Text style={s.statText}>❤️{currentHealth}</Text>
-        </View>
-      </View>
-      <Animated.View pointerEvents="none" style={[s.hitOverlay, { borderRadius: size * 0.18, backgroundColor: colors.accent, opacity: flashOpacity }]} />
-      {popups.map(p => <DamagePopup key={p.id} amount={p.amount} />)}
-    </Animated.View>
+        <RarityInnerRing rarity={card.rarity} borderRadius={borderRadius} />
+        <RarityCorners rarity={card.rarity} />
+        <Animated.View pointerEvents="none" style={[s.hitOverlay, { borderRadius, backgroundColor: colors.accent, opacity: flashOpacity }]} />
+        {popups.map(p => <DamagePopup key={p.id} amount={p.amount} />)}
+      </Animated.View>
+    </Pressable>
   )
 }
 

@@ -42,3 +42,6 @@ yarn-error.*
 
 # Local Netlify folder
 .netlify
+
+# исходники нейроартов карт — уже загружены на Cloudinary, URL в БД
+/art-cards

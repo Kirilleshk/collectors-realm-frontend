@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react'
 import { View, Text, Pressable, Animated, StyleSheet } from 'react-native'
 import { colors } from '../../theme'
-import { RARITY, CardArt } from '../../utils/cardArt'
+import { RARITY, CardArt, rarityFrameStyle, RarityInnerRing, RarityCorners } from '../../utils/cardArt'
 
 // Карта в руке игрока. entry = { cardId, card }
 // onPress — async, возвращает true/false (успех розыгрыша); при false карта
@@ -28,11 +28,17 @@ export default function HandCard({ entry, playable, onPress }) {
   const translateY = lift.interpolate({ inputRange: [0, 1], outputRange: [0, -32] })
   const scale = lift.interpolate({ inputRange: [0, 1], outputRange: [1, 0.85] })
   const opacity = lift.interpolate({ inputRange: [0, 1], outputRange: [1, 0] })
+  // borderWidth идёт на сам Pressable (там же borderColor) — здесь оставляем
+  // только тень/elevation, иначе непрозрачный borderWidth без borderColor
+  // нарисует чёрную рамку по умолчанию
+  const { borderWidth: frameBorderWidth, ...frameShadow } = rarityFrameStyle(card.rarity)
 
   return (
-    <Animated.View style={{ transform: [{ translateY }, { scale }], opacity }}>
+    // Тень рамки — на этой обёртке (не на Pressable ниже, у него overflow:hidden
+    // под скругление картинки, что обрезало бы shadow)
+    <Animated.View style={[frameShadow, { borderRadius: 12, backgroundColor: 'transparent' }, { transform: [{ translateY }, { scale }], opacity }]}>
       <Pressable
-        style={({ pressed }) => [s.card, { borderColor: r.color }, !playable && s.cardOff, pressed && playable && { opacity: 0.8 }]}
+        style={({ pressed }) => [s.card, { borderColor: r.color, borderWidth: frameBorderWidth }, !playable && s.cardOff, pressed && playable && { opacity: 0.8 }]}
         onPress={handlePress}
         disabled={!playable || busy}
       >
@@ -49,6 +55,8 @@ export default function HandCard({ entry, playable, onPress }) {
           <Text style={s.cardStatText}>⚔️{card.attack} ❤️{card.health}</Text>
           <View style={[s.rarityDot, { backgroundColor: r.color }]} />
         </View>
+        <RarityInnerRing rarity={card.rarity} borderRadius={12} />
+        <RarityCorners rarity={card.rarity} />
       </Pressable>
     </Animated.View>
   )

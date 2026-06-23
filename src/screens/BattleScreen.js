@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, Pressable, Alert } from 'react-native'
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, Pressable, Alert, Platform, useWindowDimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import * as ScreenOrientation from 'expo-screen-orientation'
+import { GestureDetector, Gesture } from 'react-native-gesture-handler'
 import { game } from '../api'
 import { colors } from '../theme'
 import { BossArt } from '../utils/cardArt'
@@ -17,12 +19,17 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
 
 export default function BattleScreen({ route, navigation }) {
   const insets = useSafeAreaInsets()
+  const { width, height } = useWindowDimensions()
+  const isLandscape = width > height
   const [battle, setBattle] = useState(null)
   const [resolved, setResolved] = useState(null)
   const [deckCounts, setDeckCounts] = useState(EMPTY_DECK_COUNTS)
   const [loading, setLoading] = useState(true)
   const [acting, setActing] = useState(false)
   const [popups, setPopups] = useState([])
+  // instanceId выбранного для атаки своего существа (ручной таргетинг) — null,
+  // если атакующий пока не выбран
+  const [selectedAttacker, setSelectedAttacker] = useState(null)
   // Во время анимации боя показываем "рабочую" копию столов (до результата
   // end-turn), а финальное состояние из ответа сервера применяем в самом конце
   const [displayBoard, setDisplayBoard] = useState(null)
@@ -30,6 +37,29 @@ export default function BattleScreen({ route, navigation }) {
   const [effects, setEffects] = useState({})
   const logRef = useRef(null)
   const popupId = useRef(0)
+
+  // Drag-таргетинг (v2 над тапом): { x1, y1, x2, y2 } экранных координат линии
+  // от выбранной карты к текущей точке пальца/мыши, null — когда не тащим
+  const [dragLine, setDragLine] = useState(null)
+  // Измеренные на onBegin прямоугольники возможных целей (карты босса + "лицо"),
+  // в экранных координатах — заполняются асинхронно через .measure()
+  const dragTargetsRef = useRef([])
+  const dragOriginRef = useRef(null)
+  // instanceId -> native ref обёртки слота, для измерения позиций на старте drag
+  const bossSlotWrapRefs = useRef({})
+  const playerSlotWrapRefs = useRef({})
+  const faceZoneRef = useRef(null)
+
+  // Бой удобнее вести в ландшафте — больше места для стола. На вебе раскладка
+  // сама подстраивается под ширину окна (см. isLandscape ниже), а на нативных
+  // платформах нужно явно повернуть экран; возвращаем портрет при выходе из боя
+  useEffect(() => {
+    if (Platform.OS === 'web') return
+    ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE).catch(() => {})
+    return () => {
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {})
+    }
+  }, [])
 
   function popDamage(target, amount) {
     const id = ++popupId.current
@@ -48,6 +78,7 @@ export default function BattleScreen({ route, navigation }) {
     setBattle(data.battle)
     setResolved(data.resolved)
     setDeckCounts(data.deckCounts)
+    setSelectedAttacker(null)
   }
 
   async function load() {
@@ -149,6 +180,75 @@ export default function BattleScreen({ route, navigation }) {
     return ok
   }
 
+  // Тап по своему живому существу, которое ещё не атаковало в этом ходу —
+  // выбор/снятие выбора атакующего (тап по уже выбранному снимает выбор)
+  function onSelectAttacker(instanceId) {
+    if (acting || battle.status !== 'ACTIVE') return
+    setSelectedAttacker(prev => (prev === instanceId ? null : instanceId))
+  }
+
+  // Тап по подсвеченной карте босса (или по зоне "лица", если на столе босса
+  // нет валидных целей) после выбора своего атакующего
+  async function onAttack(targetInstanceId) {
+    if (acting || !selectedAttacker || battle.status !== 'ACTIVE') return
+    setActing(true)
+    try {
+      const res = await game.attack(battle.id, selectedAttacker, targetInstanceId)
+      await playEvents(res.data)
+    } catch (e) {
+      Alert.alert('Ошибка', e?.response?.data?.error || 'Не удалось атаковать.')
+      setSelectedAttacker(null)
+    }
+    setActing(false)
+  }
+
+  // Drag от своего существа к цели (v2 над тапом). Важно: onBegin срабатывает
+  // на любое касание, даже на обычный тап (пока движение не превысило
+  // minDistance) — поэтому логику выбора/измерения целей вешаем на onStart
+  // (срабатывает только когда жест реально активировался, то есть это drag),
+  // а финал смотрим через onFinalize с флагом success: false — значит, движения
+  // не было, это был обычный тап, и его обрабатываем как onSelectAttacker
+  function makeAttackDrag(entry) {
+    return Gesture.Pan()
+      .minDistance(12)
+      .onStart(() => {
+        setSelectedAttacker(entry.instanceId)
+        dragTargetsRef.current = []
+        Object.entries(bossSlotWrapRefs.current).forEach(([id, ref]) => {
+          ref?.measure?.((x, y, w, h, pageX, pageY) => {
+            dragTargetsRef.current.push({ id, x: pageX, y: pageY, w, h })
+          })
+        })
+        faceZoneRef.current?.measure?.((x, y, w, h, pageX, pageY) => {
+          dragTargetsRef.current.push({ id: 'face', x: pageX, y: pageY, w, h })
+        })
+        playerSlotWrapRefs.current[entry.instanceId]?.measure?.((x, y, w, h, pageX, pageY) => {
+          const origin = { x: pageX + w / 2, y: pageY + h / 2 }
+          dragOriginRef.current = origin
+          setDragLine({ x1: origin.x, y1: origin.y, x2: origin.x, y2: origin.y })
+        })
+      })
+      .onUpdate(e => {
+        if (!dragOriginRef.current) return
+        setDragLine({ x1: dragOriginRef.current.x, y1: dragOriginRef.current.y, x2: e.absoluteX, y2: e.absoluteY })
+      })
+      .onFinalize((e, success) => {
+        setDragLine(null)
+        dragOriginRef.current = null
+        if (!success) {
+          // движения не было — обычный тап, ведём себя как onSelectAttacker
+          onSelectAttacker(entry.instanceId)
+          return
+        }
+        const hit = dragTargetsRef.current.find(r => e.absoluteX >= r.x && e.absoluteX <= r.x + r.w && e.absoluteY >= r.y && e.absoluteY <= r.y + r.h)
+        if (!hit) {
+          setSelectedAttacker(null)
+          return
+        }
+        onAttack(hit.id === 'face' ? null : hit.id)
+      })
+  }
+
   async function onEndTurn() {
     if (acting || battle.status !== 'ACTIVE') return
     setActing(true)
@@ -182,30 +282,72 @@ export default function BattleScreen({ route, navigation }) {
   const isOver = battle.status !== 'ACTIVE'
   const lastLog = Array.isArray(battle.log) ? battle.log[battle.log.length - 1] : null
   const board = displayBoard || resolved
-  const bossSlots = [0, 1, 2].map(i => board.bossBoard[i] || null)
-  const playerSlots = [0, 1, 2].map(i => board.playerBoard[i] || null)
-  const boardFull = resolved.playerBoard.length >= 3
+  const boardSlots = battle.boardSlots || 5
+  const slotSize = boardSlots > 3 ? 48 : 60
+  const bossSlots = Array.from({ length: boardSlots }, (_, i) => board.bossBoard[i] || null)
+  const playerSlots = Array.from({ length: boardSlots }, (_, i) => board.playerBoard[i] || null)
+  const boardFull = resolved.playerBoard.length >= boardSlots
+  const attackedThisTurn = Array.isArray(battle.attackedThisTurn) ? battle.attackedThisTurn : []
+  const hasValidBossTarget = board.bossBoard.some(c => c && c.currentHealth > 0 && !c.stealthCharge)
+  const faceAttackable = !!selectedAttacker && !hasValidBossTarget && !acting
 
   return (
-    <View style={s.wrap}>
-      <View style={s.bossSection}>
-        <BossArt size={52} imageUrl={theme.bossImageUrl} />
-        <View style={s.bossInfo}>
-          <Text style={s.bossName}>{theme.bossName}</Text>
-          <HpBar label="Босс" value={battle.bossHp} max={battle.bossMaxHp} color={colors.accent} popups={popups.filter(p => p.target === 'boss')} />
-        </View>
+    <View style={[s.wrap, isLandscape && s.wrapLandscape]}>
+      <View ref={faceZoneRef} collapsable={false}>
+        <Pressable
+          style={[s.bossSection, faceAttackable && s.faceAttackable]}
+          onPress={faceAttackable ? () => onAttack(null) : undefined}
+          disabled={!faceAttackable}
+        >
+          <BossArt size={52} imageUrl={theme.bossImageUrl} />
+          <View style={s.bossInfo}>
+            <Text style={s.bossName}>{theme.bossName}{faceAttackable ? ' — бить в лицо' : ''}</Text>
+            <HpBar label="Босс" value={battle.bossHp} max={battle.bossMaxHp} color={colors.accent} popups={popups.filter(p => p.target === 'boss')} />
+          </View>
+        </Pressable>
       </View>
 
       <View style={s.boardRow}>
-        {bossSlots.map((entry, i) => (
-          <BoardSlot
-            key={`boss-${i}`}
-            entry={entry}
-            effect={entry ? effects[entry.instanceId] : null}
-            popups={entry ? popups.filter(p => p.target === entry.instanceId) : []}
-          />
-        ))}
+        {bossSlots.map((entry, i) => {
+          const isTargetable = !!selectedAttacker && !!entry && entry.currentHealth > 0 && !entry.stealthCharge
+          return (
+            <View
+              key={`boss-${i}`}
+              collapsable={false}
+              ref={el => { if (entry && el) bossSlotWrapRefs.current[entry.instanceId] = el }}
+            >
+              <BoardSlot
+                entry={entry}
+                size={slotSize}
+                effect={entry ? effects[entry.instanceId] : null}
+                popups={entry ? popups.filter(p => p.target === entry.instanceId) : []}
+                selectable={isTargetable}
+                onPress={isTargetable ? () => onAttack(entry.instanceId) : undefined}
+              />
+            </View>
+          )
+        })}
       </View>
+
+      {dragLine && (() => {
+        const dx = dragLine.x2 - dragLine.x1
+        const dy = dragLine.y2 - dragLine.y1
+        const length = Math.hypot(dx, dy)
+        const angle = Math.atan2(dy, dx)
+        const cx = (dragLine.x1 + dragLine.x2) / 2
+        const cy = (dragLine.y1 + dragLine.y2) / 2
+        return (
+          <View pointerEvents="none" style={s.dragOverlay}>
+            <View
+              style={[
+                s.dragLine,
+                { left: cx - length / 2, top: cy - 1.5, width: length, transform: [{ rotate: `${angle}rad` }] },
+              ]}
+            />
+            <View pointerEvents="none" style={[s.dragTip, { left: dragLine.x2 - 5, top: dragLine.y2 - 5 }]} />
+          </View>
+        )
+      })()}
 
       <View style={s.deckRow}>
         <DeckPile count={deckCounts.playerDiscard} label="Сброс" icon="🗑️" color={colors.text2} />
@@ -213,14 +355,29 @@ export default function BattleScreen({ route, navigation }) {
       </View>
 
       <View style={s.boardRow}>
-        {playerSlots.map((entry, i) => (
-          <BoardSlot
-            key={`player-${i}`}
-            entry={entry}
-            effect={entry ? effects[entry.instanceId] : null}
-            popups={entry ? popups.filter(p => p.target === entry.instanceId) : []}
-          />
-        ))}
+        {playerSlots.map((entry, i) => {
+          const canSelect = !isOver && !acting && !!entry && entry.currentHealth > 0 && !attackedThisTurn.includes(entry.instanceId)
+          // onPress карте НЕ передаём, когда ей управляет жест (canSelect) — BoardSlot
+          // рендерит свой Pressable, и если он активен одновременно с GestureDetector
+          // снаружи, на вебе RNGH перехватывает указатель и обычный клик не доходит.
+          // И тап, и drag теперь полностью разруливаются внутри makeAttackDrag
+          // (см. onFinalize: success=false — это был тап, ведём себя как выбор атакующего)
+          const slot = (
+            <BoardSlot
+              entry={entry}
+              size={slotSize}
+              effect={entry ? effects[entry.instanceId] : null}
+              popups={entry ? popups.filter(p => p.target === entry.instanceId) : []}
+              selectable={canSelect}
+              selected={!!entry && selectedAttacker === entry.instanceId}
+            />
+          )
+          return (
+            <View key={`player-${i}`} collapsable={false} ref={el => { if (entry && el) playerSlotWrapRefs.current[entry.instanceId] = el }}>
+              {canSelect ? <GestureDetector gesture={makeAttackDrag(entry)}>{slot}</GestureDetector> : slot}
+            </View>
+          )
+        })}
       </View>
 
       <View style={s.playerBar}>
@@ -279,8 +436,13 @@ export default function BattleScreen({ route, navigation }) {
 
 const s = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.bg },
+  wrapLandscape: { paddingTop: 0 },
   center: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center' },
   bossSection: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
+  faceAttackable: { borderColor: colors.gold, borderBottomWidth: 2 },
+  dragOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 50 },
+  dragLine: { position: 'absolute', height: 3, borderRadius: 1.5, backgroundColor: colors.gold },
+  dragTip: { position: 'absolute', width: 10, height: 10, borderRadius: 5, backgroundColor: colors.gold },
   bossInfo: { flex: 1 },
   bossName: { fontSize: 14, fontWeight: '700', color: colors.text, marginBottom: 6 },
   boardRow: { flexDirection: 'row', justifyContent: 'center', gap: 10, paddingVertical: 8 },
