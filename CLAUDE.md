@@ -233,6 +233,56 @@ const d = await r.json()
 переиспользует `SupportMessage` с привязкой к товару (`productId`/`productName`),
 все обращения попадают в единый тред пользователя с админом/модератором.
 
+## Арт карт игры «Карты Средиземья» (нейрогенерация)
+
+Тема пилот — «Чужой против Хищника», 20 карт (10 Чужие + 10 Хищники) + босс
+«Королева чужих» + рубашка колоды. Карты создаются и заливаются вручную по одной.
+
+**Инструмент:** Leonardo.ai, модель **Lucid Origin**, режим **Fast**, стиль
+**Dynamic**, размер строго **1:1 (квадрат)** — карты везде отображаются как
+квадратные превью с обрезкой по центру (`resizeMode: cover` в `cardArt.js`),
+другое соотношение сторон обрежет голову/ноги персонажа.
+
+**Стиль промта:** кинематографичный тёмный постер фильма Alien/Predator,
+photorealistic, hyper-detailed, без текста/водяных знаков. Шаблон:
+`Cinematic dark sci-fi horror movie poster style, <описание существа/сцены>,
+photorealistic, hyper-detailed, square 1:1 composition, dramatic <тип света>,
+no text, no watermark`.
+
+**Порядок генерации — от редких к простым** (GOLD → SILVER → EPIC → COMMON),
+сначала самые ценные/заметные карты. Всего 20 карт: по 6 COMMON / 2 EPIC /
+1 SILVER / 1 GOLD на каждую из двух фракций (Чужие/Хищники), см. `seed-cards.ts`
+для точной редкости каждой карты.
+
+- ✅ GOLD (2/2): Предалиен, Волк
+- ✅ SILVER (2/2): Преторианец, Старейшина
+- ✅ EPIC (4/4): Опустошитель, Городской охотник, Дробитель, Супер-хищник
+- ⏳ COMMON (10/12): все готовы и залиты, КРОМЕ Берсерк и Сокольник (генерация
+  не запущена — не хватило токенов Leonardo 23.06, промпты ниже)
+
+**25.06.2026: 18 карт + босс «Королева чужих» + рубашка колоды залиты на
+Cloudinary и прописаны** в `prisma/set-card-images-2026-06-25.sql` —
+выполнить файл в Supabase SQL Editor, если ещё не выполнен.
+
+**Напомнить про эти 2 карты**, когда пользователь спросит что-то вроде «что
+сегодня по работе» / «напомни про карты» / «что по задачам»:
+
+- **Берсерк** (Хищники, COMMON) → сохранить как `berserk.png`
+  ```
+  Cinematic dark sci-fi movie poster style, a frenzied Predator (Yautja) berserker mid-charge, reckless aggressive posture, twin wrist blades raised high, battle-worn armor with torn plating, wild feral energy, dark jungle background with orange firelight glow, photorealistic, hyper-detailed, square 1:1 composition, dramatic dynamic lighting, no text, no watermark
+  ```
+- **Сокольник** (Хищники, COMMON) → сохранить как `sokolnik.png`
+  ```
+  Cinematic dark sci-fi movie poster style, a Predator (Yautja) falconer-hunter with a small biomechanical hunting drone shaped like a hawk perched on his shoulder, lean tactical armor, faint cloaking shimmer, calm calculating stance in misty jungle, faint blue plasma glow, photorealistic, hyper-detailed, square 1:1 composition, dramatic rim light, no text, no watermark
+  ```
+
+**Пайплайн загрузки:** файл из `art-cards/<имя-транслит>.png` → unsigned upload
+на Cloudinary (`api.cloudinary.com/v1_1/dqutmb1rm/image/upload`, preset
+`collectors_realm`) → SQL `prisma/set-card-images-<дата>.sql` с
+`UPDATE "Card" SET "imageUrl" = '...' WHERE name = '...'` → выполнить в
+Supabase SQL Editor. Папка `art-cards/` в `.gitignore` — исходники не коммитятся,
+итоговые URL уже в БД.
+
 ## Ключевые зависимости
 
 ```json
