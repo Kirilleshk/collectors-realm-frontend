@@ -21,6 +21,23 @@ export default function BattleScreen({ route, navigation }) {
   const insets = useSafeAreaInsets()
   const { width, height } = useWindowDimensions()
   const isLandscape = width > height
+  // Высота арены считается явно числом от useWindowDimensions (надёжно
+  // обновляется при повороте), а не через flex внутри ScrollView — на вебе
+  // flex-контейнер со ScrollView схлопывается в 0 при живом ресайзе окна:
+  // onLayout корневого View не успевает переотработать, и без min-height:0
+  // скроллящийся flex-child проваливается в классическую CSS-ловушку
+  const [playerBarH, setPlayerBarH] = useState(0)
+  const [bottomH, setBottomH] = useState(0)
+  const HEADER_ESTIMATE = 44
+  // Бой открыт внутри Stack-навигатора вкладки «Игра» — под ним ещё виден
+  // нижний таб-бар (60 + insets.bottom, см. tabBarStyle в App.js), это тоже
+  // отъедает высоту окна и должно учитываться, иначе арена вылезает за экран
+  const TAB_BAR_ESTIMATE = 60 + insets.bottom
+  const LOG_HEIGHT = isLandscape ? 44 : 90
+  const arenaHeight = Math.max(
+    80,
+    height - insets.top - insets.bottom - HEADER_ESTIMATE - TAB_BAR_ESTIMATE - playerBarH - bottomH - LOG_HEIGHT
+  )
   const [battle, setBattle] = useState(null)
   const [resolved, setResolved] = useState(null)
   const [deckCounts, setDeckCounts] = useState(EMPTY_DECK_COUNTS)
@@ -298,7 +315,11 @@ export default function BattleScreen({ route, navigation }) {
       )}
       <View pointerEvents="none" style={[s.backdropOverlay, isDedicatedArena && s.backdropOverlayLight]} />
 
-      <ScrollView style={s.arenaScroll} contentContainerStyle={s.arenaScrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={[s.arenaScroll, { height: arenaHeight }]}
+        contentContainerStyle={s.arenaScrollContent}
+        showsVerticalScrollIndicator={false}
+      >
       <View ref={faceZoneRef} collapsable={false}>
         <BossBanner
           bossName={theme.bossName}
@@ -392,7 +413,7 @@ export default function BattleScreen({ route, navigation }) {
         )
       })()}
 
-      <View style={s.playerBar}>
+      <View style={[s.playerBar, isLandscape && s.playerBarCompact]} onLayout={e => setPlayerBarH(e.nativeEvent.layout.height)}>
         <HpBar label="Вы" value={battle.playerHp} max={battle.playerMaxHp} color={colors.green} popups={popups.filter(p => p.target === 'player')} />
         <View style={s.statsRow}>
           <View style={s.statBadge}><Text style={s.statBadgeText}>💧 {battle.mana}/{MANA_CAP}</Text></View>
@@ -402,7 +423,7 @@ export default function BattleScreen({ route, navigation }) {
 
       <FlatList
         ref={logRef}
-        style={s.log}
+        style={[s.log, { height: LOG_HEIGHT }]}
         contentContainerStyle={s.logContent}
         data={Array.isArray(battle.log) ? battle.log : []}
         keyExtractor={(_, i) => String(i)}
@@ -410,38 +431,48 @@ export default function BattleScreen({ route, navigation }) {
         renderItem={({ item }) => <LogEntry text={item} />}
       />
 
-      {isOver ? (
-        <View style={[s.banner, battle.status === 'WON' ? s.bannerWin : s.bannerLose]}>
-          <Text style={s.bannerTitle}>{battle.status === 'WON' ? '🏆 Победа!' : '💀 Поражение'}</Text>
-          {!!lastLog && <Text style={s.bannerText}>{lastLog}</Text>}
-          <Pressable style={({ pressed }) => [s.newBattleBtn, pressed && { opacity: 0.8 }]} onPress={onNewBattle}>
-            <Text style={s.newBattleBtnText}>Новый бой</Text>
-          </Pressable>
-        </View>
-      ) : (
-        <>
-          <FlatList
-            horizontal
-            data={resolved.playerHand}
-            keyExtractor={(entry, i) => `${entry.cardId}-${i}`}
-            contentContainerStyle={s.hand}
-            showsHorizontalScrollIndicator={false}
-            renderItem={({ item }) => {
-              const playable = !acting && !boardFull && item.card.cost <= battle.mana
-              return <HandCard entry={item} playable={playable} onPress={() => onPlayCard(item.cardId)} />
-            }}
-          />
-          <View style={[s.actions, { paddingBottom: 12 + insets.bottom }]}>
-            <Pressable
-              style={({ pressed }) => [s.endTurnBtn, pressed && { opacity: 0.8 }, acting && { opacity: 0.6 }]}
-              onPress={onEndTurn}
-              disabled={acting}
-            >
-              {acting ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.endTurnBtnText}>Закончить ход</Text>}
+      <View onLayout={e => setBottomH(e.nativeEvent.layout.height)}>
+        {isOver ? (
+          <View style={[s.banner, battle.status === 'WON' ? s.bannerWin : s.bannerLose]}>
+            <Text style={s.bannerTitle}>{battle.status === 'WON' ? '🏆 Победа!' : '💀 Поражение'}</Text>
+            {!!lastLog && <Text style={s.bannerText}>{lastLog}</Text>}
+            <Pressable style={({ pressed }) => [s.newBattleBtn, pressed && { opacity: 0.8 }]} onPress={onNewBattle}>
+              <Text style={s.newBattleBtnText}>Новый бой</Text>
             </Pressable>
           </View>
-        </>
-      )}
+        ) : (
+          <>
+            <FlatList
+              horizontal
+              data={resolved.playerHand}
+              keyExtractor={(entry, i) => `${entry.cardId}-${i}`}
+              contentContainerStyle={[s.hand, isLandscape && s.handCompact]}
+              showsHorizontalScrollIndicator={false}
+              renderItem={({ item }) => {
+                const playable = !acting && !boardFull && item.card.cost <= battle.mana
+                return (
+                  <HandCard
+                    entry={item}
+                    playable={playable}
+                    onPress={() => onPlayCard(item.cardId)}
+                    width={isLandscape ? 54 : 96}
+                    height={isLandscape ? 76 : 136}
+                  />
+                )
+              }}
+            />
+            <View style={[s.actions, isLandscape && s.actionsCompact, { paddingBottom: (isLandscape ? 6 : 12) + insets.bottom }]}>
+              <Pressable
+                style={({ pressed }) => [s.endTurnBtn, isLandscape && s.endTurnBtnCompact, pressed && { opacity: 0.8 }, acting && { opacity: 0.6 }]}
+                onPress={onEndTurn}
+                disabled={acting}
+              >
+                {acting ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.endTurnBtnText}>Закончить ход</Text>}
+              </Pressable>
+            </View>
+          </>
+        )}
+      </View>
     </View>
   )
 }
@@ -454,7 +485,12 @@ const s = StyleSheet.create({
   backdropOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(10,11,14,0.72)' },
   backdropOverlayLight: { backgroundColor: 'rgba(10,11,14,0.5)' },
   center: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center' },
-  arenaScroll: { flexShrink: 1, flexGrow: 0 },
+  // Высота задаётся явно числом (arenaHeight, см. компонент) — ScrollView внутри
+  // flex-колонки схлопывается в 0 при живом ресайзе окна/повороте на вебе,
+  // не пересчитывая flex корректно; explicit height полностью обходит эту проблему
+  // flexGrow/flexShrink: 0 — высота полностью управляется явным числом
+  // (arenaHeight), не отдаём её на откуп CSS flex-negotiation с соседями
+  arenaScroll: { flexGrow: 0, flexShrink: 0, minHeight: 0 },
   arenaScrollContent: { flexGrow: 1, justifyContent: 'center' },
   arena: {},
   dragOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 50 },
@@ -463,14 +499,18 @@ const s = StyleSheet.create({
   boardRow: { flexDirection: 'row', justifyContent: 'center', gap: 10, paddingVertical: 8 },
   deckRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 24, paddingVertical: 2 },
   playerBar: { paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.border },
+  playerBarCompact: { paddingVertical: 4 },
   statsRow: { flexDirection: 'row', gap: 8, marginTop: 2 },
   statBadge: { backgroundColor: colors.surface2, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
   statBadgeText: { fontSize: 12, fontWeight: '700', color: colors.text },
-  log: { flex: 1 },
+  log: {},
   logContent: { padding: 12 },
   hand: { paddingHorizontal: 16, paddingVertical: 8, gap: 8 },
+  handCompact: { paddingVertical: 4, gap: 4 },
   actions: { paddingHorizontal: 16, paddingTop: 4, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border },
+  actionsCompact: { paddingTop: 2 },
   endTurnBtn: { backgroundColor: colors.accent, borderRadius: 10, paddingVertical: 14, alignItems: 'center' },
+  endTurnBtnCompact: { paddingVertical: 8 },
   endTurnBtnText: { fontSize: 15, fontWeight: '700', color: '#fff' },
   banner: { margin: 16, borderRadius: 14, borderWidth: 1.5, padding: 20, alignItems: 'center' },
   bannerWin: { backgroundColor: `${colors.green}18`, borderColor: colors.green },

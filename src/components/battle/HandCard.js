@@ -10,7 +10,9 @@ const CARD_HEIGHT = 136
 // Карта в руке игрока. entry = { cardId, card }
 // onPress — async, возвращает true/false (успех розыгрыша); при false карта
 // возвращается в руку (например, сервер отказал из-за гонки запросов)
-export default function HandCard({ entry, playable, onPress }) {
+// width/height — компактный размер в ландшафте, чтобы рука не отъедала
+// половину и без того тесной по высоте альбомной ориентации
+export default function HandCard({ entry, playable, onPress, width = CARD_WIDTH, height = CARD_HEIGHT }) {
   const card = entry.card
   const r = RARITY[card.rarity] || RARITY.COMMON
   const [busy, setBusy] = useState(false)
@@ -44,7 +46,7 @@ export default function HandCard({ entry, playable, onPress }) {
       <Pressable
         style={({ pressed }) => [
           s.card,
-          { width: CARD_WIDTH, height: CARD_HEIGHT, borderColor: r.color, borderWidth: frameBorderWidth },
+          { width, height, borderColor: r.color, borderWidth: frameBorderWidth },
           !playable && s.cardOff,
           pressed && playable && { opacity: 0.8 },
         ]}
