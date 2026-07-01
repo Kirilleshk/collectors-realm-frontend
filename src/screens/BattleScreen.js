@@ -292,18 +292,23 @@ export default function BattleScreen({ route, navigation }) {
   const hasValidBossTarget = board.bossBoard.some(c => c && c.currentHealth > 0 && !c.stealthCharge)
   const faceAttackable = !!selectedAttacker && !hasValidBossTarget && !acting
 
+  // Выделенный арт арены (сгенерирован под фон, не портрет) показываем чётче —
+  // портрет босса как раньше сильно размываем, иначе крупный кроп лица выглядит странно
+  const arenaUrl = theme.arenaImageUrl || theme.bossImageUrl
+  const isDedicatedArena = !!theme.arenaImageUrl
+
   return (
     <View style={[s.wrap, isLandscape && s.wrapLandscape]}>
-      {!!theme.bossImageUrl && (
+      {!!arenaUrl && (
         <Image
-          source={{ uri: theme.bossImageUrl }}
-          style={s.backdrop}
+          source={{ uri: arenaUrl }}
+          style={[s.backdrop, isDedicatedArena && s.backdropSharp]}
           resizeMode="cover"
-          blurRadius={Platform.OS === 'android' ? 12 : 30}
+          blurRadius={isDedicatedArena ? (Platform.OS === 'android' ? 2 : 4) : (Platform.OS === 'android' ? 12 : 30)}
           pointerEvents="none"
         />
       )}
-      <View pointerEvents="none" style={s.backdropOverlay} />
+      <View pointerEvents="none" style={[s.backdropOverlay, isDedicatedArena && s.backdropOverlayLight]} />
 
       <View ref={faceZoneRef} collapsable={false}>
         <BossBanner
@@ -455,7 +460,9 @@ const s = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.bg },
   wrapLandscape: { paddingTop: 0 },
   backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.35 },
+  backdropSharp: { opacity: 0.55 },
   backdropOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(10,11,14,0.72)' },
+  backdropOverlayLight: { backgroundColor: 'rgba(10,11,14,0.5)' },
   center: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center' },
   arena: {},
   dragOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 50 },
