@@ -6,11 +6,13 @@ import HpBar from './HpBar'
 
 // Крупный портрет босса (не растянутый на всю ширину — арт квадратный,
 // растягивание на широкий баннер обрезало бы почти всё изображение) с
-// пульсирующим свечением вокруг и атмосферным градиентом-подложкой на весь
-// блок. Свечение становится золотым и постоянным, когда доступен удар в лицо.
+// многослойным пульсирующим свечением (внешний ореол + рамка) и лёгким
+// "дыханием" — портрет чуть увеличивается в такт пульсу свечения, чтобы
+// босс ощущался живым/угрожающим. Свечение становится золотым и постоянным,
+// когда доступен удар в лицо.
 export default function BossBanner({ bossName, imageUrl, hp, maxHp, popups, faceAttackable, onPress, height }) {
   const pulse = useRef(new Animated.Value(0)).current
-  const portraitSize = Math.min(height - 20, 120)
+  const portraitSize = Math.min(height - 24, 156)
 
   useEffect(() => {
     const loop = Animated.loop(
@@ -23,26 +25,43 @@ export default function BossBanner({ bossName, imageUrl, hp, maxHp, popups, face
     return () => loop.stop()
   }, [])
 
-  const glowOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.75] })
+  const glowOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.8] })
+  const haloOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.15, 0.4] })
+  const breathScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.025] })
 
   return (
     <Pressable onPress={onPress} disabled={!faceAttackable} style={[s.wrap, { height }]}>
-      <LinearGradient colors={[`${colors.accent}20`, colors.surface, colors.bg]} locations={[0, 0.5, 1]} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={[`${colors.accent}28`, colors.surface, colors.bg]} locations={[0, 0.5, 1]} style={StyleSheet.absoluteFill} />
       <View style={s.row}>
-        <View style={[s.portraitWrap, { width: portraitSize, height: portraitSize, borderRadius: portraitSize * 0.2 }]}>
+        <View style={[s.portraitWrap, { width: portraitSize, height: portraitSize }]}>
           <Animated.View
             pointerEvents="none"
             style={[
-              s.glowRing,
-              { borderRadius: portraitSize * 0.2 + 4 },
-              faceAttackable
-                ? { borderColor: colors.gold, borderWidth: 3, opacity: 1 }
-                : { borderColor: colors.accent, borderWidth: 2, opacity: glowOpacity },
+              s.halo,
+              {
+                width: portraitSize * 1.7,
+                height: portraitSize * 1.7,
+                borderRadius: portraitSize * 0.85,
+                backgroundColor: faceAttackable ? colors.gold : colors.accent,
+                opacity: faceAttackable ? 0.35 : haloOpacity,
+              },
             ]}
           />
-          {imageUrl
-            ? <Image source={{ uri: imageUrl }} style={{ width: portraitSize, height: portraitSize, borderRadius: portraitSize * 0.2 }} resizeMode="cover" />
-            : <View style={[s.imageFallback, { width: portraitSize, height: portraitSize, borderRadius: portraitSize * 0.2 }]}><Text style={s.fallbackIcon}>👹</Text></View>}
+          <Animated.View style={{ transform: [{ scale: breathScale }] }}>
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                s.glowRing,
+                { borderRadius: portraitSize * 0.2 + 5 },
+                faceAttackable
+                  ? { borderColor: colors.gold, borderWidth: 3, opacity: 1 }
+                  : { borderColor: colors.accent, borderWidth: 2.5, opacity: glowOpacity },
+              ]}
+            />
+            {imageUrl
+              ? <Image source={{ uri: imageUrl }} style={{ width: portraitSize, height: portraitSize, borderRadius: portraitSize * 0.2 }} resizeMode="cover" />
+              : <View style={[s.imageFallback, { width: portraitSize, height: portraitSize, borderRadius: portraitSize * 0.2 }]}><Text style={{ fontSize: portraitSize * 0.35 }}>👹</Text></View>}
+          </Animated.View>
         </View>
         <View style={s.info}>
           <Text style={s.name} numberOfLines={1}>
@@ -57,11 +76,11 @@ export default function BossBanner({ bossName, imageUrl, hp, maxHp, popups, face
 
 const s = StyleSheet.create({
   wrap: { width: '100%' },
-  row: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 14 },
-  portraitWrap: { overflow: 'visible', alignItems: 'center', justifyContent: 'center' },
-  glowRing: { position: 'absolute', top: -4, left: -4, right: -4, bottom: -4 },
+  row: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: 14 },
+  portraitWrap: { alignItems: 'center', justifyContent: 'center' },
+  halo: { position: 'absolute' },
+  glowRing: { position: 'absolute', top: -5, left: -5, right: -5, bottom: -5 },
   imageFallback: { backgroundColor: `${colors.accent}22`, alignItems: 'center', justifyContent: 'center' },
-  fallbackIcon: { fontSize: 40 },
   info: { flex: 1 },
-  name: { fontSize: 17, fontWeight: '800', color: colors.text, marginBottom: 10, letterSpacing: 0.3 },
+  name: { fontSize: 18, fontWeight: '800', color: colors.text, marginBottom: 10, letterSpacing: 0.3 },
 })

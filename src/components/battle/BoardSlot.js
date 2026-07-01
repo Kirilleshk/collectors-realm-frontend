@@ -56,7 +56,11 @@ export default function BoardSlot({ entry, size = 60, effect, popups = [], onPre
   }, [effect?.token])
 
   if (!entry || !entry.card) {
-    return <View style={[s.empty, { width: size, height: size, borderRadius: size * 0.18 }]} />
+    return (
+      <View style={[s.empty, { width: size, height: size, borderRadius: size * 0.18 }]}>
+        <View style={[s.emptyGlow, { width: size * 0.4, height: size * 0.4, borderRadius: size * 0.2 }]} />
+      </View>
+    )
   }
 
   const { card, currentHealth } = entry
@@ -99,7 +103,8 @@ export default function BoardSlot({ entry, size = 60, effect, popups = [], onPre
 }
 
 const s = StyleSheet.create({
-  empty: { borderWidth: 1.5, borderStyle: 'dashed', borderColor: colors.border },
+  empty: { borderWidth: 1, borderColor: `${colors.accent}30`, backgroundColor: `${colors.accent}08`, alignItems: 'center', justifyContent: 'center' },
+  emptyGlow: { backgroundColor: `${colors.accent}12` },
   slot: { borderWidth: 1.5 },
   artFallback: { alignItems: 'center', justifyContent: 'center' },
   statsRow: { position: 'absolute', left: 0, right: 0, bottom: 2, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 2 },

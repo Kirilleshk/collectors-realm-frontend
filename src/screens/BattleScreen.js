@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, Pressable, Alert, Platform, useWindowDimensions } from 'react-native'
+import { View, Text, Image, FlatList, StyleSheet, ActivityIndicator, Pressable, Alert, Platform, useWindowDimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as ScreenOrientation from 'expo-screen-orientation'
 import { GestureDetector, Gesture } from 'react-native-gesture-handler'
@@ -294,6 +294,17 @@ export default function BattleScreen({ route, navigation }) {
 
   return (
     <View style={[s.wrap, isLandscape && s.wrapLandscape]}>
+      {!!theme.bossImageUrl && (
+        <Image
+          source={{ uri: theme.bossImageUrl }}
+          style={s.backdrop}
+          resizeMode="cover"
+          blurRadius={Platform.OS === 'android' ? 12 : 30}
+          pointerEvents="none"
+        />
+      )}
+      <View pointerEvents="none" style={s.backdropOverlay} />
+
       <View ref={faceZoneRef} collapsable={false}>
         <BossBanner
           bossName={theme.bossName}
@@ -303,12 +314,12 @@ export default function BattleScreen({ route, navigation }) {
           popups={popups.filter(p => p.target === 'boss')}
           faceAttackable={faceAttackable}
           onPress={faceAttackable ? () => onAttack(null) : undefined}
-          height={isLandscape ? 96 : 150}
+          height={isLandscape ? 108 : 168}
         />
       </View>
 
       <LinearGradient
-        colors={[`${colors.accent}14`, colors.bg, colors.bg]}
+        colors={[`${colors.accent}22`, 'transparent', 'transparent']}
         locations={[0, 0.4, 1]}
         style={s.arena}
       >
@@ -443,6 +454,8 @@ export default function BattleScreen({ route, navigation }) {
 const s = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.bg },
   wrapLandscape: { paddingTop: 0 },
+  backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.35 },
+  backdropOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(10,11,14,0.72)' },
   center: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center' },
   arena: {},
   dragOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 50 },
