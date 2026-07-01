@@ -1,26 +1,11 @@
 import React, { useEffect, useState } from 'react'
-import { View, Text, Modal, Pressable, StyleSheet, Platform, useWindowDimensions } from 'react-native'
+import { View, Text, Modal, Pressable, StyleSheet, useWindowDimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { colors } from '../theme'
+import { useAuth } from '../AuthContext'
+import { users as usersApi } from '../api'
 
-const STORAGE_KEY = 'onboardingTourSeen'
 const ARROW_HALF = 12
-
-async function getSeen() {
-  try {
-    if (Platform.OS === 'web') return localStorage.getItem(STORAGE_KEY)
-    const AsyncStorage = require('@react-native-async-storage/async-storage').default
-    return await AsyncStorage.getItem(STORAGE_KEY)
-  } catch { return null }
-}
-
-async function saveSeen() {
-  try {
-    if (Platform.OS === 'web') { localStorage.setItem(STORAGE_KEY, '1'); return }
-    const AsyncStorage = require('@react-native-async-storage/async-storage').default
-    await AsyncStorage.setItem(STORAGE_KEY, '1')
-  } catch {}
-}
 
 // Шаги тура — каждый указывает на вкладку нижнего меню, которую нужно
 // подсветить (стрелка снизу + не затемнённый таб-бар на этой вкладке)
@@ -40,20 +25,23 @@ export default function OnboardingTour({ navigationRef, showGame, isAdmin, onFin
 
   const insets = useSafeAreaInsets()
   const { width, height } = useWindowDimensions()
+  const { user, updateUser } = useAuth()
   const [step, setStep] = useState(null)
 
+  // Флаг «тур пройден» хранится на сервере в User.onboardingSeen — привязан
+  // к аккаунту, а не к localStorage браузера/телефона, иначе при заходе
+  // с нового устройства/браузера тур показывался бы заново
   useEffect(() => {
-    getSeen().then(seen => {
-      if (seen) { onFinish?.(); setStep(-1); return }
-      navigationRef.current?.navigate(STEPS[0].tab)
-      setStep(0)
-    })
+    if (user?.onboardingSeen) { onFinish?.(); setStep(-1); return }
+    navigationRef.current?.navigate(STEPS[0].tab)
+    setStep(0)
   }, [])
 
   if (step === null || step < 0) return null
 
   function finish() {
-    saveSeen()
+    usersApi.update({ onboardingSeen: true }).catch(() => {})
+    updateUser({ onboardingSeen: true })
     // Переход на «Игра» откладываем до самого конца — иначе на этом шаге
     // GameScreen смонтируется и поверх тура всплывёт StarterPackModal
     if (current.tab === 'Игра') navigationRef.current?.navigate('Игра')
