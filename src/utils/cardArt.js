@@ -70,19 +70,8 @@ export function CardArt({ card, size = 56 }) {
   )
 }
 
-export function BossArt({ size = 88, imageUrl }) {
-  return (
-    <View style={[s.wrap, s.boss, { width: size, height: size, borderRadius: size * 0.22, overflow: 'hidden' }]}>
-      {imageUrl
-        ? <Image source={{ uri: imageUrl }} style={{ width: size, height: size }} resizeMode="cover" />
-        : <Text style={{ fontSize: size * 0.5 }}>👹</Text>}
-    </View>
-  )
-}
-
 const s = StyleSheet.create({
   wrap: { borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
-  boss: { backgroundColor: `${colors.accent}1f`, borderColor: colors.accent },
   innerRing: { position: 'absolute', top: 3, left: 3, right: 3, bottom: 3, borderWidth: 1 },
   corner: { position: 'absolute', width: 5, height: 5, borderRadius: 2.5 },
   cornerTL: { top: 3, left: 3 },

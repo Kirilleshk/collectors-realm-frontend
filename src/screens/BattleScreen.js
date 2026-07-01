@@ -3,10 +3,11 @@ import { View, Text, FlatList, StyleSheet, ActivityIndicator, Pressable, Alert, 
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as ScreenOrientation from 'expo-screen-orientation'
 import { GestureDetector, Gesture } from 'react-native-gesture-handler'
+import { LinearGradient } from 'expo-linear-gradient'
 import { game } from '../api'
 import { colors } from '../theme'
-import { BossArt } from '../utils/cardArt'
 import HpBar from '../components/battle/HpBar'
+import BossBanner from '../components/battle/BossBanner'
 import BoardSlot from '../components/battle/BoardSlot'
 import DeckPile from '../components/battle/DeckPile'
 import HandCard from '../components/battle/HandCard'
@@ -294,19 +295,23 @@ export default function BattleScreen({ route, navigation }) {
   return (
     <View style={[s.wrap, isLandscape && s.wrapLandscape]}>
       <View ref={faceZoneRef} collapsable={false}>
-        <Pressable
-          style={[s.bossSection, faceAttackable && s.faceAttackable]}
+        <BossBanner
+          bossName={theme.bossName}
+          imageUrl={theme.bossImageUrl}
+          hp={battle.bossHp}
+          maxHp={battle.bossMaxHp}
+          popups={popups.filter(p => p.target === 'boss')}
+          faceAttackable={faceAttackable}
           onPress={faceAttackable ? () => onAttack(null) : undefined}
-          disabled={!faceAttackable}
-        >
-          <BossArt size={52} imageUrl={theme.bossImageUrl} />
-          <View style={s.bossInfo}>
-            <Text style={s.bossName}>{theme.bossName}{faceAttackable ? ' — бить в лицо' : ''}</Text>
-            <HpBar label="Босс" value={battle.bossHp} max={battle.bossMaxHp} color={colors.accent} popups={popups.filter(p => p.target === 'boss')} />
-          </View>
-        </Pressable>
+          height={isLandscape ? 96 : 150}
+        />
       </View>
 
+      <LinearGradient
+        colors={[`${colors.accent}14`, colors.bg, colors.bg]}
+        locations={[0, 0.4, 1]}
+        style={s.arena}
+      >
       <View style={s.boardRow}>
         {bossSlots.map((entry, i) => {
           const isTargetable = !!selectedAttacker && !!entry && entry.currentHealth > 0 && !entry.stealthCharge
@@ -328,26 +333,6 @@ export default function BattleScreen({ route, navigation }) {
           )
         })}
       </View>
-
-      {dragLine && (() => {
-        const dx = dragLine.x2 - dragLine.x1
-        const dy = dragLine.y2 - dragLine.y1
-        const length = Math.hypot(dx, dy)
-        const angle = Math.atan2(dy, dx)
-        const cx = (dragLine.x1 + dragLine.x2) / 2
-        const cy = (dragLine.y1 + dragLine.y2) / 2
-        return (
-          <View pointerEvents="none" style={s.dragOverlay}>
-            <View
-              style={[
-                s.dragLine,
-                { left: cx - length / 2, top: cy - 1.5, width: length, transform: [{ rotate: `${angle}rad` }] },
-              ]}
-            />
-            <View pointerEvents="none" style={[s.dragTip, { left: dragLine.x2 - 5, top: dragLine.y2 - 5 }]} />
-          </View>
-        )
-      })()}
 
       <View style={s.deckRow}>
         <DeckPile count={deckCounts.playerDiscard} label="Сброс" icon="🗑️" color={colors.text2} />
@@ -379,6 +364,27 @@ export default function BattleScreen({ route, navigation }) {
           )
         })}
       </View>
+      </LinearGradient>
+
+      {dragLine && (() => {
+        const dx = dragLine.x2 - dragLine.x1
+        const dy = dragLine.y2 - dragLine.y1
+        const length = Math.hypot(dx, dy)
+        const angle = Math.atan2(dy, dx)
+        const cx = (dragLine.x1 + dragLine.x2) / 2
+        const cy = (dragLine.y1 + dragLine.y2) / 2
+        return (
+          <View pointerEvents="none" style={s.dragOverlay}>
+            <View
+              style={[
+                s.dragLine,
+                { left: cx - length / 2, top: cy - 1.5, width: length, transform: [{ rotate: `${angle}rad` }] },
+              ]}
+            />
+            <View pointerEvents="none" style={[s.dragTip, { left: dragLine.x2 - 5, top: dragLine.y2 - 5 }]} />
+          </View>
+        )
+      })()}
 
       <View style={s.playerBar}>
         <HpBar label="Вы" value={battle.playerHp} max={battle.playerMaxHp} color={colors.green} popups={popups.filter(p => p.target === 'player')} />
@@ -438,13 +444,10 @@ const s = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.bg },
   wrapLandscape: { paddingTop: 0 },
   center: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center' },
-  bossSection: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
-  faceAttackable: { borderColor: colors.gold, borderBottomWidth: 2 },
+  arena: {},
   dragOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 50 },
   dragLine: { position: 'absolute', height: 3, borderRadius: 1.5, backgroundColor: colors.gold },
   dragTip: { position: 'absolute', width: 10, height: 10, borderRadius: 5, backgroundColor: colors.gold },
-  bossInfo: { flex: 1 },
-  bossName: { fontSize: 14, fontWeight: '700', color: colors.text, marginBottom: 6 },
   boardRow: { flexDirection: 'row', justifyContent: 'center', gap: 10, paddingVertical: 8 },
   deckRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 24, paddingVertical: 2 },
   playerBar: { paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.border },
