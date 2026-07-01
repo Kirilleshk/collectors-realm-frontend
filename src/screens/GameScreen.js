@@ -27,13 +27,22 @@ export default function GameScreen() {
 
   useEffect(() => { load() }, [])
 
+  // Бэкенд (GET /api/cards/my) уже отдаёт карты отсортированными по редкости
+  // (orderBy card.rarity desc) — поэтому "по умолчанию" сортируем по дате
+  // получения, иначе чип "По редкости" всегда выглядел бы no-op (оба режима
+  // показывали бы один и тот же порядок)
   const sortedCards = useMemo(() => {
-    if (sortBy !== 'rarity') return userCards
-    return [...userCards].sort((a, b) => {
-      const ta = (RARITY[a.card.rarity] || RARITY.COMMON).tier
-      const tb = (RARITY[b.card.rarity] || RARITY.COMMON).tier
-      return tb - ta
-    })
+    const arr = [...userCards]
+    if (sortBy === 'rarity') {
+      arr.sort((a, b) => {
+        const ta = (RARITY[a.card.rarity] || RARITY.COMMON).tier
+        const tb = (RARITY[b.card.rarity] || RARITY.COMMON).tier
+        return tb - ta
+      })
+    } else {
+      arr.sort((a, b) => new Date(a.obtainedAt) - new Date(b.obtainedAt))
+    }
+    return arr
   }, [userCards, sortBy])
 
   async function load() {
