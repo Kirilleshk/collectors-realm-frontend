@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { View, Text, Image, FlatList, StyleSheet, ActivityIndicator, Pressable, Alert, Platform, useWindowDimensions } from 'react-native'
+import { View, Text, Image, FlatList, ScrollView, StyleSheet, ActivityIndicator, Pressable, Alert, Platform, useWindowDimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import * as ScreenOrientation from 'expo-screen-orientation'
 import { GestureDetector, Gesture } from 'react-native-gesture-handler'
 import { LinearGradient } from 'expo-linear-gradient'
 import { game } from '../api'
@@ -50,17 +49,6 @@ export default function BattleScreen({ route, navigation }) {
   const bossSlotWrapRefs = useRef({})
   const playerSlotWrapRefs = useRef({})
   const faceZoneRef = useRef(null)
-
-  // Бой удобнее вести в ландшафте — больше места для стола. На вебе раскладка
-  // сама подстраивается под ширину окна (см. isLandscape ниже), а на нативных
-  // платформах нужно явно повернуть экран; возвращаем портрет при выходе из боя
-  useEffect(() => {
-    if (Platform.OS === 'web') return
-    ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE).catch(() => {})
-    return () => {
-      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {})
-    }
-  }, [])
 
   function popDamage(target, amount) {
     const id = ++popupId.current
@@ -310,6 +298,7 @@ export default function BattleScreen({ route, navigation }) {
       )}
       <View pointerEvents="none" style={[s.backdropOverlay, isDedicatedArena && s.backdropOverlayLight]} />
 
+      <ScrollView style={s.arenaScroll} contentContainerStyle={s.arenaScrollContent} showsVerticalScrollIndicator={false}>
       <View ref={faceZoneRef} collapsable={false}>
         <BossBanner
           bossName={theme.bossName}
@@ -381,6 +370,7 @@ export default function BattleScreen({ route, navigation }) {
         })}
       </View>
       </LinearGradient>
+      </ScrollView>
 
       {dragLine && (() => {
         const dx = dragLine.x2 - dragLine.x1
@@ -464,6 +454,8 @@ const s = StyleSheet.create({
   backdropOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(10,11,14,0.72)' },
   backdropOverlayLight: { backgroundColor: 'rgba(10,11,14,0.5)' },
   center: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center' },
+  arenaScroll: { flexShrink: 1, flexGrow: 0 },
+  arenaScrollContent: { flexGrow: 1, justifyContent: 'center' },
   arena: {},
   dragOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 50 },
   dragLine: { position: 'absolute', height: 3, borderRadius: 1.5, backgroundColor: colors.gold },

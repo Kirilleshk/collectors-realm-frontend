@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { View, Text, Image, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl, Dimensions, TextInput, Animated } from 'react-native'
+import { View, Text, Image, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl, useWindowDimensions, TextInput, Animated } from 'react-native'
 import { products } from '../api'
 import { colors } from '../theme'
 import ScreenBackground from '../components/ScreenBackground'
 
-const { width } = Dimensions.get('window')
 // На узком мобильном экране — 2 колонки как раньше; на широком вебе больше
-// колонок, чтобы карточка не растягивалась на пол-окна (фикс "растянутых карточек")
-const NUM_COLUMNS = width >= 1100 ? 5 : width >= 860 ? 4 : width >= 600 ? 3 : 2
-const CARD_WIDTH = (width - 12 * (NUM_COLUMNS + 1)) / NUM_COLUMNS
+// колонок, чтобы карточка не растягивалась на пол-окна (фикс "растянутых карточек").
+// Считается из useWindowDimensions в компоненте, а не один раз при загрузке модуля,
+// чтобы сетка пересчитывалась при повороте экрана.
+function getNumColumns(width) {
+  return width >= 1100 ? 5 : width >= 860 ? 4 : width >= 600 ? 3 : 2
+}
 
 const FILTERS = [
   { label: 'Все', value: null },
@@ -30,6 +32,9 @@ const STATUS_BADGE = {
 }
 
 export default function ShopScreen({ navigation }) {
+  const { width } = useWindowDimensions()
+  const numColumns = getNumColumns(width)
+  const cardWidth = (width - 12 * (numColumns + 1)) / numColumns
 
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
@@ -161,9 +166,10 @@ export default function ShopScreen({ navigation }) {
       </View>
 
       <FlatList
+        key={numColumns}
         data={filtered}
         keyExtractor={i => i.id}
-        numColumns={NUM_COLUMNS}
+        numColumns={numColumns}
         contentContainerStyle={s.list}
         columnWrapperStyle={s.row}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
@@ -189,7 +195,7 @@ export default function ShopScreen({ navigation }) {
           const badge = getBadge(item)
           return (
             <TouchableOpacity
-              style={s.card}
+              style={[s.card, { width: cardWidth }]}
               onPress={() => navigation.navigate('ProductDetail', { id: item.id })}
               activeOpacity={0.85}
             >
@@ -258,7 +264,7 @@ const s = StyleSheet.create({
   headerTitle: { fontSize: 20, fontWeight: '800', color: colors.text },
   headerCount: { fontSize: 13, color: colors.text2 },
   card: {
-    width: CARD_WIDTH, backgroundColor: colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 16, borderWidth: 1, borderColor: colors.border,
     overflow: 'hidden', marginBottom: 12,
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 },

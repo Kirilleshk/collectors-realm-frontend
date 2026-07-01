@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react'
 import { View, Text, ActivityIndicator, Platform } from 'react-native'
 import { NavigationContainer } from '@react-navigation/native'
 import * as NavigationBar from 'expo-navigation-bar'
-import * as ScreenOrientation from 'expo-screen-orientation'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -13,6 +12,7 @@ import { colors } from './src/theme'
 import * as Notifications from 'expo-notifications'
 import WhatsNewModal from './src/utils/WhatsNewModal'
 import OnboardingTour from './src/utils/OnboardingTour'
+import LocationRequiredModal from './src/utils/LocationRequiredModal'
 import { setAnalyticsUser, track } from './src/utils/analytics'
 
 import LoginScreen from './src/screens/LoginScreen'
@@ -119,6 +119,7 @@ function RootNav() {
   const { user, loading } = useAuth()
   const [tourDone, setTourDone] = useState(false)
   const isAdmin = user?.roles?.includes('ADMIN') || user?.roles?.includes('ANALYTICS') || user?.roles?.includes('MODERATOR')
+  const hasLocation = user?.latitude != null && user?.longitude != null
 
   useEffect(() => {
     if (user?.id) setAnalyticsUser(user.id)
@@ -128,15 +129,6 @@ function RootNav() {
     if (Platform.OS === 'android') {
       NavigationBar.setVisibilityAsync('hidden')
       NavigationBar.setBehaviorAsync('overlay-swipe')
-    }
-  }, [])
-
-  // app.json теперь "orientation": "default" (нужно для ландшафта в BattleScreen),
-  // поэтому весь остальной интерфейс на нативных платформах фиксируем портретом —
-  // BattleScreen сам разлочит и залочит экран обратно на своих mount/unmount
-  useEffect(() => {
-    if (Platform.OS !== 'web') {
-      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {})
     }
   }, [])
 
@@ -166,7 +158,8 @@ function RootNav() {
           <Stack.Screen name="Login" component={LoginScreen} />
         )}
       </Stack.Navigator>
-      {user && (
+      {user && <LocationRequiredModal />}
+      {user && hasLocation && (
         <OnboardingTour
           navigationRef={navigationRef}
           showGame={SHOW_GAME}
@@ -174,7 +167,7 @@ function RootNav() {
           onFinish={() => setTourDone(true)}
         />
       )}
-      {user && tourDone && <WhatsNewModal />}
+      {user && hasLocation && tourDone && <WhatsNewModal />}
     </NavigationContainer>
   )
 }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Image, Modal, KeyboardAvoidingView, Platform, FlatList, Dimensions } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Image, Modal, KeyboardAvoidingView, Platform, FlatList, useWindowDimensions } from 'react-native'
 import * as Location from 'expo-location'
 import { useAuth } from '../AuthContext'
 import { colors } from '../theme'
@@ -9,9 +9,6 @@ import { HELP_ITEMS } from '../utils/WhatsNewModal'
 import { CHANGELOG, CURRENT_VERSION } from '../utils/changelog'
 import { portfolioCollections as collectionsApi, reviews as reviewsApi, support as supportApi } from '../api'
 import ScreenBackground from '../components/ScreenBackground'
-
-const { width } = Dimensions.get('window')
-const COLL_CARD = (width - 48) / 2
 
 let Updates = null
 try { Updates = require('expo-updates') } catch (e) {}
@@ -58,6 +55,8 @@ function ReviewCardSmall({ review: r }) {
 }
 
 export default function ProfileScreen() {
+  const { width } = useWindowDimensions()
+  const collCardWidth = (width - 48) / 2
   const { user, token, logout, updateUser } = useAuth()
   const [editModal, setEditModal] = useState(false)
   const [profileTab, setProfileTab] = useState('profile')
@@ -596,13 +595,13 @@ export default function ProfileScreen() {
             {collections.map(col => (
               <TouchableOpacity
                 key={col.id}
-                style={s.collCard}
+                style={[s.collCard, { width: collCardWidth }]}
                 onPress={() => { setActiveCollection(col); setCollectionDetailVisible(true) }}
               >
                 {col.photos[0] ? (
-                  <Image source={{ uri: col.photos[0].url }} style={s.collCover} />
+                  <Image source={{ uri: col.photos[0].url }} style={[s.collCover, { width: collCardWidth, height: collCardWidth }]} />
                 ) : (
-                  <View style={[s.collCover, { justifyContent: 'center', alignItems: 'center', backgroundColor: colors.surface2 }]}>
+                  <View style={[s.collCover, { width: collCardWidth, height: collCardWidth, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.surface2 }]}>
                     <Text style={{ fontSize: 32 }}>📷</Text>
                   </View>
                 )}
@@ -1037,8 +1036,8 @@ const s = StyleSheet.create({
   addCollBtnText: { color: colors.accent, fontSize: 13, fontWeight: '700' },
   collEmpty: { alignItems: 'center', padding: 32, borderRadius: 14, borderWidth: 1.5, borderColor: colors.border, borderStyle: 'dashed', backgroundColor: colors.surface },
   collGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  collCard: { width: COLL_CARD, borderRadius: 14, overflow: 'hidden', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-  collCover: { width: COLL_CARD, height: COLL_CARD, resizeMode: 'cover' },
+  collCard: { borderRadius: 14, overflow: 'hidden', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  collCover: { resizeMode: 'cover' },
   collCardBody: { padding: 10, gap: 2 },
   collCardName: { fontSize: 13, fontWeight: '700', color: colors.text },
   collCardCount: { fontSize: 11, color: colors.text2 },
