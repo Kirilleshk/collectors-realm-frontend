@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef } from 'react'
-import { View, Text, Animated, Pressable, StyleSheet } from 'react-native'
+import { View, Text, Image, Animated, Pressable, StyleSheet } from 'react-native'
 import { colors } from '../../theme'
-import { RARITY, CardArt, rarityFrameStyle, RarityInnerRing, RarityCorners } from '../../utils/cardArt'
+import { RARITY, rarityFrameStyle, RarityInnerRing, RarityCorners, cardIcon } from '../../utils/cardArt'
 import DamagePopup from './DamagePopup'
 
 // Один слот стола. entry = { instanceId, cardId, currentHealth, card } | null
@@ -73,18 +73,20 @@ export default function BoardSlot({ entry, size = 60, effect, popups = [], onPre
         style={[
           s.slot,
           frame,
-          { width: size, height: size, borderRadius, borderColor: ringColor, backgroundColor: `${r.color}15` },
+          { width: size, height: size, borderRadius, borderColor: ringColor, overflow: 'hidden' },
           (selected || selectable) && { borderWidth: 2.5 },
           { transform: [{ translateY }, { scale }], opacity },
         ]}
       >
-        <CardArt card={card} size={size * 0.5} />
+        {card.imageUrl
+          ? <Image source={{ uri: card.imageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+          : <View style={[StyleSheet.absoluteFill, s.artFallback, { backgroundColor: `${r.color}22` }]}><Text style={{ fontSize: size * 0.4 }}>{cardIcon(card)}</Text></View>}
         <View style={s.statsRow}>
           <View style={[s.statBadge, { backgroundColor: colors.blue }]}>
-            <Text style={s.statText}>⚔️{card.attack}</Text>
+            <Text style={s.statText}>{card.attack}</Text>
           </View>
           <View style={[s.statBadge, { backgroundColor: damaged ? colors.accent : colors.green }]}>
-            <Text style={s.statText}>❤️{currentHealth}</Text>
+            <Text style={s.statText}>{currentHealth}</Text>
           </View>
         </View>
         <RarityInnerRing rarity={card.rarity} borderRadius={borderRadius} />
@@ -98,9 +100,10 @@ export default function BoardSlot({ entry, size = 60, effect, popups = [], onPre
 
 const s = StyleSheet.create({
   empty: { borderWidth: 1.5, borderStyle: 'dashed', borderColor: colors.border },
-  slot: { borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', paddingBottom: 3, gap: 2 },
-  statsRow: { flexDirection: 'row', gap: 3 },
-  statBadge: { borderRadius: 6, paddingHorizontal: 3, paddingVertical: 1 },
-  statText: { fontSize: 9, fontWeight: '700', color: '#fff' },
+  slot: { borderWidth: 1.5 },
+  artFallback: { alignItems: 'center', justifyContent: 'center' },
+  statsRow: { position: 'absolute', left: 0, right: 0, bottom: 2, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 2 },
+  statBadge: { minWidth: 15, height: 15, borderRadius: 7.5, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 2, borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)' },
+  statText: { fontSize: 9, fontWeight: '800', color: '#fff' },
   hitOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
 })
