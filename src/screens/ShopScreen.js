@@ -4,7 +4,10 @@ import { products } from '../api'
 import { colors } from '../theme'
 
 const { width } = Dimensions.get('window')
-const CARD_WIDTH = (width - 36) / 2
+// На узком мобильном экране — 2 колонки как раньше; на широком вебе больше
+// колонок, чтобы карточка не растягивалась на пол-окна (фикс "растянутых карточек")
+const NUM_COLUMNS = width >= 1100 ? 5 : width >= 860 ? 4 : width >= 600 ? 3 : 2
+const CARD_WIDTH = (width - 12 * (NUM_COLUMNS + 1)) / NUM_COLUMNS
 
 const FILTERS = [
   { label: 'Все', value: null },
@@ -159,7 +162,7 @@ export default function ShopScreen({ navigation }) {
       <FlatList
         data={filtered}
         keyExtractor={i => i.id}
-        numColumns={2}
+        numColumns={NUM_COLUMNS}
         contentContainerStyle={s.list}
         columnWrapperStyle={s.row}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
