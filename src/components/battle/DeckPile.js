@@ -18,7 +18,7 @@ export default function DeckPile({ count, label, icon, color = colors.text2, siz
 }
 
 const s = StyleSheet.create({
-  pile: { borderWidth: 1.5, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface2, gap: 1 },
+  pile: { borderWidth: 1, borderColor: `${colors.accent}35`, backgroundColor: `${colors.accent}08`, alignItems: 'center', justifyContent: 'center', gap: 1 },
   backImage: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   countWrap: { alignItems: 'center' },
   count: { fontSize: 13, fontWeight: '700' },
