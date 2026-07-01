@@ -1,11 +1,17 @@
-import React, { useState, useEffect } from 'react'
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, RefreshControl, Pressable, Alert } from 'react-native'
+import React, { useState, useEffect, useMemo } from 'react'
+import { View, Text, Image, FlatList, StyleSheet, ActivityIndicator, RefreshControl, Pressable, Alert } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
+import { LinearGradient } from 'expo-linear-gradient'
 import { game } from '../api'
 import { colors } from '../theme'
-import { RARITY, CardArt } from '../utils/cardArt'
+import { RARITY, rarityFrameStyle, RarityInnerRing, RarityCorners, cardIcon } from '../utils/cardArt'
 import StarterPackModal from '../utils/StarterPackModal'
+
+const SORT_OPTIONS = [
+  { key: 'default', label: 'Как получены' },
+  { key: 'rarity', label: 'По редкости' },
+]
 
 export default function GameScreen() {
   const insets = useSafeAreaInsets()
@@ -17,8 +23,18 @@ export default function GameScreen() {
   const [claimingStarter, setClaimingStarter] = useState(false)
   const [claimError, setClaimError] = useState(null)
   const [starterGrant, setStarterGrant] = useState(null)
+  const [sortBy, setSortBy] = useState('default')
 
   useEffect(() => { load() }, [])
+
+  const sortedCards = useMemo(() => {
+    if (sortBy !== 'rarity') return userCards
+    return [...userCards].sort((a, b) => {
+      const ta = (RARITY[a.card.rarity] || RARITY.COMMON).tier
+      const tb = (RARITY[b.card.rarity] || RARITY.COMMON).tier
+      return tb - ta
+    })
+  }, [userCards, sortBy])
 
   async function load() {
     try {
@@ -66,7 +82,7 @@ export default function GameScreen() {
   return (
     <View style={s.wrap}>
       <FlatList
-        data={userCards}
+        data={sortedCards}
         keyExtractor={uc => uc.id}
         numColumns={2}
         columnWrapperStyle={{ gap: 12 }}
@@ -76,6 +92,19 @@ export default function GameScreen() {
           <View style={s.header}>
             <Text style={s.headerTitle}>🃏 Карты Чужой против Хищника</Text>
             <Text style={s.headerSub}>{userCards.length} карт в коллекции</Text>
+            {userCards.length > 0 && (
+              <View style={s.sortRow}>
+                {SORT_OPTIONS.map(opt => (
+                  <Pressable
+                    key={opt.key}
+                    style={[s.sortChip, sortBy === opt.key && s.sortChipActive]}
+                    onPress={() => setSortBy(opt.key)}
+                  >
+                    <Text style={[s.sortChipText, sortBy === opt.key && s.sortChipTextActive]}>{opt.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
             <Pressable
               style={({ pressed }) => [s.battleBtn, pressed && { opacity: 0.8 }]}
               onPress={onStartBattle}
@@ -107,22 +136,31 @@ export default function GameScreen() {
         renderItem={({ item }) => {
           const card = item.card
           const r = RARITY[card.rarity] || RARITY.COMMON
+          const frame = rarityFrameStyle(card.rarity)
           return (
-            <View style={[s.card, { borderColor: r.color }]}>
-              <View style={s.cardTopRow}>
-                <CardArt card={card} size={44} />
-                <View style={[s.rarityBadge, { backgroundColor: `${r.color}25`, borderColor: r.color }]}>
+            <View style={[s.card, frame, { borderColor: r.color }]}>
+              <View style={s.artArea}>
+                {card.imageUrl
+                  ? <Image source={{ uri: card.imageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                  : <View style={[StyleSheet.absoluteFill, s.artFallback, { backgroundColor: `${r.color}22` }]}><Text style={s.artFallbackIcon}>{cardIcon(card)}</Text></View>}
+                <LinearGradient colors={['transparent', 'rgba(10,11,14,0.92)']} locations={[0.4, 1]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+
+                <View style={[s.costBadge, { backgroundColor: colors.blue }]}><Text style={s.costBadgeText}>{card.cost}</Text></View>
+                <View style={[s.rarityBadge, { backgroundColor: `${r.color}30`, borderColor: r.color }]}>
                   <Text style={[s.rarityText, { color: r.color }]}>{r.label}</Text>
                 </View>
-              </View>
-              <Text style={s.cardName} numberOfLines={2}>{card.name}</Text>
-              <View style={s.statsRow}>
-                <Text style={s.statText}>⚔️ {card.attack}</Text>
-                <Text style={s.statText}>❤️ {card.health}</Text>
-                <Text style={s.statText}>💧 {card.cost}</Text>
+                {item.quantity > 1 ? <View style={s.qtyBadge}><Text style={s.qtyBadgeText}>×{item.quantity}</Text></View> : null}
+
+                <Text style={s.cardName} numberOfLines={2}>{card.name}</Text>
+                <View style={s.medallionsRow}>
+                  <View style={[s.medallion, { backgroundColor: colors.blue }]}><Text style={s.medallionText}>{card.attack}</Text></View>
+                  <View style={[s.medallion, { backgroundColor: colors.accent }]}><Text style={s.medallionText}>{card.health}</Text></View>
+                </View>
+
+                <RarityInnerRing rarity={card.rarity} borderRadius={14} />
+                <RarityCorners rarity={card.rarity} />
               </View>
               {card.effectText ? <Text style={s.effectText} numberOfLines={3}>{card.effectText}</Text> : null}
-              {item.quantity > 1 ? <Text style={s.qtyBadge}>×{item.quantity}</Text> : null}
             </View>
           )
         }}
@@ -141,15 +179,26 @@ const s = StyleSheet.create({
   headerSub: { fontSize: 13, color: colors.text2, marginBottom: 12 },
   battleBtn: { backgroundColor: colors.accent, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
   battleBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
-  card: { flex: 1, backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1.5, padding: 12, marginBottom: 12, minHeight: 150 },
-  cardTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
-  rarityBadge: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2 },
-  rarityText: { fontSize: 10, fontWeight: '700' },
-  cardName: { fontSize: 14, fontWeight: '700', color: colors.text, marginBottom: 8 },
-  statsRow: { flexDirection: 'row', gap: 10, marginBottom: 8 },
-  statText: { fontSize: 12, color: colors.text2, fontWeight: '600' },
-  effectText: { fontSize: 11, color: colors.text2, lineHeight: 15 },
-  qtyBadge: { position: 'absolute', top: 10, right: 10, fontSize: 12, fontWeight: '700', color: colors.text },
+  sortRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  sortChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.border },
+  sortChipActive: { backgroundColor: `${colors.accent}22`, borderColor: colors.accent },
+  sortChipText: { fontSize: 12, fontWeight: '600', color: colors.text2 },
+  sortChipTextActive: { color: colors.accent, fontWeight: '700' },
+  card: { flex: 1, backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1.5, overflow: 'hidden', marginBottom: 12 },
+  artArea: { height: 150 },
+  artFallback: { alignItems: 'center', justifyContent: 'center' },
+  artFallbackIcon: { fontSize: 40 },
+  costBadge: { position: 'absolute', top: 6, left: 6, width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.55)' },
+  costBadgeText: { fontSize: 12, fontWeight: '800', color: '#fff' },
+  rarityBadge: { position: 'absolute', top: 6, right: 6, borderWidth: 1, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
+  rarityText: { fontSize: 9, fontWeight: '700' },
+  cardName: { position: 'absolute', left: 8, right: 8, bottom: 34, fontSize: 13, fontWeight: '800', color: '#fff', lineHeight: 16, textShadowColor: 'rgba(0,0,0,0.9)', textShadowRadius: 3, textShadowOffset: { width: 0, height: 1 } },
+  medallionsRow: { position: 'absolute', left: 0, right: 0, bottom: 6, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 8 },
+  medallion: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.6)' },
+  medallionText: { fontSize: 12, fontWeight: '800', color: '#fff' },
+  effectText: { fontSize: 11, color: colors.text2, lineHeight: 15, padding: 10, minHeight: 50 },
+  qtyBadge: { position: 'absolute', top: 34, right: 6, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
+  qtyBadgeText: { fontSize: 11, fontWeight: '700', color: '#fff' },
   empty: { alignItems: 'center', paddingTop: 80 },
   emptyIcon: { fontSize: 48, marginBottom: 12 },
   emptyTitle: { fontSize: 17, fontWeight: '700', color: colors.text, marginBottom: 6 },
