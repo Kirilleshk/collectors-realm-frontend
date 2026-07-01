@@ -258,24 +258,12 @@ no text, no watermark`.
 - ✅ GOLD (2/2): Предалиен, Волк
 - ✅ SILVER (2/2): Преторианец, Старейшина
 - ✅ EPIC (4/4): Опустошитель, Городской охотник, Дробитель, Супер-хищник
-- ⏳ COMMON (10/12): все готовы и залиты, КРОМЕ Берсерк и Сокольник (генерация
-  не запущена — не хватило токенов Leonardo 23.06, промпты ниже)
+- ✅ COMMON (12/12): все готовы и залиты, включая Берсерк и Сокольник (01.07.2026)
 
-**25.06.2026: 18 карт + босс «Королева чужих» + рубашка колоды залиты на
-Cloudinary и прописаны** в `prisma/set-card-images-2026-06-25.sql` —
-выполнить файл в Supabase SQL Editor, если ещё не выполнен.
-
-**Напомнить про эти 2 карты**, когда пользователь спросит что-то вроде «что
-сегодня по работе» / «напомни про карты» / «что по задачам»:
-
-- **Берсерк** (Хищники, COMMON) → сохранить как `berserk.png`
-  ```
-  Cinematic dark sci-fi movie poster style, a frenzied Predator (Yautja) berserker mid-charge, reckless aggressive posture, twin wrist blades raised high, battle-worn armor with torn plating, wild feral energy, dark jungle background with orange firelight glow, photorealistic, hyper-detailed, square 1:1 composition, dramatic dynamic lighting, no text, no watermark
-  ```
-- **Сокольник** (Хищники, COMMON) → сохранить как `sokolnik.png`
-  ```
-  Cinematic dark sci-fi movie poster style, a Predator (Yautja) falconer-hunter with a small biomechanical hunting drone shaped like a hawk perched on his shoulder, lean tactical armor, faint cloaking shimmer, calm calculating stance in misty jungle, faint blue plasma glow, photorealistic, hyper-detailed, square 1:1 composition, dramatic rim light, no text, no watermark
-  ```
+**Все 20 карт + босс «Королева чужих» + рубашка колоды имеют арт** (последние —
+Берсерк и Сокольник — залиты 01.07.2026, `prisma/set-card-images-2026-07-01.sql`,
+выполнить в Supabase SQL Editor, если ещё не выполнен). Более нет карт без арта
+в теме «Чужой против Хищника».
 
 **Пайплайн загрузки:** файл из `art-cards/<имя-транслит>.png` → unsigned upload
 на Cloudinary (`api.cloudinary.com/v1_1/dqutmb1rm/image/upload`, preset
