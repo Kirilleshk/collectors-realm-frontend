@@ -5,6 +5,7 @@ import {
 } from 'react-native'
 import { news as newsApi } from '../api'
 import { colors } from '../theme'
+import ScreenBackground from '../components/ScreenBackground'
 
 function FeedCard({ item }) {
   const date = new Date(item.date)
@@ -101,10 +102,10 @@ export default function ReleasesScreen() {
   )
 
   return (
+    <ScreenBackground>
     <FlatList
       data={feed}
       keyExtractor={i => i.id}
-      style={{ backgroundColor: colors.bg }}
       contentContainerStyle={{ paddingVertical: 8 }}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={() => loadFeed(true)} tintColor={colors.accent} />
@@ -130,11 +131,12 @@ export default function ReleasesScreen() {
       renderItem={({ item }) => <FeedCard item={item} />}
       ItemSeparatorComponent={() => <View style={s.separator} />}
     />
+    </ScreenBackground>
   )
 }
 
 const s = StyleSheet.create({
-  center: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
   card: { backgroundColor: colors.surface, paddingBottom: 14 },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 12 },

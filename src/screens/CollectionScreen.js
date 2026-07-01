@@ -265,8 +265,8 @@ export default function CollectionScreen() {
 }
 
 const s = StyleSheet.create({
-  wrap: { flex: 1, backgroundColor: colors.bg },
-  center: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center' },
+  wrap: { flex: 1 },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   statsBar: { flexDirection: 'row', backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 14 },
   statItem: { flex: 1, alignItems: 'center' },
   statValue: { fontSize: 18, fontWeight: '800', color: colors.text },

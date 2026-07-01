@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { View, Text, Pressable, StyleSheet } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { colors } from '../theme'
+import ScreenBackground from '../components/ScreenBackground'
 import CollectionScreen from './CollectionScreen'
 import WishlistScreen from './WishlistScreen'
 
@@ -15,7 +16,7 @@ export default function MyItemsScreen() {
   const [tab, setTab] = useState('collection')
 
   return (
-    <View style={s.wrap}>
+    <ScreenBackground style={s.wrap}>
       <View style={[s.switcher, { paddingTop: insets.top + 8 }]}>
         {TABS.map(t => (
           <Pressable
@@ -34,12 +35,12 @@ export default function MyItemsScreen() {
       <View style={[s.page, { display: tab === 'wishlist' ? 'flex' : 'none' }]}>
         <WishlistScreen />
       </View>
-    </View>
+    </ScreenBackground>
   )
 }
 
 const s = StyleSheet.create({
-  wrap: { flex: 1, backgroundColor: colors.bg },
+  wrap: { flex: 1 },
   switcher: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingBottom: 10, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
   switchBtn: { flex: 1, borderRadius: 10, paddingVertical: 10, alignItems: 'center', backgroundColor: colors.surface2 },
   switchBtnActive: { backgroundColor: colors.accent },

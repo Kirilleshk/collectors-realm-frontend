@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { View, Text, Image, FlatList, StyleSheet, ActivityIndicator, RefreshControl, Pressable, Alert } from 'react-native'
+import { View, Text, Image, FlatList, StyleSheet, ActivityIndicator, RefreshControl, Pressable, Alert, Platform } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -24,6 +24,7 @@ export default function GameScreen() {
   const [claimError, setClaimError] = useState(null)
   const [starterGrant, setStarterGrant] = useState(null)
   const [sortBy, setSortBy] = useState('default')
+  const [themeArt, setThemeArt] = useState(null)
 
   useEffect(() => { load() }, [])
 
@@ -50,6 +51,11 @@ export default function GameScreen() {
       const res = await game.getMyCards()
       setUserCards(Array.isArray(res.data) ? res.data : [])
     } catch (e) { console.error(e) }
+    try {
+      const themes = await game.getThemes()
+      const list = Array.isArray(themes.data) ? themes.data : []
+      if (list[0]?.bossImageUrl) setThemeArt(list[0].bossImageUrl)
+    } catch (e) { /* фон не критичен, тихо пропускаем */ }
     setLoading(false)
   }
 
@@ -90,6 +96,10 @@ export default function GameScreen() {
 
   return (
     <View style={s.wrap}>
+      {!!themeArt && (
+        <Image source={{ uri: themeArt }} style={s.backdrop} resizeMode="cover" blurRadius={Platform.OS === 'android' ? 12 : 30} pointerEvents="none" />
+      )}
+      <View pointerEvents="none" style={s.backdropOverlay} />
       <FlatList
         data={sortedCards}
         keyExtractor={uc => uc.id}
@@ -182,6 +192,8 @@ export default function GameScreen() {
 const s = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.bg },
   center: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center' },
+  backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.5 },
+  backdropOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(10,11,14,0.55)' },
   list: { padding: 16 },
   header: { marginBottom: 16 },
   headerTitle: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 4 },

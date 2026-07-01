@@ -271,8 +271,8 @@ export default function WishlistScreen() {
 }
 
 const s = StyleSheet.create({
-  wrap: { flex: 1, backgroundColor: colors.bg },
-  center: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center' },
+  wrap: { flex: 1 },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   sortBar: { backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
   sortList: { paddingHorizontal: 12, gap: 8, paddingVertical: 10 },
   sortBtn: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface2 },

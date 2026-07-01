@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, StyleSheet, 
 import { colors } from '../theme'
 import { support as supportApi } from '../api'
 import SmartInput from '../utils/SmartInput'
+import ScreenBackground from '../components/ScreenBackground'
 
 export default function ChatScreen({ route }) {
   const { productName, productId } = route.params || {}
@@ -42,6 +43,7 @@ export default function ChatScreen({ route }) {
   }
 
   return (
+    <ScreenBackground>
     <KeyboardAvoidingView style={s.wrap} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
       <View style={s.productBar}>
         <Text style={s.productIcon}>🗿</Text>
@@ -89,11 +91,12 @@ export default function ChatScreen({ route }) {
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
+    </ScreenBackground>
   )
 }
 
 const s = StyleSheet.create({
-  wrap: { flex: 1, backgroundColor: colors.bg },
+  wrap: { flex: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   productBar: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
   productIcon: { fontSize: 32 },

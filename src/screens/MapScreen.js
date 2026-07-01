@@ -4,6 +4,7 @@ import { WebView } from 'react-native-webview'
 import * as Location from 'expo-location'
 import { useAuth } from '../AuthContext'
 import { colors } from '../theme'
+import ScreenBackground from '../components/ScreenBackground'
 
 const API = 'https://collectors-realm-backend.onrender.com/api'
 
@@ -314,7 +315,7 @@ export default function MapScreen({ navigation }) {
   )
 
   return (
-    <View style={s.wrap}>
+    <ScreenBackground style={s.wrap}>
       <FilterBar />
 
       {users.length === 0 ? (
@@ -385,12 +386,12 @@ export default function MapScreen({ navigation }) {
           </View>
         </TouchableOpacity>
       </Modal>
-    </View>
+    </ScreenBackground>
   )
 }
 
 const s = StyleSheet.create({
-  wrap: { flex: 1, backgroundColor: colors.bg },
+  wrap: { flex: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.bg, gap: 12 },
   filtersWrap: { borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface },
   filters: { paddingVertical: 10 },

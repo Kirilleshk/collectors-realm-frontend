@@ -6,6 +6,7 @@ import { colors } from '../theme'
 import { pickAndUploadPhoto } from '../utils/uploadPhoto'
 import SmartInput from '../utils/SmartInput'
 import { track } from '../utils/analytics'
+import ScreenBackground from '../components/ScreenBackground'
 
 const CLOUD_NAME = 'dqutmb1rm'
 const UPLOAD_PRESET = 'collectors_realm'
@@ -212,6 +213,7 @@ export default function LoginScreen() {
   )
 
   return (
+    <ScreenBackground>
     <SafeAreaView style={s.wrap}>
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
@@ -431,11 +433,12 @@ export default function LoginScreen() {
       </ScrollView>
     </KeyboardAvoidingView>
     </SafeAreaView>
+    </ScreenBackground>
   )
 }
 
 const s = StyleSheet.create({
-  wrap: { flex: 1, backgroundColor: colors.bg },
+  wrap: { flex: 1 },
   scroll: { flexGrow: 1, justifyContent: 'center', padding: 24 },
   header: { alignItems: 'center', marginBottom: 36 },
   logoWrap: {

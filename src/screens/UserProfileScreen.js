@@ -3,6 +3,7 @@ import { View, Text, ScrollView, StyleSheet, ActivityIndicator, Image, Touchable
 import { colors } from '../theme'
 import { reviews as reviewsApi } from '../api'
 import { useAuth } from '../AuthContext'
+import ScreenBackground from '../components/ScreenBackground'
 
 const API = 'https://collectors-realm-backend.onrender.com/api'
 
@@ -91,6 +92,7 @@ export default function UserProfileScreen({ route, navigation }) {
   const alreadyReviewed = reviewData.reviews?.some(r => r.fromUserId === me?.id)
 
   return (
+    <ScreenBackground>
     <ScrollView style={s.wrap} showsVerticalScrollIndicator={false}>
       {/* Шапка */}
       <View style={s.header}>
@@ -232,12 +234,13 @@ export default function UserProfileScreen({ route, navigation }) {
         </View>
       </Modal>
     </ScrollView>
+    </ScreenBackground>
   )
 }
 
 const s = StyleSheet.create({
-  wrap: { flex: 1, backgroundColor: colors.bg },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.bg },
+  wrap: { flex: 1 },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: { alignItems: 'center', paddingTop: 32, paddingBottom: 24, paddingHorizontal: 24, borderBottomWidth: 1, borderBottomColor: colors.border },
   avatar: { width: 90, height: 90, borderRadius: 24, marginBottom: 16 },
   avatarPlaceholder: { width: 90, height: 90, borderRadius: 24, backgroundColor: `${colors.blue}30`, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: `${colors.blue}60`, marginBottom: 16 },

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native'
 import { notifications as notifApi } from '../api'
 import { colors } from '../theme'
+import ScreenBackground from '../components/ScreenBackground'
 
 const TYPE_CONFIG = {
   MONTHLY_REPORT: { icon: '📊', color: colors.blue },
@@ -63,7 +64,7 @@ export default function NotificationsScreen({ navigation }) {
   )
 
   return (
-    <View style={s.wrap}>
+    <ScreenBackground style={s.wrap}>
       {unread > 0 && (
         <TouchableOpacity style={s.markAllBtn} onPress={markAllRead}>
           <Text style={s.markAllText}>Отметить все прочитанными ✓</Text>
@@ -102,13 +103,13 @@ export default function NotificationsScreen({ navigation }) {
           )
         }}
       />
-    </View>
+    </ScreenBackground>
   )
 }
 
 const s = StyleSheet.create({
-  wrap: { flex: 1, backgroundColor: colors.bg },
-  center: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center' },
+  wrap: { flex: 1 },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   markAllBtn: { padding: 14, borderBottomWidth: 1, borderBottomColor: colors.border, alignItems: 'flex-end', paddingHorizontal: 20 },
   markAllText: { color: colors.accent, fontSize: 13, fontWeight: '600' },
   list: { padding: 16, gap: 10 },

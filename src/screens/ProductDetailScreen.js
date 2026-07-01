@@ -5,6 +5,7 @@ import { useAuth } from '../AuthContext'
 import { colors } from '../theme'
 import { pickAndUploadPhoto } from '../utils/uploadPhoto'
 import { track } from '../utils/analytics'
+import ScreenBackground from '../components/ScreenBackground'
 
 const CLOUD_NAME = 'dqutmb1rm'
 const UPLOAD_PRESET = 'collectors_realm'
@@ -188,6 +189,7 @@ export default function ProductDetailScreen({ route, navigation }) {
   const currentPhoto = allPhotos[currentPhotoIndex]?.url || null
 
   return (
+    <ScreenBackground>
     <ScrollView style={s.wrap} showsVerticalScrollIndicator={false}>
       {/* Фото */}
       <View style={s.imageWrap}>
@@ -430,12 +432,13 @@ export default function ProductDetailScreen({ route, navigation }) {
         ) : null}
       </View>
     </ScrollView>
+    </ScreenBackground>
   )
 }
 
 const s = StyleSheet.create({
-  wrap: { flex: 1, backgroundColor: colors.bg },
-  center: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center' },
+  wrap: { flex: 1 },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   errorText: { color: colors.text2, fontSize: 16 },
   imageWrap: { height: 280, backgroundColor: colors.surface, justifyContent: 'center', alignItems: 'center', position: 'relative', borderBottomWidth: 1, borderBottomColor: colors.border },
   image: { width: '100%', height: '100%' },

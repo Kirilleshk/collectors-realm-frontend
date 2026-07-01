@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { View, Text, Image, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl, Dimensions, TextInput, Animated } from 'react-native'
 import { products } from '../api'
 import { colors } from '../theme'
+import ScreenBackground from '../components/ScreenBackground'
 
 const { width } = Dimensions.get('window')
 // На узком мобильном экране — 2 колонки как раньше; на широком вебе больше
@@ -115,7 +116,7 @@ export default function ShopScreen({ navigation }) {
   )
 
   return (
-    <View style={s.wrap}>
+    <ScreenBackground style={s.wrap}>
       {/* Кнопка Анонсы */}
       <TouchableOpacity style={s.announceBanner} onPress={() => navigation.navigate('Releases')}>
         <Text style={s.announceBannerText}>📅 Анонсы новых фигурок →</Text>
@@ -221,12 +222,12 @@ export default function ShopScreen({ navigation }) {
           )
         }}
       />
-    </View>
+    </ScreenBackground>
   )
 }
 
 const s = StyleSheet.create({
-  wrap: { flex: 1, backgroundColor: colors.bg },
+  wrap: { flex: 1 },
   center: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center', gap: 12 },
   loadingText: { color: colors.text2, fontSize: 14 },
   slowText: { color: colors.text2, fontSize: 12, textAlign: 'center', paddingHorizontal: 32, marginTop: 4 },

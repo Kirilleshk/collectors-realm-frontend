@@ -8,6 +8,7 @@ import SmartInput from '../utils/SmartInput'
 import { HELP_ITEMS } from '../utils/WhatsNewModal'
 import { CHANGELOG, CURRENT_VERSION } from '../utils/changelog'
 import { portfolioCollections as collectionsApi, reviews as reviewsApi, support as supportApi } from '../api'
+import ScreenBackground from '../components/ScreenBackground'
 
 const { width } = Dimensions.get('window')
 const COLL_CARD = (width - 48) / 2
@@ -346,6 +347,7 @@ export default function ProfileScreen() {
   }
 
   return (
+    <ScreenBackground>
     <ScrollView style={s.wrap} showsVerticalScrollIndicator={false}>
 
       {/* Переключатель вкладок профиля */}
@@ -980,11 +982,12 @@ export default function ProfileScreen() {
 
       </>}
     </ScrollView>
+    </ScreenBackground>
   )
 }
 
 const s = StyleSheet.create({
-  wrap: { flex: 1, backgroundColor: colors.bg },
+  wrap: { flex: 1 },
   profileTabs: { flexDirection: 'row', backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
   profileTab: { flex: 1, paddingVertical: 14, alignItems: 'center' },
   profileTabActive: { borderBottomWidth: 2, borderBottomColor: colors.accent },

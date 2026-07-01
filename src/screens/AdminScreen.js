@@ -9,6 +9,7 @@ import { notifications as notifApi, releases as releasesApi, support as supportA
 import { pickAndUploadPhoto } from '../utils/uploadPhoto'
 import SmartInput from '../utils/SmartInput'
 import { track } from '../utils/analytics'
+import ScreenBackground from '../components/ScreenBackground'
 
 const CLOUD_NAME = 'dqutmb1rm'
 const UPLOAD_PRESET = 'collectors_realm'
@@ -384,7 +385,7 @@ export default function AdminScreen() {
   )
 
   return (
-    <View style={s.wrap}>
+    <ScreenBackground style={s.wrap}>
       {/* Переключатель вкладок */}
       <View style={s.tabs}>
         {isAdmin && <>
@@ -932,13 +933,13 @@ export default function AdminScreen() {
           </ScrollView>
         </KeyboardAvoidingView>
       </Modal>
-    </View>
+    </ScreenBackground>
   )
 }
 
 const s = StyleSheet.create({
-  wrap: { flex: 1, backgroundColor: colors.bg },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.bg },
+  wrap: { flex: 1 },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   empty: { alignItems: 'center', paddingTop: 60 },
   tabs: { flexDirection: 'row', backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
   tabBtn: { flex: 1, paddingVertical: 14, alignItems: 'center' },
