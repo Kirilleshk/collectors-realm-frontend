@@ -5,7 +5,7 @@ import { useNavigation } from '@react-navigation/native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { game } from '../api'
 import { colors } from '../theme'
-import { RARITY, rarityFrameStyle, RarityInnerRing, RarityCorners, cardIcon } from '../utils/cardArt'
+import { RARITY, rarityFrameStyle, RarityInnerRing, RarityCorners, cardIcon, ManaBadge, HealthBadge, AttackBadge } from '../utils/cardArt'
 import StarterPackModal from '../utils/StarterPackModal'
 
 const SORT_OPTIONS = [
@@ -164,7 +164,7 @@ export default function GameScreen() {
                   : <View style={[StyleSheet.absoluteFill, s.artFallback, { backgroundColor: `${r.color}22` }]}><Text style={s.artFallbackIcon}>{cardIcon(card)}</Text></View>}
                 <LinearGradient colors={['transparent', 'rgba(10,11,14,0.92)']} locations={[0.4, 1]} style={StyleSheet.absoluteFill} pointerEvents="none" />
 
-                <View style={[s.costBadge, { backgroundColor: colors.blue }]}><Text style={s.costBadgeText}>{card.cost}</Text></View>
+                <View style={s.costBadge}><ManaBadge value={card.cost} size={20} /></View>
                 <View style={[s.rarityBadge, { backgroundColor: `${r.color}30`, borderColor: r.color }]}>
                   <Text style={[s.rarityText, { color: r.color }]}>{r.label}</Text>
                 </View>
@@ -172,8 +172,8 @@ export default function GameScreen() {
 
                 <Text style={s.cardName} numberOfLines={2}>{card.name}</Text>
                 <View style={s.medallionsRow}>
-                  <View style={[s.medallion, { backgroundColor: colors.blue }]}><Text style={s.medallionText}>{card.attack}</Text></View>
-                  <View style={[s.medallion, { backgroundColor: colors.accent }]}><Text style={s.medallionText}>{card.health}</Text></View>
+                  <HealthBadge value={card.health} size={24} />
+                  <AttackBadge value={card.attack} size={24} />
                 </View>
 
                 <RarityInnerRing rarity={card.rarity} borderRadius={14} />
@@ -209,14 +209,11 @@ const s = StyleSheet.create({
   artArea: { height: 150 },
   artFallback: { alignItems: 'center', justifyContent: 'center' },
   artFallbackIcon: { fontSize: 40 },
-  costBadge: { position: 'absolute', top: 6, left: 6, width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.55)' },
-  costBadgeText: { fontSize: 12, fontWeight: '800', color: '#fff' },
+  costBadge: { position: 'absolute', top: 3, left: 3 },
   rarityBadge: { position: 'absolute', top: 6, right: 6, borderWidth: 1, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
   rarityText: { fontSize: 9, fontWeight: '700' },
   cardName: { position: 'absolute', left: 8, right: 8, bottom: 34, fontSize: 13, fontWeight: '800', color: '#fff', lineHeight: 16, textShadowColor: 'rgba(0,0,0,0.9)', textShadowRadius: 3, textShadowOffset: { width: 0, height: 1 } },
   medallionsRow: { position: 'absolute', left: 0, right: 0, bottom: 6, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 8 },
-  medallion: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.6)' },
-  medallionText: { fontSize: 12, fontWeight: '800', color: '#fff' },
   effectText: { fontSize: 11, color: colors.text2, lineHeight: 15, padding: 10, minHeight: 50 },
   qtyBadge: { position: 'absolute', top: 34, right: 6, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
   qtyBadgeText: { fontSize: 11, fontWeight: '700', color: '#fff' },

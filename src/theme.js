@@ -8,6 +8,7 @@ export const colors = {
   accent: '#e04e28',
   blue: '#2e7fd6',
   green: '#2aaa60',
+  red: '#e5484d',
   purple: '#8b4fd4',
   silver: '#b9bdc6',
   gold: '#e0b144',

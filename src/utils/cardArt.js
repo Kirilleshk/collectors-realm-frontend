@@ -1,5 +1,6 @@
 import React from 'react'
 import { View, Text, Image, StyleSheet } from 'react-native'
+import Svg, { Path, Circle } from 'react-native-svg'
 import { colors } from '../theme'
 
 // Палитра редкости — общая для экрана коллекции и боя. tier растёт с редкостью —
@@ -70,6 +71,68 @@ export function CardArt({ card, size = 56 }) {
   )
 }
 
+// Значки характеристик карты — общие для HandCard/BoardSlot/GameScreen, чтобы
+// мана/атака/жизни выглядели одинаково везде и менялись в одном месте.
+// Текст поверх — через absolute overlay, а не children Svg, т.к. react-native-svg
+// на вебе не всегда корректно позиционирует вложенный RN Text внутри Svg.
+function StatText({ value, fontSize }) {
+  return (
+    <View style={s.statTextWrap} pointerEvents="none">
+      <Text style={[s.statText, { fontSize, lineHeight: fontSize + 1 }]}>{value}</Text>
+    </View>
+  )
+}
+
+// Мана — остаётся круглой (по просьбе заказчика), но получает магический ореол:
+// внешнее блёклое кольцо-свечение + цветная тень (тот же приём, что и в
+// rarityFrameStyle — на Android даёт elevation, на iOS/web настоящий блюр)
+export function ManaBadge({ value, size = 24, style }) {
+  const outer = size * 1.55
+  const halo = size * 1.3
+  return (
+    <View style={[s.manaShadow, { width: outer, height: outer, shadowColor: colors.blue }, style]}>
+      <View style={[s.manaHalo, { width: halo, height: halo, borderRadius: halo / 2, top: (outer - halo) / 2, left: (outer - halo) / 2, backgroundColor: `${colors.blue}33` }]} />
+      <View style={[s.manaCircle, { width: size, height: size, borderRadius: size / 2, top: (outer - size) / 2, left: (outer - size) / 2 }]}>
+        <Svg width={size} height={size} viewBox="0 0 24 24">
+          <Circle cx="12" cy="12" r="11" fill={colors.blue} stroke="rgba(255,255,255,0.65)" strokeWidth="1.5" />
+        </Svg>
+        <StatText value={value} fontSize={size * 0.5} />
+      </View>
+    </View>
+  )
+}
+
+const SHIELD_PATH = 'M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z'
+// Клинок-медальон: вытянутый ромб (аналог классической игровой иконки атаки) —
+// сплошная заливка в средней части, поэтому цифра всегда лежит на цвете, а не
+// на прозрачных зазорах, как было бы у составного меча из тонких примитивов
+const BLADE_PATH = 'M12 1L18 12L12 23L6 12Z'
+
+// Жизни — щит. damaged=true подсвечивает текущим уроном (accent), как раньше
+export function HealthBadge({ value, size = 24, damaged, style }) {
+  const fill = damaged ? colors.accent : colors.green
+  return (
+    <View style={[{ width: size, height: size }, style]}>
+      <Svg width={size} height={size} viewBox="0 0 24 24">
+        <Path d={SHIELD_PATH} fill={fill} stroke="rgba(255,255,255,0.6)" strokeWidth="1" />
+      </Svg>
+      <StatText value={value} fontSize={size * 0.42} />
+    </View>
+  )
+}
+
+// Атака — клинок-ромб красного цвета
+export function AttackBadge({ value, size = 24, style }) {
+  return (
+    <View style={[{ width: size, height: size }, style]}>
+      <Svg width={size} height={size} viewBox="0 0 24 24">
+        <Path d={BLADE_PATH} fill={colors.red} stroke="rgba(255,255,255,0.6)" strokeWidth="1" />
+      </Svg>
+      <StatText value={value} fontSize={size * 0.42} />
+    </View>
+  )
+}
+
 const s = StyleSheet.create({
   wrap: { borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   innerRing: { position: 'absolute', top: 3, left: 3, right: 3, bottom: 3, borderWidth: 1 },
@@ -78,4 +141,9 @@ const s = StyleSheet.create({
   cornerTR: { top: 3, right: 3 },
   cornerBL: { bottom: 3, left: 3 },
   cornerBR: { bottom: 3, right: 3 },
+  statTextWrap: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
+  statText: { fontWeight: '800', color: '#fff', textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.85)', textShadowRadius: 2, textShadowOffset: { width: 0, height: 1 } },
+  manaShadow: { alignItems: 'center', justifyContent: 'center', shadowOpacity: 0.85, shadowRadius: 6, shadowOffset: { width: 0, height: 0 }, elevation: 6 },
+  manaHalo: { position: 'absolute' },
+  manaCircle: { position: 'absolute', overflow: 'hidden' },
 })

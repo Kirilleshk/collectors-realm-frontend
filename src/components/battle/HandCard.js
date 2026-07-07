@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react'
 import { View, Text, Image, Pressable, Animated, StyleSheet } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { colors } from '../../theme'
-import { RARITY, rarityFrameStyle, RarityInnerRing, RarityCorners, cardIcon } from '../../utils/cardArt'
+import { RARITY, rarityFrameStyle, RarityInnerRing, RarityCorners, cardIcon, ManaBadge, HealthBadge, AttackBadge } from '../../utils/cardArt'
 
 const CARD_WIDTH = 96
 const CARD_HEIGHT = 136
@@ -59,15 +59,13 @@ export default function HandCard({ entry, playable, onPress, width = CARD_WIDTH,
 
         <LinearGradient colors={['transparent', 'rgba(10,11,14,0.92)']} locations={[0.4, 1]} style={StyleSheet.absoluteFill} pointerEvents="none" />
 
-        <View style={[s.costBadge, { backgroundColor: colors.blue }]}>
-          <Text style={s.costBadgeText}>{card.cost}</Text>
-        </View>
+        <View style={s.costBadge}><ManaBadge value={card.cost} size={20} /></View>
 
         <Text style={s.cardName} numberOfLines={2}>{card.name}</Text>
 
         <View style={s.medallionsRow}>
-          <View style={[s.medallion, { backgroundColor: colors.blue }]}><Text style={s.medallionText}>{card.attack}</Text></View>
-          <View style={[s.medallion, { backgroundColor: colors.accent }]}><Text style={s.medallionText}>{card.health}</Text></View>
+          <HealthBadge value={card.health} size={22} />
+          <AttackBadge value={card.attack} size={22} />
         </View>
 
         <RarityInnerRing rarity={card.rarity} borderRadius={14} />
@@ -82,10 +80,7 @@ const s = StyleSheet.create({
   cardOff: { opacity: 0.4 },
   artFallback: { alignItems: 'center', justifyContent: 'center' },
   artFallbackIcon: { fontSize: 40 },
-  costBadge: { position: 'absolute', top: 5, left: 5, width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.55)' },
-  costBadgeText: { fontSize: 12, fontWeight: '800', color: '#fff' },
+  costBadge: { position: 'absolute', top: 2, left: 2 },
   cardName: { position: 'absolute', left: 6, right: 6, bottom: 30, fontSize: 11, fontWeight: '800', color: '#fff', lineHeight: 13, textShadowColor: 'rgba(0,0,0,0.9)', textShadowRadius: 3, textShadowOffset: { width: 0, height: 1 } },
   medallionsRow: { position: 'absolute', left: 0, right: 0, bottom: 4, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 6 },
-  medallion: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.6)' },
-  medallionText: { fontSize: 11, fontWeight: '800', color: '#fff' },
 })
