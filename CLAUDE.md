@@ -237,6 +237,24 @@ const d = await r.json()
 
 ## Итоги сессий
 
+**08.07.2026 (2)** — фикс мобильного браузера + подсказки в игре:
+- ✅ Нижний таб-бар перекрывался тулбаром мобильного браузера (Safari/
+  Telegram in-app на iPhone) — репортнул пользователь со скриншотом.
+  Причина: `html/body{height:100%}` на мобильном резолвится в «большой»
+  viewport без учёта показанного тулбара браузера. Фикс — `public/index.html`
+  (Expo Metro web подхватывает вместо встроенного шаблона; ВАЖНО — путь
+  именно `public/`, не `web/`, хотя `npx expo customize` предлагает
+  `web/index.html`) с `100dvh` (фолбэк на `100%`) и `viewport-fit=cover` в
+  meta viewport — заодно чинит `env(safe-area-inset-bottom)`, который уже
+  использует `useSafeAreaInsets()` в `App.js`, но раньше не получал данных
+  в браузере.
+- ✅ Кнопка «❔ Как играть» на GameScreen — модалка с правилами (цель,
+  мана/здоровье/атака, розыгрыш карт, атака, конец хода), переиспользует
+  `ManaBadge`/`HealthBadge`/`AttackBadge` из редизайна иконок этой же сессии
+  (`src/utils/HowToPlayModal.js`).
+- Оба фикса проверены в браузере (Edge/Playwright) и задеплоены одним
+  деплоем на Cloudflare.
+
 **08.07.2026** — восстановление пароля через email:
 - ✅ Бэкенд: `POST /api/auth/forgot-password` + `POST /api/auth/reset-password`
   (`collectors-realm-backend/src/routes/auth.routes.ts`,
