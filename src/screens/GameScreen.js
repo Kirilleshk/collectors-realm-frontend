@@ -7,6 +7,7 @@ import { game } from '../api'
 import { colors } from '../theme'
 import { RARITY, rarityFrameStyle, RarityInnerRing, RarityCorners, cardIcon, ManaBadge, HealthBadge, AttackBadge } from '../utils/cardArt'
 import StarterPackModal from '../utils/StarterPackModal'
+import HowToPlayModal from '../utils/HowToPlayModal'
 
 const SORT_OPTIONS = [
   { key: 'default', label: 'Как получены' },
@@ -25,6 +26,7 @@ export default function GameScreen() {
   const [starterGrant, setStarterGrant] = useState(null)
   const [sortBy, setSortBy] = useState('default')
   const [themeArt, setThemeArt] = useState(null)
+  const [helpVisible, setHelpVisible] = useState(false)
 
   useEffect(() => { load() }, [])
 
@@ -109,7 +111,12 @@ export default function GameScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
         ListHeaderComponent={
           <View style={s.header}>
-            <Text style={s.headerTitle}>🃏 Карты Чужой против Хищника</Text>
+            <View style={s.headerTop}>
+              <Text style={[s.headerTitle, { flex: 1 }]}>🃏 Карты Чужой против Хищника</Text>
+              <Pressable style={({ pressed }) => [s.helpBtn, pressed && { opacity: 0.8 }]} onPress={() => setHelpVisible(true)}>
+                <Text style={s.helpBtnText}>❔ Как играть</Text>
+              </Pressable>
+            </View>
             <Text style={s.headerSub}>{userCards.length} карт в коллекции</Text>
             {userCards.length > 0 && (
               <View style={s.sortRow}>
@@ -185,6 +192,7 @@ export default function GameScreen() {
         }}
       />
       <StarterPackModal cards={starterGrant} onClose={() => setStarterGrant(null)} />
+      <HowToPlayModal visible={helpVisible} onClose={() => setHelpVisible(false)} />
     </View>
   )
 }
@@ -196,8 +204,11 @@ const s = StyleSheet.create({
   backdropOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(10,11,14,0.55)' },
   list: { padding: 16 },
   header: { marginBottom: 16 },
+  headerTop: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   headerTitle: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 4 },
   headerSub: { fontSize: 13, color: colors.text2, marginBottom: 12 },
+  helpBtn: { backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
+  helpBtnText: { fontSize: 12, fontWeight: '600', color: colors.text2 },
   battleBtn: { backgroundColor: colors.accent, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
   battleBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
   sortRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
