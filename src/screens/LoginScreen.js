@@ -34,6 +34,9 @@ export default function LoginScreen() {
   const [verificationCode, setVerificationCode] = useState('')
   const [sendingCode, setSendingCode] = useState(false)
   const [resendTimer, setResendTimer] = useState(0)
+  const [forgotStep, setForgotStep] = useState('request') // 'request' | 'reset'
+  const [newPassword, setNewPassword] = useState('')
+  const [resetSuccess, setResetSuccess] = useState(false)
   const [error, setError] = useState('')
   const [emailError, setEmailError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -62,12 +65,15 @@ export default function LoginScreen() {
   function switchMode(m) {
     setMode(m)
     setStep('form')
+    setForgotStep('request')
     setError('')
     setEmailError('')
     setVerificationCode('')
     setResendTimer(0)
     setAvatarPhoto(null)
     setPortfolioPhotos([])
+    setNewPassword('')
+    setResetSuccess(false)
   }
 
   async function sendVerificationCode() {
@@ -90,6 +96,51 @@ export default function LoginScreen() {
       setError('Ошибка отправки. Проверьте интернет.')
     }
     setSendingCode(false)
+  }
+
+  async function sendResetCode() {
+    if (!email.trim() || !EMAIL_RE.test(email.trim())) { setError('Введите корректный email'); return }
+    setSendingCode(true)
+    setError('')
+    try {
+      const res = await fetch(`${API}/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setError(data.error || 'Не удалось отправить код'); setSendingCode(false); return }
+      setForgotStep('reset')
+      setResendTimer(60)
+      const interval = setInterval(() => {
+        setResendTimer(t => { if (t <= 1) { clearInterval(interval); return 0 } return t - 1 })
+      }, 1000)
+    } catch {
+      setError('Ошибка отправки. Проверьте интернет.')
+    }
+    setSendingCode(false)
+  }
+
+  async function submitReset() {
+    if (!verificationCode.trim()) { setError('Введите код из письма'); return }
+    if (newPassword.length < 6) { setError('Пароль должен быть не менее 6 символов'); return }
+    setLoading(true)
+    setError('')
+    try {
+      const res = await fetch(`${API}/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), code: verificationCode.trim(), newPassword }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setError(data.error || 'Не удалось сбросить пароль'); setLoading(false); return }
+      switchMode('login')
+      setPassword('')
+      setResetSuccess(true)
+    } catch {
+      setError('Ошибка сети. Попробуйте ещё раз.')
+    }
+    setLoading(false)
   }
 
   function toggleRole(key) {
@@ -135,6 +186,12 @@ export default function LoginScreen() {
         }
       }
       setLoading(false)
+      return
+    }
+
+    if (mode === 'forgot') {
+      if (forgotStep === 'request') await sendResetCode()
+      else await submitReset()
       return
     }
 
@@ -232,14 +289,16 @@ export default function LoginScreen() {
         <Animated.View style={[s.card, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
 
           {/* Переключатель */}
-          <View style={s.modeSwitch}>
-            <TouchableOpacity style={[s.modeBtn, mode === 'login' && s.modeBtnActive]} onPress={() => switchMode('login')}>
-              <Text style={[s.modeBtnText, mode === 'login' && s.modeBtnTextActive]}>Вход</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[s.modeBtn, mode === 'register' && s.modeBtnActive]} onPress={() => switchMode('register')}>
-              <Text style={[s.modeBtnText, mode === 'register' && s.modeBtnTextActive]}>Регистрация</Text>
-            </TouchableOpacity>
-          </View>
+          {mode !== 'forgot' && (
+            <View style={s.modeSwitch}>
+              <TouchableOpacity style={[s.modeBtn, mode === 'login' && s.modeBtnActive]} onPress={() => switchMode('login')}>
+                <Text style={[s.modeBtnText, mode === 'login' && s.modeBtnTextActive]}>Вход</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[s.modeBtn, mode === 'register' && s.modeBtnActive]} onPress={() => switchMode('register')}>
+                <Text style={[s.modeBtnText, mode === 'register' && s.modeBtnTextActive]}>Регистрация</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Индикатор шагов при регистрации */}
           {mode === 'register' && (
@@ -257,8 +316,15 @@ export default function LoginScreen() {
 
           {error ? (
             <View style={s.errorBox}>
-              <Text style={s.errorIcon}>⚠️</Text>
+              <Text style={s.msgIcon}>⚠️</Text>
               <Text style={s.errorText}>{error}</Text>
+            </View>
+          ) : null}
+
+          {resetSuccess && mode === 'login' && !error ? (
+            <View style={s.successBox}>
+              <Text style={s.msgIcon}>✅</Text>
+              <Text style={s.successText}>Пароль изменён. Войдите с новым паролем.</Text>
             </View>
           ) : null}
 
@@ -286,7 +352,12 @@ export default function LoginScreen() {
               </View>
               <View style={s.field}>
                 <Text style={s.label}>Пароль</Text>
-                <SmartInput style={s.input} value={password} onChangeText={setPassword} placeholder="••••••••" placeholderTextColor={colors.text2} secureTextEntry />
+                <SmartInput style={s.input} value={password} onChangeText={v => { setPassword(v); setResetSuccess(false) }} placeholder="••••••••" placeholderTextColor={colors.text2} secureTextEntry />
+                {mode === 'login' && (
+                  <TouchableOpacity onPress={() => switchMode('forgot')} style={{ alignSelf: 'flex-end', marginTop: 8 }}>
+                    <Text style={{ fontSize: 12, color: colors.accent, fontWeight: '600' }}>Забыли пароль?</Text>
+                  </TouchableOpacity>
+                )}
               </View>
               {mode === 'register' && (
                 <View style={s.field}>
@@ -350,6 +421,77 @@ export default function LoginScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity onPress={() => { setStep('form'); setError(''); setVerificationCode('') }} style={s.backBtn}>
+                <Text style={s.backBtnText}>← Изменить email</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* ЗАБЫЛИ ПАРОЛЬ: шаг 1 — email */}
+          {mode === 'forgot' && forgotStep === 'request' && (
+            <View style={s.field}>
+              <View style={{ alignItems: 'center', marginBottom: 20 }}>
+                <Text style={{ fontSize: 40, marginBottom: 8 }}>🔑</Text>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 6 }}>Восстановление пароля</Text>
+                <Text style={{ fontSize: 13, color: colors.text2, textAlign: 'center', lineHeight: 18 }}>
+                  Введите email от аккаунта — если он зарегистрирован, пришлём код для сброса пароля
+                </Text>
+              </View>
+              <Text style={s.label}>Email</Text>
+              <SmartInput
+                style={[s.input, emailError ? { borderColor: '#FF3B30' } : null]}
+                value={email}
+                onChangeText={v => { setEmail(v); validateEmail(v) }}
+                placeholder="email@example.com"
+                placeholderTextColor={colors.text2}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+              {emailError ? <Text style={s.fieldError}>{emailError}</Text> : null}
+              <TouchableOpacity onPress={() => switchMode('login')} style={s.backBtn}>
+                <Text style={s.backBtnText}>← Вернуться ко входу</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* ЗАБЫЛИ ПАРОЛЬ: шаг 2 — код из письма + новый пароль */}
+          {mode === 'forgot' && forgotStep === 'reset' && (
+            <View style={s.field}>
+              <View style={{ alignItems: 'center', marginBottom: 20 }}>
+                <Text style={{ fontSize: 40, marginBottom: 8 }}>📧</Text>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 6 }}>Проверьте почту</Text>
+                <Text style={{ fontSize: 13, color: colors.text2, textAlign: 'center', lineHeight: 18 }}>
+                  Если email зарегистрирован — мы отправили 6-значный код на{'\n'}
+                  <Text style={{ color: colors.accent, fontWeight: '600' }}>{email}</Text>
+                </Text>
+              </View>
+
+              <Text style={s.label}>КОД ИЗ ПИСЬМА</Text>
+              <SmartInput
+                style={[s.input, { fontSize: 24, letterSpacing: 8, textAlign: 'center' }]}
+                value={verificationCode}
+                onChangeText={v => { setVerificationCode(v.replace(/\D/g, '').slice(0, 6)); setError('') }}
+                placeholder="000000"
+                placeholderTextColor={colors.text2}
+                keyboardType="number-pad"
+                maxLength={6}
+              />
+
+              <View style={[s.field, { marginTop: 16, marginBottom: 0 }]}>
+                <Text style={s.label}>Новый пароль</Text>
+                <SmartInput style={s.input} value={newPassword} onChangeText={setNewPassword} placeholder="••••••••" placeholderTextColor={colors.text2} secureTextEntry />
+              </View>
+
+              <TouchableOpacity
+                style={{ alignItems: 'center', marginTop: 12 }}
+                onPress={sendResetCode}
+                disabled={resendTimer > 0 || sendingCode}
+              >
+                <Text style={{ fontSize: 13, color: resendTimer > 0 ? colors.text2 : colors.accent, fontWeight: '500' }}>
+                  {resendTimer > 0 ? `Отправить повторно через ${resendTimer} сек` : 'Отправить код повторно'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={() => { setForgotStep('request'); setError(''); setVerificationCode(''); setNewPassword('') }} style={s.backBtn}>
                 <Text style={s.backBtnText}>← Изменить email</Text>
               </TouchableOpacity>
             </View>
@@ -420,7 +562,9 @@ export default function LoginScreen() {
             {loading
               ? <ActivityIndicator color="white" />
               : <Text style={s.btnText}>
-                  {mode === 'login' ? '→ Войти' : step === 'form' ? (sendingCode ? 'Отправляем код...' : '→ Далее') : step === 'verify' ? '→ Подтвердить' : '→ Создать аккаунт'}
+                  {mode === 'login' ? '→ Войти'
+                    : mode === 'forgot' ? (forgotStep === 'request' ? (sendingCode ? 'Отправляем код...' : '→ Отправить код') : '→ Сбросить пароль')
+                    : step === 'form' ? (sendingCode ? 'Отправляем код...' : '→ Далее') : step === 'verify' ? '→ Подтвердить' : '→ Создать аккаунт'}
                 </Text>
             }
           </TouchableOpacity>
@@ -470,8 +614,14 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(224,78,40,0.1)', borderRadius: 10, padding: 12, marginBottom: 16,
     borderWidth: 1, borderColor: 'rgba(224,78,40,0.3)',
   },
-  errorIcon: { fontSize: 16 },
+  msgIcon: { fontSize: 16 },
   errorText: { color: colors.accent, fontSize: 13, flex: 1 },
+  successBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: 'rgba(42,170,96,0.1)', borderRadius: 10, padding: 12, marginBottom: 16,
+    borderWidth: 1, borderColor: 'rgba(42,170,96,0.3)',
+  },
+  successText: { color: colors.green, fontSize: 13, flex: 1 },
   fieldError: { color: '#FF3B30', fontSize: 12, marginTop: 4, marginLeft: 2 },
   field: { marginBottom: 16 },
   label: { fontSize: 11, fontWeight: '700', color: colors.text2, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 8 },
