@@ -126,6 +126,13 @@ export function HealthBadge({ value, size = 24, damaged, style }) {
 // (cards.routes.ts), нужен на фронте только для отображения актуальной силы
 // удара существа (без этого AttackBadge показывал базовое значение карты,
 // а реальный урон в бою был выше на бонус ауры — путало игрока).
+// Способность "может стать невидимым" — активируется игроком вручную (см.
+// POST /battle/:id/activate), не автоматически с выхода на стол. Зеркалит
+// hasStealth() на бэкенде (cards.routes.ts).
+export function hasActivatableAbility(card) {
+  return card?.effectType === 'stealth' || card?.effectType === 'stealth_buff'
+}
+
 export function auraAttackBonus(board) {
   let bonus = 0
   for (const c of board || []) {

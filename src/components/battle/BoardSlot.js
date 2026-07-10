@@ -125,7 +125,7 @@ export default function BoardSlot({ entry, size = 60, effect, popups = [], onPre
         <RarityInnerRing rarity={card.rarity} borderRadius={borderRadius} />
         <RarityCorners rarity={card.rarity} />
         <Animated.View pointerEvents="none" style={[s.hitOverlay, { borderRadius, backgroundColor: colors.accent, opacity: flashOpacity }]} />
-        {popups.map(p => <DamagePopup key={p.id} amount={p.amount} />)}
+        {popups.map(p => <DamagePopup key={p.id} amount={p.amount} positive={p.positive} />)}
       </Animated.View>
       {selectable && !selected && (
         <Animated.View

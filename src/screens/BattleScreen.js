@@ -6,7 +6,7 @@ import { GestureDetector, Gesture } from 'react-native-gesture-handler'
 import { LinearGradient } from 'expo-linear-gradient'
 import { game } from '../api'
 import { colors } from '../theme'
-import { auraAttackBonus } from '../utils/cardArt'
+import { auraAttackBonus, hasActivatableAbility } from '../utils/cardArt'
 import HpBar from '../components/battle/HpBar'
 import BossBanner from '../components/battle/BossBanner'
 import BoardSlot from '../components/battle/BoardSlot'
@@ -87,10 +87,21 @@ export default function BattleScreen({ route, navigation }) {
     }
   }, [])
 
-  function popDamage(target, amount) {
+  function popDamage(target, amount, positive) {
     const id = ++popupId.current
-    setPopups(prev => [...prev, { id, target, amount }])
+    setPopups(prev => [...prev, { id, target, amount, positive }])
     setTimeout(() => setPopups(prev => prev.filter(p => p.id !== id)), 850)
+  }
+
+  // Карта с аурой (buff_allies/acid_blood_buff/stealth_buff) усиливает
+  // остальных на том же столе, пока сама жива — видно уже сейчас через
+  // effectiveAttack на бейдже, но по фидбэку Марка нужен ещё и всплывающий
+  // "+N" на каждой затронутой карте в момент выхода баффера на стол
+  const AURA_EFFECTS = ['buff_allies', 'acid_blood_buff', 'stealth_buff']
+  function popAuraBonus(board, bonus) {
+    for (const c of board) {
+      if (c && c.currentHealth > 0) popDamage(c.instanceId, bonus, true)
+    }
   }
 
   function triggerEffect(instanceId, kind, dir) {
@@ -149,6 +160,7 @@ export default function BattleScreen({ route, navigation }) {
         dBoss = [...dBoss, { instanceId: ev.instanceId, cardId: ev.cardId, currentHealth: card?.health ?? 0, card }]
         setDisplayBoard({ playerBoard: dPlayer, bossBoard: dBoss })
         triggerEffect(ev.instanceId, 'spawn')
+        if (card && AURA_EFFECTS.includes(card.effectType)) popAuraBonus(dBoss, card.effectValue ?? 1)
         await sleep(420)
         continue
       }
@@ -196,7 +208,13 @@ export default function BattleScreen({ route, navigation }) {
       const oldIds = new Set(battle.playerBoard.map(c => c.instanceId))
       const added = res.data.battle.playerBoard.find(c => !oldIds.has(c.instanceId))
       applyData(res.data)
-      if (added) triggerEffect(added.instanceId, 'spawn')
+      if (added) {
+        triggerEffect(added.instanceId, 'spawn')
+        const addedCard = res.data.resolved.playerBoard.find(c => c.instanceId === added.instanceId)?.card
+        if (addedCard && AURA_EFFECTS.includes(addedCard.effectType)) {
+          popAuraBonus(res.data.resolved.playerBoard, addedCard.effectValue ?? 1)
+        }
+      }
       setTimeout(() => logRef.current?.scrollToEnd({ animated: true }), 100)
       ok = true
     } catch (e) {
@@ -224,6 +242,23 @@ export default function BattleScreen({ route, navigation }) {
     } catch (e) {
       Alert.alert('Ошибка', e?.response?.data?.error || 'Не удалось атаковать.')
       setSelectedAttacker(null)
+    }
+    setActing(false)
+  }
+
+  // Кнопка "активировать способность" (сейчас только невидимость) на своей
+  // карте на столе — по фидбэку Марка это должен быть осознанный выбор игрока,
+  // а не автомат с момента выхода карты. Бесплатно, доступно, пока карта жива
+  // и способность ещё не активна (см. POST /battle/:id/activate)
+  async function onActivateAbility(instanceId) {
+    if (acting || battle.status !== 'ACTIVE') return
+    setActing(true)
+    try {
+      const res = await game.activateAbility(battle.id, instanceId)
+      applyData(res.data)
+      setTimeout(() => logRef.current?.scrollToEnd({ animated: true }), 100)
+    } catch (e) {
+      Alert.alert('Ошибка', e?.response?.data?.error || 'Не удалось активировать способность.')
     }
     setActing(false)
   }
@@ -422,9 +457,19 @@ export default function BattleScreen({ route, navigation }) {
               onLongPress={!canSelect && entry ? () => setZoomCard({ card: entry.card, currentHealth: entry.currentHealth }) : undefined}
             />
           )
+          // Кнопка активации способности — сиблинг GestureDetector'а, а не его
+          // ребёнок (так же как и лупа выше): свой Pressable внутри области жеста
+          // конфликтует с перехватом указателя на вебе. Показываем, только пока
+          // способность ещё не активна — активная невидимость не нуждается в кнопке.
+          const canActivate = !isOver && !acting && !!entry && entry.currentHealth > 0 && hasActivatableAbility(entry.card) && !entry.stealthCharge
           return (
-            <View key={`player-${i}`} collapsable={false} ref={el => { if (entry && el) playerSlotWrapRefs.current[entry.instanceId] = el }}>
+            <View key={`player-${i}`} collapsable={false} style={s.playerSlotWrap} ref={el => { if (entry && el) playerSlotWrapRefs.current[entry.instanceId] = el }}>
               {canSelect ? <GestureDetector gesture={makeAttackDrag(entry)}>{slot}</GestureDetector> : slot}
+              {canActivate && (
+                <Pressable style={s.activateBtn} onPress={() => onActivateAbility(entry.instanceId)}>
+                  <Text style={s.activateBtnText}>👁️</Text>
+                </Pressable>
+              )}
             </View>
           )
         })}
@@ -544,6 +589,9 @@ const s = StyleSheet.create({
   dragLine: { position: 'absolute', height: 3, borderRadius: 1.5, backgroundColor: colors.gold },
   dragTip: { position: 'absolute', width: 10, height: 10, borderRadius: 5, backgroundColor: colors.gold },
   boardRow: { flexDirection: 'row', justifyContent: 'center', gap: 10, paddingVertical: 8 },
+  playerSlotWrap: { position: 'relative' },
+  activateBtn: { position: 'absolute', top: -8, right: -8, width: 24, height: 24, borderRadius: 12, backgroundColor: colors.surface2, borderWidth: 1.5, borderColor: colors.gold, alignItems: 'center', justifyContent: 'center', zIndex: 5 },
+  activateBtnText: { fontSize: 12 },
   deckRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 24, paddingVertical: 2 },
   playerBar: { paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.border },
   playerBarCompact: { paddingVertical: 4 },
