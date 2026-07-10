@@ -71,7 +71,6 @@ export default function AdminScreen() {
 
   useEffect(() => {
     if (isAnalytics) { setTab('analytics'); return }
-    if (isModerator) { setTab('users'); return }
     load()
   }, [])
 
@@ -388,14 +387,16 @@ export default function AdminScreen() {
     <ScreenBackground style={s.wrap}>
       {/* Переключатель вкладок */}
       <View style={s.tabs}>
-        {isAdmin && <>
+        {isStaff && (
           <TouchableOpacity style={[s.tabBtn, tab === 'products' && s.tabBtnActive]} onPress={() => setTab('products')}>
             <Text style={[s.tabText, tab === 'products' && s.tabTextActive]}>📦 Товары</Text>
           </TouchableOpacity>
+        )}
+        {isAdmin && (
           <TouchableOpacity style={[s.tabBtn, tab === 'releases' && s.tabBtnActive]} onPress={() => setTab('releases')}>
             <Text style={[s.tabText, tab === 'releases' && s.tabTextActive]}>📅 Релизы</Text>
           </TouchableOpacity>
-        </>}
+        )}
         {isStaff && (
           <TouchableOpacity style={[s.tabBtn, tab === 'users' && s.tabBtnActive]} onPress={() => setTab('users')}>
             <Text style={[s.tabText, tab === 'users' && s.tabTextActive]}>👥 Люди</Text>
