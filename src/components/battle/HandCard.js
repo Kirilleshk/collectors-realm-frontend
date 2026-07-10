@@ -10,9 +10,11 @@ const CARD_HEIGHT = 136
 // Карта в руке игрока. entry = { cardId, card }
 // onPress — async, возвращает true/false (успех розыгрыша); при false карта
 // возвращается в руку (например, сервер отказал из-за гонки запросов)
+// onLongPress(card) — долгое нажатие показывает увеличенную карту с полным
+// описанием эффекта (не помещается на маленьком бейдже руки)
 // width/height — компактный размер в ландшафте, чтобы рука не отъедала
 // половину и без того тесной по высоте альбомной ориентации
-export default function HandCard({ entry, playable, onPress, width = CARD_WIDTH, height = CARD_HEIGHT }) {
+export default function HandCard({ entry, playable, onPress, onLongPress, width = CARD_WIDTH, height = CARD_HEIGHT }) {
   const card = entry.card
   const r = RARITY[card.rarity] || RARITY.COMMON
   const [busy, setBusy] = useState(false)
@@ -51,7 +53,8 @@ export default function HandCard({ entry, playable, onPress, width = CARD_WIDTH,
           pressed && playable && { opacity: 0.8 },
         ]}
         onPress={handlePress}
-        disabled={!playable || busy}
+        onLongPress={onLongPress ? () => onLongPress(card) : undefined}
+        disabled={busy}
       >
         {card.imageUrl
           ? <Image source={{ uri: card.imageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />

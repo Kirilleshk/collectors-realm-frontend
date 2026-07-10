@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { View, Text, Image, FlatList, ScrollView, StyleSheet, ActivityIndicator, Pressable, Alert, Platform, useWindowDimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import * as ScreenOrientation from 'expo-screen-orientation'
 import { GestureDetector, Gesture } from 'react-native-gesture-handler'
 import { LinearGradient } from 'expo-linear-gradient'
 import { game } from '../api'
@@ -12,6 +13,7 @@ import BoardSlot from '../components/battle/BoardSlot'
 import DeckPile from '../components/battle/DeckPile'
 import HandCard from '../components/battle/HandCard'
 import LogEntry from '../components/battle/LogEntry'
+import CardZoomModal from '../components/battle/CardZoomModal'
 
 const MANA_CAP = 10
 const EMPTY_DECK_COUNTS = { playerDeck: 0, playerDiscard: 0, bossDeck: 0, bossHand: 0, bossDiscard: 0 }
@@ -53,6 +55,10 @@ export default function BattleScreen({ route, navigation }) {
   const [displayBoard, setDisplayBoard] = useState(null)
   // Разовые триггеры анимаций по instanceId существа: { kind: 'attack'|'hit'|'death'|'spawn', dir, token }
   const [effects, setEffects] = useState({})
+  // Карта, увеличенная долгим нажатием (лупа) — { card, currentHealth } | null.
+  // currentHealth есть только для существ на столе, для карт в руке — null
+  // (там показываем полное здоровье карты)
+  const [zoomCard, setZoomCard] = useState(null)
   const logRef = useRef(null)
   const popupId = useRef(0)
 
@@ -67,6 +73,19 @@ export default function BattleScreen({ route, navigation }) {
   const bossSlotWrapRefs = useRef({})
   const playerSlotWrapRefs = useRef({})
   const faceZoneRef = useRef(null)
+
+  // Бой удобнее вести в ландшафте — больше места для стола. На вебе раскладка
+  // сама подстраивается под ширину окна (см. isLandscape выше), а на нативных
+  // платформах разворот приложения теперь свободный (see commit 1a6dbcf) — если
+  // у пользователя выключен авто-поворот экрана в системе, игра без явного
+  // lockAsync никогда не перейдёт в ландшафт. Возвращаем портрет при выходе из боя.
+  useEffect(() => {
+    if (Platform.OS === 'web') return
+    ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE).catch(() => {})
+    return () => {
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {})
+    }
+  }, [])
 
   function popDamage(target, amount) {
     const id = ++popupId.current
@@ -366,6 +385,7 @@ export default function BattleScreen({ route, navigation }) {
                 popups={entry ? popups.filter(p => p.target === entry.instanceId) : []}
                 selectable={isTargetable}
                 onPress={isTargetable ? () => onAttack(entry.instanceId) : undefined}
+                onLongPress={entry ? () => setZoomCard({ card: entry.card, currentHealth: entry.currentHealth }) : undefined}
                 effectiveAttack={entry?.card ? entry.card.attack + bossAura : undefined}
               />
             </View>
@@ -386,6 +406,10 @@ export default function BattleScreen({ route, navigation }) {
           // снаружи, на вебе RNGH перехватывает указатель и обычный клик не доходит.
           // И тап, и drag теперь полностью разруливаются внутри makeAttackDrag
           // (см. onFinalize: success=false — это был тап, ведём себя как выбор атакующего)
+          // onLongPress только когда карта НЕ под управлением жеста (!canSelect) —
+          // Pressable внутри BoardSlot иначе снова станет активным touch-responder-ом
+          // и конфликтует с GestureDetector на вебе (тот самый баг с перехватом
+          // указателя, из-за которого onPress тоже намеренно не передаётся здесь)
           const slot = (
             <BoardSlot
               entry={entry}
@@ -395,6 +419,7 @@ export default function BattleScreen({ route, navigation }) {
               selectable={canSelect}
               selected={!!entry && selectedAttacker === entry.instanceId}
               effectiveAttack={entry?.card ? entry.card.attack + playerAura : undefined}
+              onLongPress={!canSelect && entry ? () => setZoomCard({ card: entry.card, currentHealth: entry.currentHealth }) : undefined}
             />
           )
           return (
@@ -469,6 +494,7 @@ export default function BattleScreen({ route, navigation }) {
                     entry={item}
                     playable={playable}
                     onPress={() => onPlayCard(item.cardId)}
+                    onLongPress={card => setZoomCard({ card, currentHealth: null })}
                     width={isLandscape ? 54 : 96}
                     height={isLandscape ? 76 : 136}
                   />
@@ -487,6 +513,13 @@ export default function BattleScreen({ route, navigation }) {
           </>
         )}
       </View>
+
+      <CardZoomModal
+        card={zoomCard?.card}
+        currentHealth={zoomCard?.currentHealth}
+        visible={!!zoomCard}
+        onClose={() => setZoomCard(null)}
+      />
     </View>
   )
 }

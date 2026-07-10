@@ -9,11 +9,17 @@ import DamagePopup from './DamagePopup'
 // разовый триггер анимации (token меняется при каждом новом срабатывании)
 // selectable — существо можно выбрать (свой атакующий или валидная цель атаки),
 // selected — это текущий выбранный атакующий (более яркая подсветка)
-export default function BoardSlot({ entry, size = 60, effect, popups = [], onPress, selectable, selected, effectiveAttack }) {
+export default function BoardSlot({ entry, size = 60, effect, popups = [], onPress, onLongPress, selectable, selected, effectiveAttack }) {
   const scale = useRef(new Animated.Value(1)).current
   const opacity = useRef(new Animated.Value(1)).current
   const translateY = useRef(new Animated.Value(0)).current
   const flash = useRef(new Animated.Value(0)).current
+  // Пульсирующее свечение для "можно походить/атаковать" — по просьбе заказчика
+  // рамка НЕ красится в зелёный (это стирало цвет редкости, все карты и босс
+  // выглядели одинаково), вместо этого вокруг родного цвета рамки дышит лёгкий
+  // ореол того же цвета. selected (выбранный атакующий) — отдельная, более явная
+  // подсветка золотым бордером, её не трогаем.
+  const glowPulse = useRef(new Animated.Value(0)).current
 
   // Новая карта в слоте — сбрасываем анимации предыдущего жителя (слоты переиспользуются по индексу).
   // useLayoutEffect — синхронно до отрисовки, иначе новый житель на кадр мелькнёт
@@ -55,6 +61,21 @@ export default function BoardSlot({ entry, size = 60, effect, popups = [], onPre
     }
   }, [effect?.token])
 
+  useEffect(() => {
+    if (!selectable || selected) {
+      glowPulse.setValue(0)
+      return
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowPulse, { toValue: 1, duration: 650, useNativeDriver: false }),
+        Animated.timing(glowPulse, { toValue: 0, duration: 650, useNativeDriver: false }),
+      ])
+    )
+    loop.start()
+    return () => loop.stop()
+  }, [selectable, selected])
+
   if (!entry || !entry.card) {
     return (
       <View style={[s.empty, { width: size, height: size, borderRadius: size * 0.18 }]}>
@@ -67,12 +88,20 @@ export default function BoardSlot({ entry, size = 60, effect, popups = [], onPre
   const r = RARITY[card.rarity] || RARITY.COMMON
   const damaged = currentHealth < card.health
   const flashOpacity = flash.interpolate({ inputRange: [0, 1], outputRange: [0, 0.55] })
-  const ringColor = selected ? colors.gold : selectable ? colors.green : r.color
+  // Цвет рамки всегда остаётся цветом редкости карты — золотой только у явно
+  // выбранного атакующего (selected). "Можно походить" (selectable) показываем
+  // отдельным пульсирующим ореолом ниже, не трогая сам цвет рамки.
+  const ringColor = selected ? colors.gold : r.color
+  const glowOpacity = glowPulse.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0.8] })
   const frame = rarityFrameStyle(card.rarity)
   const borderRadius = size * 0.18
 
   return (
-    <Pressable onPress={onPress} disabled={!onPress}>
+    <Pressable
+      onPress={onPress}
+      onLongPress={onLongPress ? () => onLongPress(card) : undefined}
+      disabled={!onPress && !onLongPress}
+    >
       <Animated.View
         style={[
           s.slot,
@@ -98,6 +127,12 @@ export default function BoardSlot({ entry, size = 60, effect, popups = [], onPre
         <Animated.View pointerEvents="none" style={[s.hitOverlay, { borderRadius, backgroundColor: colors.accent, opacity: flashOpacity }]} />
         {popups.map(p => <DamagePopup key={p.id} amount={p.amount} />)}
       </Animated.View>
+      {selectable && !selected && (
+        <Animated.View
+          pointerEvents="none"
+          style={[s.activeGlow, { borderRadius: borderRadius + 3, borderColor: r.color, opacity: glowOpacity }]}
+        />
+      )}
     </Pressable>
   )
 }
@@ -109,4 +144,5 @@ const s = StyleSheet.create({
   artFallback: { alignItems: 'center', justifyContent: 'center' },
   statsRow: { position: 'absolute', left: 0, right: 0, bottom: 2, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 2 },
   hitOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  activeGlow: { position: 'absolute', top: -3, left: -3, right: -3, bottom: -3, borderWidth: 2 },
 })
