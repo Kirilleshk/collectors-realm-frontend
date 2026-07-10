@@ -123,6 +123,8 @@ export const game = {
   attack:          (battleId, attackerInstanceId, targetInstanceId) => api.post(`/cards/battle/${battleId}/attack`, { attackerInstanceId, targetInstanceId }),
   endTurn:         (battleId) => api.post(`/cards/battle/${battleId}/end-turn`),
   activateAbility: (battleId, instanceId) => api.post(`/cards/battle/${battleId}/activate`, { instanceId }),
+  getAllCards:     () => api.get('/cards/admin/all'),
+  getGameStats:    () => api.get('/cards/admin/stats'),
 }
 
 export const bids = {

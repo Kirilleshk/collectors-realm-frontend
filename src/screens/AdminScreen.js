@@ -5,11 +5,12 @@ import {
 } from 'react-native'
 import { useAuth } from '../AuthContext'
 import { colors } from '../theme'
-import { notifications as notifApi, releases as releasesApi, support as supportApi, users } from '../api'
+import { notifications as notifApi, releases as releasesApi, support as supportApi, users, game } from '../api'
 import { pickAndUploadPhoto } from '../utils/uploadPhoto'
 import SmartInput from '../utils/SmartInput'
 import { track } from '../utils/analytics'
 import ScreenBackground from '../components/ScreenBackground'
+import { CardArt, RARITY } from '../utils/cardArt'
 
 const CLOUD_NAME = 'dqutmb1rm'
 const UPLOAD_PRESET = 'collectors_realm'
@@ -69,6 +70,12 @@ export default function AdminScreen() {
   const [replyText, setReplyText] = useState('')
   const [replySending, setReplySending] = useState(false)
 
+  // Вкладка «Игра» — обзор карт (арт+характеристики) и базовая статистика по боям
+  const [gameCards, setGameCards] = useState([])
+  const [gameCardsLoading, setGameCardsLoading] = useState(false)
+  const [gameStats, setGameStats] = useState(null)
+  const [gameStatsLoading, setGameStatsLoading] = useState(false)
+
   useEffect(() => {
     if (isAnalytics) { setTab('analytics'); return }
     load()
@@ -79,7 +86,26 @@ export default function AdminScreen() {
     if (tab === 'releases') loadReleases()
     if (tab === 'analytics') loadAnalytics()
     if (tab === 'support') loadConversations()
+    if (tab === 'game') { loadGameCards(); loadGameStats() }
   }, [tab])
+
+  async function loadGameCards() {
+    setGameCardsLoading(true)
+    try {
+      const res = await game.getAllCards()
+      setGameCards(Array.isArray(res.data) ? res.data : [])
+    } catch (e) {}
+    setGameCardsLoading(false)
+  }
+
+  async function loadGameStats() {
+    setGameStatsLoading(true)
+    try {
+      const res = await game.getGameStats()
+      setGameStats(res.data)
+    } catch (e) {}
+    setGameStatsLoading(false)
+  }
 
   async function loadConversations() {
     setConvLoading(true)
@@ -415,6 +441,11 @@ export default function AdminScreen() {
             </View>
           </TouchableOpacity>
         )}
+        {isStaff && (
+          <TouchableOpacity style={[s.tabBtn, tab === 'game' && s.tabBtnActive]} onPress={() => setTab('game')}>
+            <Text style={[s.tabText, tab === 'game' && s.tabTextActive]}>🎮 Игра</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Вкладка релизов */}
@@ -594,6 +625,73 @@ export default function AdminScreen() {
                   <Text style={{ color: colors.accent, fontWeight: '700' }}>{d.count}</Text>
                 </View>
               ))}
+            </View>
+          </ScrollView>
+        )
+      )}
+
+      {/* Вкладка «Игра» — обзор карт + статистика по боям */}
+      {tab === 'game' && (
+        (gameCardsLoading || gameStatsLoading) ? <View style={s.center}><ActivityIndicator color={colors.accent} size="large" /></View> : (
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 16 }}>
+            {gameStats && (
+              <>
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                  <View style={[s.statCard, { flex: 1 }]}>
+                    <Text style={s.statNum}>{gameStats.totalBattles}</Text>
+                    <Text style={s.statLabel}>Боёв всего</Text>
+                  </View>
+                  <View style={[s.statCard, { flex: 1 }]}>
+                    <Text style={s.statNum}>{gameStats.playersWithCards}</Text>
+                    <Text style={s.statLabel}>Игроков с картами</Text>
+                  </View>
+                </View>
+
+                <View style={s.analyticsBlock}>
+                  <Text style={s.analyticsTitle}>Бои по статусу</Text>
+                  {Object.entries(gameStats.battlesByStatus).map(([status, count]) => (
+                    <View key={status} style={s.analyticsRow}>
+                      <Text style={{ color: colors.text, flex: 1 }}>
+                        {status === 'ACTIVE' ? '⏳ В процессе' : status === 'WON' ? '🏆 Победа' : '💀 Поражение'}
+                      </Text>
+                      <Text style={{ color: colors.accent, fontWeight: '700' }}>{count}</Text>
+                    </View>
+                  ))}
+                </View>
+
+                {gameStats.topOwnedCards?.length > 0 && (
+                  <View style={s.analyticsBlock}>
+                    <Text style={s.analyticsTitle}>Популярные карты (по владению)</Text>
+                    {gameStats.topOwnedCards.map((c, i) => (
+                      <View key={i} style={s.analyticsRow}>
+                        <Text style={{ color: colors.text2, width: 20 }}>{i + 1}.</Text>
+                        <Text style={{ color: colors.text, flex: 1 }}>{c.name}</Text>
+                        <Text style={{ color: colors.accent, fontWeight: '700' }}>{c.totalOwned}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </>
+            )}
+
+            <Text style={s.analyticsTitle}>Все карты ({gameCards.length})</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+              {gameCards.map(c => {
+                const r = RARITY[c.rarity] || RARITY.COMMON
+                return (
+                  <View key={c.id} style={[s.gameCardTile, { borderColor: r.color }]}>
+                    <CardArt card={c} size={64} />
+                    <Text style={s.gameCardName} numberOfLines={1}>{c.name}</Text>
+                    <Text style={[s.gameCardRarity, { color: r.color }]}>{r.label}</Text>
+                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 2 }}>
+                      <Text style={s.gameCardStat}>💧{c.cost}</Text>
+                      <Text style={s.gameCardStat}>⚔️{c.attack}</Text>
+                      <Text style={s.gameCardStat}>🛡️{c.health}</Text>
+                    </View>
+                    {!!c.effectText && <Text style={s.gameCardEffect} numberOfLines={3}>{c.effectText}</Text>}
+                  </View>
+                )
+              })}
             </View>
           </ScrollView>
         )
@@ -960,6 +1058,11 @@ const s = StyleSheet.create({
   reportSub: { fontSize: 12, color: colors.text2 },
   reportBtn: { flex: 1, padding: 12, borderRadius: 10, borderWidth: 1, alignItems: 'center' },
   reportBtnText: { fontSize: 13, fontWeight: '700' },
+  gameCardTile: { width: 140, backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1.5, padding: 10, alignItems: 'center' },
+  gameCardName: { fontSize: 13, fontWeight: '700', color: colors.text, marginTop: 8, textAlign: 'center' },
+  gameCardRarity: { fontSize: 11, fontWeight: '600', marginTop: 2 },
+  gameCardStat: { fontSize: 12, color: colors.text2 },
+  gameCardEffect: { fontSize: 10, color: colors.text2, textAlign: 'center', marginTop: 6, lineHeight: 13 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface },
   headerTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
   headerSub: { fontSize: 12, color: colors.text2, marginTop: 2 },
