@@ -5,6 +5,7 @@ import { GestureDetector, Gesture } from 'react-native-gesture-handler'
 import { LinearGradient } from 'expo-linear-gradient'
 import { game } from '../api'
 import { colors } from '../theme'
+import { auraAttackBonus } from '../utils/cardArt'
 import HpBar from '../components/battle/HpBar'
 import BossBanner from '../components/battle/BossBanner'
 import BoardSlot from '../components/battle/BoardSlot'
@@ -13,7 +14,7 @@ import HandCard from '../components/battle/HandCard'
 import LogEntry from '../components/battle/LogEntry'
 
 const MANA_CAP = 10
-const EMPTY_DECK_COUNTS = { playerDeck: 0, playerDiscard: 0, bossDeck: 0, bossDiscard: 0 }
+const EMPTY_DECK_COUNTS = { playerDeck: 0, playerDiscard: 0, bossDeck: 0, bossHand: 0, bossDiscard: 0 }
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
 
@@ -296,6 +297,11 @@ export default function BattleScreen({ route, navigation }) {
   const attackedThisTurn = Array.isArray(battle.attackedThisTurn) ? battle.attackedThisTurn : []
   const hasValidBossTarget = board.bossBoard.some(c => c && c.currentHealth > 0 && !c.stealthCharge)
   const faceAttackable = !!selectedAttacker && !hasValidBossTarget && !acting
+  // Актуальная сила удара с учётом аур союзников на столе (buff_allies и т.п.) —
+  // без этого бейдж показывал базовое значение карты, а реальный урон в бою
+  // получался выше на бонус ауры, что выглядело как баг ("на карте 8, а бьёт на 12")
+  const bossAura = auraAttackBonus(board.bossBoard)
+  const playerAura = auraAttackBonus(board.playerBoard)
 
   // Выделенный арт арены (сгенерирован под фон, не портрет) показываем чётче —
   // портрет босса как раньше сильно размываем, иначе крупный кроп лица выглядит странно
@@ -330,6 +336,7 @@ export default function BattleScreen({ route, navigation }) {
           faceAttackable={faceAttackable}
           onPress={faceAttackable ? () => onAttack(null) : undefined}
           height={isLandscape ? 108 : 168}
+          handCount={deckCounts.bossHand}
         />
       </View>
 
@@ -340,7 +347,12 @@ export default function BattleScreen({ route, navigation }) {
       >
       <View style={s.boardRow}>
         {bossSlots.map((entry, i) => {
-          const isTargetable = !!selectedAttacker && !!entry && entry.currentHealth > 0 && !entry.stealthCharge
+          // Невидимые (stealthCharge) карты тоже можно выбрать целью — атака
+          // по ним просто промахнётся (сервер резолвит это как уклонение и
+          // снимает заряд невидимости), а не отклоняется как раньше. Иначе
+          // Pressable у такой карты был вообще отключён — с точки зрения
+          // игрока карту противника нельзя было выбрать вообще никак.
+          const isTargetable = !!selectedAttacker && !!entry && entry.currentHealth > 0
           return (
             <View
               key={`boss-${i}`}
@@ -354,6 +366,7 @@ export default function BattleScreen({ route, navigation }) {
                 popups={entry ? popups.filter(p => p.target === entry.instanceId) : []}
                 selectable={isTargetable}
                 onPress={isTargetable ? () => onAttack(entry.instanceId) : undefined}
+                effectiveAttack={entry?.card ? entry.card.attack + bossAura : undefined}
               />
             </View>
           )
@@ -381,6 +394,7 @@ export default function BattleScreen({ route, navigation }) {
               popups={entry ? popups.filter(p => p.target === entry.instanceId) : []}
               selectable={canSelect}
               selected={!!entry && selectedAttacker === entry.instanceId}
+              effectiveAttack={entry?.card ? entry.card.attack + playerAura : undefined}
             />
           )
           return (

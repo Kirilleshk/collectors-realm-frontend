@@ -10,7 +10,15 @@ import HpBar from './HpBar'
 // "дыханием" — портрет чуть увеличивается в такт пульсу свечения, чтобы
 // босс ощущался живым/угрожающим. Свечение становится золотым и постоянным,
 // когда доступен удар в лицо.
-export default function BossBanner({ bossName, imageUrl, hp, maxHp, popups, faceAttackable, onPress, height }) {
+function cardsWord(n) {
+  const mod10 = n % 10
+  const mod100 = n % 100
+  if (mod10 === 1 && mod100 !== 11) return 'карта'
+  if ([2, 3, 4].includes(mod10) && ![12, 13, 14].includes(mod100)) return 'карты'
+  return 'карт'
+}
+
+export default function BossBanner({ bossName, imageUrl, hp, maxHp, popups, faceAttackable, onPress, height, handCount }) {
   const pulse = useRef(new Animated.Value(0)).current
   const portraitSize = Math.min(height - 24, 156)
 
@@ -68,6 +76,7 @@ export default function BossBanner({ bossName, imageUrl, hp, maxHp, popups, face
             {bossName}{faceAttackable ? ' — бить в лицо' : ''}
           </Text>
           <HpBar label="Босс" value={hp} max={maxHp} color={colors.accent} popups={popups} thick />
+          {!!handCount && <Text style={s.handCount}>✋ {handCount} {cardsWord(handCount)} в руке</Text>}
         </View>
       </View>
     </Pressable>
@@ -83,4 +92,5 @@ const s = StyleSheet.create({
   imageFallback: { backgroundColor: `${colors.accent}22`, alignItems: 'center', justifyContent: 'center' },
   info: { flex: 1 },
   name: { fontSize: 18, fontWeight: '800', color: colors.text, marginBottom: 10, letterSpacing: 0.3 },
+  handCount: { fontSize: 11, color: colors.text2, marginTop: 4 },
 })

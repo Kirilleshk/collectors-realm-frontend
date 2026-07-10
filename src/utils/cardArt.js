@@ -121,12 +121,29 @@ export function HealthBadge({ value, size = 24, damaged, style }) {
   )
 }
 
-// Атака — клинок-ромб красного цвета
-export function AttackBadge({ value, size = 24, style }) {
+// Бонус атаки от аур союзников на столе (buff_allies/acid_blood_buff/
+// stealth_buff), пока сам баффер жив — зеркалит auraAttackBonus на бэкенде
+// (cards.routes.ts), нужен на фронте только для отображения актуальной силы
+// удара существа (без этого AttackBadge показывал базовое значение карты,
+// а реальный урон в бою был выше на бонус ауры — путало игрока).
+export function auraAttackBonus(board) {
+  let bonus = 0
+  for (const c of board || []) {
+    if (!c || c.currentHealth <= 0 || !c.card) continue
+    if (['buff_allies', 'acid_blood_buff', 'stealth_buff'].includes(c.card.effectType)) {
+      bonus += c.card.effectValue ?? 1
+    }
+  }
+  return bonus
+}
+
+// Атака — клинок-ромб красного цвета. buffed=true — атака увеличена аурой
+// союзников, подсвечиваем золотым вместо красного, чтобы бонус был заметен.
+export function AttackBadge({ value, size = 24, style, buffed }) {
   return (
     <View style={[{ width: size, height: size }, style]}>
       <Svg width={size} height={size} viewBox="0 0 24 24">
-        <Path d={BLADE_PATH} fill={colors.red} stroke="rgba(255,255,255,0.6)" strokeWidth="1" />
+        <Path d={BLADE_PATH} fill={buffed ? colors.gold : colors.red} stroke="rgba(255,255,255,0.6)" strokeWidth="1" />
       </Svg>
       <StatText value={value} fontSize={size * 0.42} />
     </View>

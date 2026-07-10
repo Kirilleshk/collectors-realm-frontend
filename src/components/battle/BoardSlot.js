@@ -9,7 +9,7 @@ import DamagePopup from './DamagePopup'
 // разовый триггер анимации (token меняется при каждом новом срабатывании)
 // selectable — существо можно выбрать (свой атакующий или валидная цель атаки),
 // selected — это текущий выбранный атакующий (более яркая подсветка)
-export default function BoardSlot({ entry, size = 60, effect, popups = [], onPress, selectable, selected }) {
+export default function BoardSlot({ entry, size = 60, effect, popups = [], onPress, selectable, selected, effectiveAttack }) {
   const scale = useRef(new Animated.Value(1)).current
   const opacity = useRef(new Animated.Value(1)).current
   const translateY = useRef(new Animated.Value(0)).current
@@ -87,7 +87,11 @@ export default function BoardSlot({ entry, size = 60, effect, popups = [], onPre
           : <View style={[StyleSheet.absoluteFill, s.artFallback, { backgroundColor: `${r.color}22` }]}><Text style={{ fontSize: size * 0.4 }}>{cardIcon(card)}</Text></View>}
         <View style={s.statsRow}>
           <HealthBadge value={currentHealth} size={Math.round(size * 0.26)} damaged={damaged} />
-          <AttackBadge value={card.attack} size={Math.round(size * 0.26)} />
+          <AttackBadge
+            value={effectiveAttack ?? card.attack}
+            size={Math.round(size * 0.26)}
+            buffed={effectiveAttack != null && effectiveAttack > card.attack}
+          />
         </View>
         <RarityInnerRing rarity={card.rarity} borderRadius={borderRadius} />
         <RarityCorners rarity={card.rarity} />
