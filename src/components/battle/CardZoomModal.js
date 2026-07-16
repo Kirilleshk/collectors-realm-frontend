@@ -1,7 +1,7 @@
 import React from 'react'
 import { View, Text, Image, Modal, Pressable, StyleSheet } from 'react-native'
 import { colors } from '../../theme'
-import { RARITY, rarityFrameStyle, RarityInnerRing, RarityCorners, cardIcon, ManaBadge, HealthBadge, AttackBadge } from '../../utils/cardArt'
+import { RARITY, rarityFrameStyle, RarityInnerRing, RarityCorners, cardIcon, ManaBadge, HealthBadge, AttackBadge, noCalloutProps, noCalloutStyle } from '../../utils/cardArt'
 
 // Увеличенная карточка по долгому нажатию — полный арт + все характеристики
 // и текст эффекта (на маленьком бейдже в руке/на столе effectText не влезает
@@ -18,7 +18,7 @@ export default function CardZoomModal({ card, currentHealth, visible, onClose })
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={s.backdrop} onPress={onClose}>
         <Pressable style={s.cardWrap} onPress={() => {}}>
-          <View style={[s.card, frame, { borderColor: r.color }]}>
+          <View style={[s.card, frame, noCalloutStyle, { borderColor: r.color }]} {...noCalloutProps}>
             {card.imageUrl
               ? <Image source={{ uri: card.imageUrl }} style={s.art} resizeMode="cover" />
               : <View style={[s.art, s.artFallback, { backgroundColor: `${r.color}22` }]}><Text style={s.artFallbackIcon}>{cardIcon(card)}</Text></View>}

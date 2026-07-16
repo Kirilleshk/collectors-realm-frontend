@@ -5,7 +5,7 @@ import { useNavigation } from '@react-navigation/native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { game } from '../api'
 import { colors } from '../theme'
-import { RARITY, rarityFrameStyle, RarityInnerRing, RarityCorners, cardIcon, ManaBadge, HealthBadge, AttackBadge } from '../utils/cardArt'
+import { RARITY, rarityFrameStyle, RarityInnerRing, RarityCorners, cardIcon, ManaBadge, HealthBadge, AttackBadge, noCalloutProps, noCalloutStyle } from '../utils/cardArt'
 import StarterPackModal from '../utils/StarterPackModal'
 import HowToPlayModal from '../utils/HowToPlayModal'
 
@@ -164,7 +164,7 @@ export default function GameScreen() {
           const r = RARITY[card.rarity] || RARITY.COMMON
           const frame = rarityFrameStyle(card.rarity)
           return (
-            <View style={[s.card, frame, { borderColor: r.color }]}>
+            <View style={[s.card, frame, noCalloutStyle, { borderColor: r.color }]} {...noCalloutProps}>
               <View style={s.artArea}>
                 {card.imageUrl
                   ? <Image source={{ uri: card.imageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />

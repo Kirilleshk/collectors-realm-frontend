@@ -1,7 +1,16 @@
 import React from 'react'
-import { View, Text, Image, StyleSheet } from 'react-native'
+import { View, Text, Image, StyleSheet, Platform } from 'react-native'
 import Svg, { Path, Circle } from 'react-native-svg'
 import { colors } from '../theme'
+
+// На вебе (моб. Safari/Chrome) долгое нажатие на <img> внутри карты открывает
+// нативное меню браузера (сохранить/открыть картинку) поверх нашего
+// onLongPress — Марк видел это как "непонятные лишние пункты, переход на
+// сайт". Гасим системный контекст-меню и drag/выделение картинки карты.
+export const noCalloutProps = Platform.OS === 'web' ? { onContextMenu: e => e.preventDefault() } : {}
+export const noCalloutStyle = Platform.OS === 'web'
+  ? { userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', WebkitUserDrag: 'none' }
+  : null
 
 // Палитра редкости — общая для экрана коллекции и боя. tier растёт с редкостью —
 // от него зависит толщина рамки/свечение в rarityFrameStyle ниже

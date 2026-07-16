@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef } from 'react'
 import { View, Text, Image, Animated, Pressable, StyleSheet } from 'react-native'
 import { colors } from '../../theme'
-import { RARITY, rarityFrameStyle, RarityInnerRing, RarityCorners, cardIcon, HealthBadge, AttackBadge } from '../../utils/cardArt'
+import { RARITY, rarityFrameStyle, RarityInnerRing, RarityCorners, cardIcon, HealthBadge, AttackBadge, noCalloutProps, noCalloutStyle } from '../../utils/cardArt'
 import DamagePopup from './DamagePopup'
 
 // Один слот стола. entry = { instanceId, cardId, currentHealth, card } | null
@@ -101,12 +101,14 @@ export default function BoardSlot({ entry, size = 60, effect, popups = [], onPre
       onPress={onPress}
       onLongPress={onLongPress ? () => onLongPress(card) : undefined}
       disabled={!onPress && !onLongPress}
+      {...noCalloutProps}
     >
       <Animated.View
         style={[
           s.slot,
           frame,
           { width: size, height: size, borderRadius, borderColor: ringColor, overflow: 'hidden' },
+          noCalloutStyle,
           (selected || selectable) && { borderWidth: 2.5 },
           { transform: [{ translateY }, { scale }], opacity },
         ]}

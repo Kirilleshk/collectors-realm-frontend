@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react'
 import { View, Text, Image, Pressable, Animated, StyleSheet } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { colors } from '../../theme'
-import { RARITY, rarityFrameStyle, RarityInnerRing, RarityCorners, cardIcon, ManaBadge, HealthBadge, AttackBadge } from '../../utils/cardArt'
+import { RARITY, rarityFrameStyle, RarityInnerRing, RarityCorners, cardIcon, ManaBadge, HealthBadge, AttackBadge, noCalloutProps, noCalloutStyle } from '../../utils/cardArt'
 
 const CARD_WIDTH = 96
 const CARD_HEIGHT = 136
@@ -49,12 +49,14 @@ export default function HandCard({ entry, playable, onPress, onLongPress, width 
         style={({ pressed }) => [
           s.card,
           { width, height, borderColor: r.color, borderWidth: frameBorderWidth },
+          noCalloutStyle,
           !playable && s.cardOff,
           pressed && playable && { opacity: 0.8 },
         ]}
         onPress={handlePress}
         onLongPress={onLongPress ? () => onLongPress(card) : undefined}
         disabled={busy}
+        {...noCalloutProps}
       >
         {card.imageUrl
           ? <Image source={{ uri: card.imageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />

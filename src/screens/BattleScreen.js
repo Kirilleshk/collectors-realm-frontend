@@ -339,6 +339,23 @@ export default function BattleScreen({ route, navigation }) {
 
   if (loading || !battle || !resolved) return <View style={s.center}><ActivityIndicator color={colors.accent} size="large" /></View>
 
+  // На вебе expo-screen-orientation не может физически повернуть экран
+  // телефона (JS не управляет ориентацией браузера без Fullscreen API,
+  // ненадёжного на iOS Safari) — раньше при портретной ориентации стол боя
+  // просто сжимался в узкую колонку, что и выглядело "не переворачивается".
+  // Вместо борьбы с ориентацией браузера — просим пользователя повернуть
+  // телефон физически, как это делают большинство веб-игр.
+  const isMobileWeb = Platform.OS === 'web' && Math.min(width, height) < 900
+  if (isMobileWeb && !isLandscape) {
+    return (
+      <View style={s.rotateWrap}>
+        <Text style={s.rotateIcon}>🔄</Text>
+        <Text style={s.rotateTitle}>Поверните телефон</Text>
+        <Text style={s.rotateText}>Бой ведётся в альбомной ориентации — поверните устройство боком, чтобы продолжить</Text>
+      </View>
+    )
+  }
+
   const theme = battle.theme
   const isOver = battle.status !== 'ACTIVE'
   const lastLog = Array.isArray(battle.log) ? battle.log[battle.log.length - 1] : null
@@ -577,6 +594,10 @@ const s = StyleSheet.create({
   backdropOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(10,11,14,0.72)' },
   backdropOverlayLight: { backgroundColor: 'rgba(10,11,14,0.5)' },
   center: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center' },
+  rotateWrap: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center', padding: 32 },
+  rotateIcon: { fontSize: 56, marginBottom: 16, transform: [{ rotate: '90deg' }] },
+  rotateTitle: { fontSize: 20, fontWeight: '800', color: colors.text, marginBottom: 8, textAlign: 'center' },
+  rotateText: { fontSize: 14, color: colors.text2, textAlign: 'center', lineHeight: 20 },
   // Высота задаётся явно числом (arenaHeight, см. компонент) — ScrollView внутри
   // flex-колонки схлопывается в 0 при живом ресайзе окна/повороте на вебе,
   // не пересчитывая flex корректно; explicit height полностью обходит эту проблему
