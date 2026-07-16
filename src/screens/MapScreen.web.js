@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView, Modal, Image, Platform, Alert } from 'react-native'
-import { WebView } from 'react-native-webview'
+import React, { useState, useEffect } from 'react'
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView, Modal, Image, Alert } from 'react-native'
+import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet'
+import L from 'leaflet'
 import * as Location from 'expo-location'
 import { useAuth } from '../AuthContext'
 import { colors } from '../theme'
@@ -15,6 +16,35 @@ const roleMap = {
   DIORAMA: { label: 'Мастер диорам', icon: '🏔', color: '#34C759' },
 }
 
+// react-leaflet рендерит карту напрямую в DOM страницы (без iframe) — на вебе
+// вариант через <iframe srcDoc> у части пользователей рендерился сплошным
+// чёрным прямоугольником (тайлы грузились, но не композитились браузером),
+// баг воспроизводился и с отключённым 3D-transform, и с ручным invalidateSize.
+// Прямой DOM-рендер этого класса бага не имеет.
+function ensureLeafletCss() {
+  if (typeof document === 'undefined' || document.getElementById('leaflet-css')) return
+  const link = document.createElement('link')
+  link.id = 'leaflet-css'
+  link.rel = 'stylesheet'
+  link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
+  document.head.appendChild(link)
+}
+
+function buildUserIcon(u, r) {
+  const base = 'width:38px;height:38px;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.3);cursor:pointer;'
+  const html = u.avatarUrl
+    ? `<div style="${base}border:2.5px solid ${r.color};overflow:hidden;background:#eee;"><img src="${u.avatarUrl}" style="width:100%;height:100%;object-fit:cover;display:block;"/></div>`
+    : `<div style="${base}background:rgba(255,255,255,0.95);border:2px solid ${r.color};display:flex;align-items:center;justify-content:center;font-size:18px;">${r.icon}</div>`
+  return L.divIcon({ html, iconSize: [38, 38], iconAnchor: [19, 19], className: '' })
+}
+
+function buildMeIcon() {
+  return L.divIcon({
+    html: '<div style="background:#E04E28;width:14px;height:14px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.5)"></div>',
+    iconSize: [14, 14], iconAnchor: [7, 7], className: '',
+  })
+}
+
 function haversine(lat1, lon1, lat2, lon2) {
   const R = 6371
   const dLat = (lat2 - lat1) * Math.PI / 180
@@ -24,132 +54,9 @@ function haversine(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
-function getMapHTML(users, myLocation = null, radius = null) {
-  const markers = users.map(u => {
-    const role = u.roles?.[0] || 'COLLECTOR'
-    const r = roleMap[role] || roleMap.COLLECTOR
-    const badgeLabel = u.badge === 'SHOP' ? '🏪 Магазин' : u.badge === 'BLOGGER' ? '✅ Блогер' : ''
-    const ratingLabel = u.avgRating ? `⭐ ${u.avgRating.toFixed(1)} (${u.reviewCount})` : ''
-    return `{
-      id: ${JSON.stringify(u.id)},
-      lat: ${u.latitude}, lng: ${u.longitude},
-      name: ${JSON.stringify(u.name)},
-      city: ${JSON.stringify(u.city || '')},
-      bio: ${JSON.stringify(u.bio || '')},
-      role: ${JSON.stringify(r.label)},
-      icon: ${JSON.stringify(r.icon)},
-      color: ${JSON.stringify(r.color)},
-      avatar: ${JSON.stringify(u.avatarUrl || '')},
-      badge: ${JSON.stringify(badgeLabel)},
-      rating: ${JSON.stringify(ratingLabel)}
-    }`
-  }).join(',')
-
-  const centerLat = myLocation ? myLocation.latitude : 55.7558
-  const centerLng = myLocation ? myLocation.longitude : 37.6173
-  const zoom = myLocation && radius ? (radius <= 5 ? 13 : 11) : 5
-
-  const nearbyCode = myLocation && radius ? `
-    L.circle([${myLocation.latitude}, ${myLocation.longitude}], {
-      radius: ${radius * 1000},
-      color: '#E04E28',
-      fillColor: '#E04E28',
-      fillOpacity: 0.06,
-      weight: 2,
-      dashArray: '6,4'
-    }).addTo(map);
-    var myIcon = L.divIcon({
-      html: '<div style="background:#E04E28;width:14px;height:14px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.5)"></div>',
-      iconSize: [14, 14], iconAnchor: [7, 7], className: ''
-    });
-    L.marker([${myLocation.latitude}, ${myLocation.longitude}], {icon: myIcon})
-      .bindPopup('<b>Вы здесь</b>')
-      .addTo(map);
-  ` : ''
-
-  return `<!DOCTYPE html>
-<html>
-<head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<meta name="color-scheme" content="light">
-<style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-html, body { background: #ffffff; }
-html, body, #map { width: 100%; height: 100vh; }
-.custom-marker {
-  background: rgba(255,255,255,0.95);
-  border-radius: 50%;
-  border: 2px solid;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  width: 38px;
-  height: 38px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-  cursor: pointer;
-}
-.avatar-marker {
-  border-radius: 50%;
-  border: 2.5px solid;
-  display: block;
-  width: 38px;
-  height: 38px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.35);
-  cursor: pointer;
-  background: #eee;
-}
-.avatar-marker img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-</style>
-</head>
-<body>
-<div id="map"></div>
-<script>
-L.Browser.any3d = false;
-var map = L.map('map').setView([${centerLat}, ${centerLng}], ${zoom});
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '© OpenStreetMap'
-}).addTo(map);
-
-${nearbyCode}
-
-var users = [${markers}];
-users.forEach(function(u) {
-  var markerHtml = u.avatar
-    ? '<div class="avatar-marker" style="border-color:' + u.color + '"><img src="' + u.avatar + '"/></div>'
-    : '<div class="custom-marker" style="border-color:' + u.color + ';background:' + u.color + '22">' + u.icon + '</div>';
-  var icon = L.divIcon({
-    html: markerHtml,
-    iconSize: [38, 38], iconAnchor: [19, 19], className: ''
-  });
-  var marker = L.marker([u.lat, u.lng], {icon: icon}).addTo(map);
-  marker.on('click', function() {
-    window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'USER_CLICK', userId: u.id }));
-    window.parent && window.parent.postMessage(JSON.stringify({ type: 'USER_CLICK', userId: u.id }), '*');
-  });
-  marker.bindPopup('<b>' + u.icon + ' ' + u.name + '</b>' + (u.badge ? ' <span style="font-size:11px;color:#FF9700">' + u.badge + '</span>' : '') + '<br/>' + u.role + (u.rating ? ' · ' + u.rating : '') + (u.city ? '<br/>📍 ' + u.city : '') + (u.bio ? '<br/><i>' + u.bio + '</i>' : ''));
-});
-
-[100, 300, 800].forEach(function(delay) {
-  setTimeout(function() { map.invalidateSize(); }, delay);
-});
-</script>
-</body>
-</html>`
-}
-
 export default function MapScreen({ navigation }) {
   const { token, user: me } = useAuth()
   const [users, setUsers] = useState([])
-  const usersRef = useRef([])
   const [loading, setLoading] = useState(true)
   const [slowLoad, setSlowLoad] = useState(false)
   const [error, setError] = useState(null)
@@ -160,22 +67,9 @@ export default function MapScreen({ navigation }) {
   const [gettingLocation, setGettingLocation] = useState(false)
 
   useEffect(() => {
+    ensureLeafletCss()
     loadUsers()
-    if (Platform.OS === 'web') {
-      window.addEventListener('message', handleWebMessage)
-      return () => window.removeEventListener('message', handleWebMessage)
-    }
   }, [])
-
-  function handleWebMessage(event) {
-    try {
-      const data = JSON.parse(event.data)
-      if (data.type === 'USER_CLICK') {
-        const user = usersRef.current.find(u => u.id === data.userId)
-        if (user) setSelected(user)
-      }
-    } catch (e) {}
-  }
 
   async function loadUsers() {
     setError(null)
@@ -195,23 +89,12 @@ export default function MapScreen({ navigation }) {
           )
         : []
       setUsers(list)
-      usersRef.current = list
     } catch (e) {
       setError('Не удалось загрузить карту')
     }
     clearTimeout(slowTimer)
     setSlowLoad(false)
     setLoading(false)
-  }
-
-  function handleWebViewMessage(event) {
-    try {
-      const data = JSON.parse(event.nativeEvent.data)
-      if (data.type === 'USER_CLICK') {
-        const user = users.find(u => u.id === data.userId)
-        if (user) setSelected(user)
-      }
-    } catch (e) {}
   }
 
   async function toggleNearby(radius) {
@@ -270,6 +153,10 @@ export default function MapScreen({ navigation }) {
     </View>
   )
 
+  const centerLat = myLocation ? myLocation.latitude : 55.7558
+  const centerLng = myLocation ? myLocation.longitude : 37.6173
+  const zoom = myLocation && nearbyRadius ? (nearbyRadius <= 5 ? 13 : 11) : 5
+
   const FilterBar = () => (
     <View style={s.filtersWrap}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}>
@@ -288,7 +175,6 @@ export default function MapScreen({ navigation }) {
         })}
       </ScrollView>
 
-      {/* Кнопки "Поблизости" */}
       <View style={s.nearbyRow}>
         <Text style={s.nearbyLabel}>
           {gettingLocation ? '📡 Определяем...' : '📍 Поблизости:'}
@@ -329,18 +215,53 @@ export default function MapScreen({ navigation }) {
           <Text style={{ color: colors.text, fontSize: 18, fontWeight: '700', marginBottom: 8 }}>Карта пустая</Text>
           <Text style={{ color: colors.text2, textAlign: 'center', paddingHorizontal: 32 }}>Пользователи появятся когда укажут своё местоположение в профиле</Text>
         </View>
-      ) : Platform.OS === 'web' ? (
-        <iframe
-          srcDoc={getMapHTML(filtered, myLocation, nearbyRadius)}
-          style={{ flex: 1, border: 'none', width: '100%', height: '100%' }}
-          title="map"
-        />
       ) : (
-        <WebView
-          source={{ html: getMapHTML(filtered, myLocation, nearbyRadius) }}
-          style={{ flex: 1 }}
-          onMessage={handleWebViewMessage}
-        />
+        <View style={{ flex: 1 }}>
+          <MapContainer
+            key={`${centerLat}-${centerLng}-${zoom}`}
+            center={[centerLat, centerLng]}
+            zoom={zoom}
+            style={{ width: '100%', height: '100%' }}
+          >
+            <TileLayer attribution="© OpenStreetMap" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+
+            {myLocation && nearbyRadius && (
+              <>
+                <Circle
+                  center={[myLocation.latitude, myLocation.longitude]}
+                  radius={nearbyRadius * 1000}
+                  pathOptions={{ color: '#E04E28', fillColor: '#E04E28', fillOpacity: 0.06, weight: 2, dashArray: '6,4' }}
+                />
+                <Marker position={[myLocation.latitude, myLocation.longitude]} icon={buildMeIcon()}>
+                  <Popup><b>Вы здесь</b></Popup>
+                </Marker>
+              </>
+            )}
+
+            {filtered.map(u => {
+              const role = u.roles?.[0] || 'COLLECTOR'
+              const r = roleMap[role] || roleMap.COLLECTOR
+              const badgeLabel = u.badge === 'SHOP' ? '🏪 Магазин' : u.badge === 'BLOGGER' ? '✅ Блогер' : ''
+              return (
+                <Marker
+                  key={u.id}
+                  position={[u.latitude, u.longitude]}
+                  icon={buildUserIcon(u, r)}
+                  eventHandlers={{ click: () => setSelected(u) }}
+                >
+                  <Popup>
+                    <b>{r.icon} {u.name}</b>
+                    {badgeLabel ? <span style={{ fontSize: 11, color: '#FF9700' }}> {badgeLabel}</span> : null}
+                    <br />
+                    {r.label}{u.avgRating ? ` · ⭐ ${u.avgRating.toFixed(1)} (${u.reviewCount})` : ''}
+                    {u.city ? <><br />📍 {u.city}</> : null}
+                    {u.bio ? <><br /><i>{u.bio}</i></> : null}
+                  </Popup>
+                </Marker>
+              )
+            })}
+          </MapContainer>
+        </View>
       )}
 
       {/* Карточка пользователя */}

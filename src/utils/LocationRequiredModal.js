@@ -14,7 +14,8 @@ export default function LocationRequiredModal() {
   const [loading, setLoading] = useState(false)
   const [denied, setDenied] = useState(false)
 
-  if (!user || (user.latitude != null && user.longitude != null)) return null
+  const isStaff = user?.roles?.some(r => ['ADMIN', 'MODERATOR', 'ANALYTICS'].includes(r))
+  if (!user || isStaff || (user.latitude != null && user.longitude != null)) return null
 
   async function handleAllow() {
     setLoading(true)
