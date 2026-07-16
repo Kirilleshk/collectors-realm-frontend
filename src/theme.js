@@ -13,3 +13,18 @@ export const colors = {
   silver: '#b9bdc6',
   gold: '#e0b144',
 }
+
+// Единый источник стиля нижнего таб-бара — используется и в screenOptions
+// MainTabs, и для восстановления после того, как BattleScreen его прячет
+// (см. useFocusEffect в BattleScreen.js). Возврат просто `undefined` не
+// откатывает к стилю из screenOptions (react-navigation мёржит undefined
+// как собственное свойство), поэтому нужен явный объект для отката.
+export function getTabBarStyle(insets) {
+  return {
+    backgroundColor: colors.surface,
+    borderTopColor: colors.border,
+    height: 60 + insets.bottom,
+    paddingBottom: Math.max(insets.bottom, 8),
+    paddingTop: 8,
+  }
+}

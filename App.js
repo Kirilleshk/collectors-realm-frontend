@@ -8,7 +8,7 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 
 import { AuthProvider, useAuth } from './src/AuthContext'
-import { colors } from './src/theme'
+import { colors, getTabBarStyle } from './src/theme'
 import * as Notifications from 'expo-notifications'
 import WhatsNewModal from './src/utils/WhatsNewModal'
 import OnboardingTour from './src/utils/OnboardingTour'
@@ -75,7 +75,7 @@ function GameStack() {
       headerTitleStyle: { fontWeight: '700' },
     }}>
       <Stack.Screen name="GameMain" component={GameScreen} options={{ title: 'Игра' }} />
-      <Stack.Screen name="Battle" component={BattleScreen} options={{ title: 'Бой' }} />
+      <Stack.Screen name="Battle" component={BattleScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   )
 }
@@ -89,13 +89,7 @@ function MainTabs() {
       tabBarIcon: ({ focused }) => (
         <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.5 }}>{tabIcons[route.name]}</Text>
       ),
-      tabBarStyle: {
-        backgroundColor: colors.surface,
-        borderTopColor: colors.border,
-        height: 60 + insets.bottom,
-        paddingBottom: Math.max(insets.bottom, 8),
-        paddingTop: 8,
-      },
+      tabBarStyle: getTabBarStyle(insets),
       tabBarActiveTintColor: colors.accent,
       tabBarInactiveTintColor: colors.text2,
       tabBarLabelStyle: { fontSize: 11, fontWeight: '500' },

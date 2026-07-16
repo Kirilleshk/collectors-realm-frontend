@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { View, Text, Image, FlatList, ScrollView, StyleSheet, ActivityIndicator, Pressable, Alert, Platform, useWindowDimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useFocusEffect } from '@react-navigation/native'
 import * as ScreenOrientation from 'expo-screen-orientation'
 import { GestureDetector, Gesture } from 'react-native-gesture-handler'
 import { LinearGradient } from 'expo-linear-gradient'
 import { game } from '../api'
-import { colors } from '../theme'
+import { colors, getTabBarStyle } from '../theme'
 import { auraAttackBonus, hasActivatableAbility } from '../utils/cardArt'
 import HpBar from '../components/battle/HpBar'
 import BossBanner from '../components/battle/BossBanner'
@@ -31,14 +32,20 @@ export default function BattleScreen({ route, navigation }) {
   // скроллящийся flex-child проваливается в классическую CSS-ловушку
   const [playerBarH, setPlayerBarH] = useState(0)
   const [bottomH, setBottomH] = useState(0)
-  const HEADER_ESTIMATE = 44
-  // Бой открыт внутри Stack-навигатора вкладки «Игра» — под ним ещё виден
-  // нижний таб-бар (60 + insets.bottom, см. tabBarStyle в App.js), это тоже
-  // отъедает высоту окна и должно учитываться, иначе арена вылезает за экран
-  const TAB_BAR_ESTIMATE = 60 + insets.bottom
+  // Нативная шапка Stack-навигатора и нижний таб-бар вкладок во время боя не
+  // нужны (не видно ни «← Бой», ни Магазин/Карта/Профиль) и скрываются на
+  // фокусе экрана (см. useFocusEffect ниже + headerShown:false в App.js) —
+  // высвобождает ~104px, которых раньше катастрофически не хватало на реальных
+  // телефонах в ландшафте (стол обрезался до нечитаемого состояния)
+  const HEADER_ESTIMATE = 0
+  const TAB_BAR_ESTIMATE = 0
   const LOG_HEIGHT = isLandscape ? 44 : 90
+  // Пол поднят с 80 до 140 — старое значение было меньше высоты одного
+  // компактного баннера босса, из-за чего арена почти всегда обрезала стол
+  // до нечитаемого состояния на телефонах; 140 хотя бы показывает баннер
+  // босса + один ряд стола как аварийный минимум
   const arenaHeight = Math.max(
-    80,
+    140,
     height - insets.top - insets.bottom - HEADER_ESTIMATE - TAB_BAR_ESTIMATE - playerBarH - bottomH - LOG_HEIGHT
   )
   const [battle, setBattle] = useState(null)
@@ -86,6 +93,21 @@ export default function BattleScreen({ route, navigation }) {
       ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {})
     }
   }, [])
+
+  // Прячем нижний таб-бар вкладок, пока экран боя в фокусе — освобождает
+  // место под арену (см. HEADER_ESTIMATE/TAB_BAR_ESTIMATE выше). На blur
+  // (не unmount — GameScreen под этим экраном не размонтируется при переходе
+  // в бой) обязательно восстанавливаем ИМЕННО getTabBarStyle(insets), а не
+  // undefined — react-navigation мёржит undefined как собственное свойство
+  // опций и не откатывается к style из screenOptions, из-за этого таб-бар
+  // остался бы без фона/рамки/высоты после возврата из боя на любую вкладку.
+  useFocusEffect(
+    React.useCallback(() => {
+      const parent = navigation.getParent()
+      parent?.setOptions({ tabBarStyle: { display: 'none' } })
+      return () => parent?.setOptions({ tabBarStyle: getTabBarStyle(insets) })
+    }, [navigation, insets])
+  )
 
   function popDamage(target, amount, positive) {
     const id = ++popupId.current
@@ -392,6 +414,13 @@ export default function BattleScreen({ route, navigation }) {
       )}
       <View pointerEvents="none" style={[s.backdropOverlay, isDedicatedArena && s.backdropOverlayLight]} />
 
+      {/* Своя кнопка "назад" — нативная шапка Stack-навигатора скрыта
+          (headerShown:false в App.js), чтобы не съедать высоту. Абсолютное
+          позиционирование поверх фона — не участвует в расчёте arenaHeight. */}
+      <Pressable style={[s.backBtn, { top: insets.top + 6 }]} onPress={() => navigation.goBack()}>
+        <Text style={s.backBtnText}>←</Text>
+      </Pressable>
+
       <ScrollView
         style={[s.arenaScroll, { height: arenaHeight }]}
         contentContainerStyle={s.arenaScrollContent}
@@ -406,7 +435,8 @@ export default function BattleScreen({ route, navigation }) {
           popups={popups.filter(p => p.target === 'boss')}
           faceAttackable={faceAttackable}
           onPress={faceAttackable ? () => onAttack(null) : undefined}
-          height={isLandscape ? 108 : 168}
+          height={isLandscape ? 68 : 168}
+          compact={isLandscape}
           handCount={deckCounts.bossHand}
         />
       </View>
@@ -516,9 +546,9 @@ export default function BattleScreen({ route, navigation }) {
 
       <View style={[s.playerBar, isLandscape && s.playerBarCompact]} onLayout={e => setPlayerBarH(e.nativeEvent.layout.height)}>
         <HpBar label="Вы" value={battle.playerHp} max={battle.playerMaxHp} color={colors.green} popups={popups.filter(p => p.target === 'player')} />
-        <View style={s.statsRow}>
-          <View style={s.statBadge}><Text style={s.statBadgeText}>💧 {battle.mana}/{MANA_CAP}</Text></View>
-          <View style={s.statBadge}><Text style={s.statBadgeText}>🔄 Ход {battle.turn}</Text></View>
+        <View style={[s.statsRow, isLandscape && s.statsRowCompact]}>
+          <View style={[s.statBadge, isLandscape && s.statBadgeCompact]}><Text style={s.statBadgeText}>💧 {battle.mana}/{MANA_CAP}</Text></View>
+          <View style={[s.statBadge, isLandscape && s.statBadgeCompact]}><Text style={s.statBadgeText}>🔄 Ход {battle.turn}</Text></View>
         </View>
       </View>
 
@@ -593,6 +623,8 @@ const s = StyleSheet.create({
   backdropSharp: { opacity: 0.55 },
   backdropOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(10,11,14,0.72)' },
   backdropOverlayLight: { backgroundColor: 'rgba(10,11,14,0.5)' },
+  backBtn: { position: 'absolute', left: 8, zIndex: 10, width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(10,11,14,0.6)', alignItems: 'center', justifyContent: 'center' },
+  backBtnText: { fontSize: 18, fontWeight: '700', color: colors.text },
   center: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center' },
   rotateWrap: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center', padding: 32 },
   rotateIcon: { fontSize: 56, marginBottom: 16, transform: [{ rotate: '90deg' }] },
@@ -615,9 +647,11 @@ const s = StyleSheet.create({
   activateBtnText: { fontSize: 12 },
   deckRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 24, paddingVertical: 2 },
   playerBar: { paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.border },
-  playerBarCompact: { paddingVertical: 4 },
+  playerBarCompact: { paddingVertical: 3 },
   statsRow: { flexDirection: 'row', gap: 8, marginTop: 2 },
+  statsRowCompact: { marginTop: 0 },
   statBadge: { backgroundColor: colors.surface2, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
+  statBadgeCompact: { paddingVertical: 2 },
   statBadgeText: { fontSize: 12, fontWeight: '700', color: colors.text },
   log: {},
   logContent: { padding: 12 },

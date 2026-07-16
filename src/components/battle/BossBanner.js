@@ -18,7 +18,7 @@ function cardsWord(n) {
   return 'карт'
 }
 
-export default function BossBanner({ bossName, imageUrl, hp, maxHp, popups, faceAttackable, onPress, height, handCount }) {
+export default function BossBanner({ bossName, imageUrl, hp, maxHp, popups, faceAttackable, onPress, height, handCount, compact = false }) {
   const pulse = useRef(new Animated.Value(0)).current
   const portraitSize = Math.min(height - 24, 156)
 
@@ -62,8 +62,8 @@ export default function BossBanner({ bossName, imageUrl, hp, maxHp, popups, face
                 s.glowRing,
                 { borderRadius: portraitSize * 0.2 + 5 },
                 faceAttackable
-                  ? { borderColor: colors.gold, borderWidth: 3, opacity: 1 }
-                  : { borderColor: colors.accent, borderWidth: 2.5, opacity: glowOpacity },
+                  ? { borderColor: colors.gold, borderWidth: compact ? 2 : 3, opacity: 1 }
+                  : { borderColor: colors.accent, borderWidth: compact ? 1.5 : 2.5, opacity: glowOpacity },
               ]}
             />
             {imageUrl
@@ -72,11 +72,11 @@ export default function BossBanner({ bossName, imageUrl, hp, maxHp, popups, face
           </Animated.View>
         </View>
         <View style={s.info}>
-          <Text style={s.name} numberOfLines={1}>
+          <Text style={[s.name, compact && s.nameCompact]} numberOfLines={1}>
             {bossName}{faceAttackable ? ' — бить в лицо' : ''}
           </Text>
-          <HpBar label="Босс" value={hp} max={maxHp} color={colors.accent} popups={popups} thick />
-          {!!handCount && <Text style={s.handCount}>✋ {handCount} {cardsWord(handCount)} в руке</Text>}
+          <HpBar label="Босс" value={hp} max={maxHp} color={colors.accent} popups={popups} thick={!compact} />
+          {!!handCount && !compact && <Text style={s.handCount}>✋ {handCount} {cardsWord(handCount)} в руке</Text>}
         </View>
       </View>
     </Pressable>
@@ -92,5 +92,6 @@ const s = StyleSheet.create({
   imageFallback: { backgroundColor: `${colors.accent}22`, alignItems: 'center', justifyContent: 'center' },
   info: { flex: 1 },
   name: { fontSize: 18, fontWeight: '800', color: colors.text, marginBottom: 10, letterSpacing: 0.3 },
+  nameCompact: { fontSize: 13, marginBottom: 4 },
   handCount: { fontSize: 11, color: colors.text2, marginTop: 4 },
 })

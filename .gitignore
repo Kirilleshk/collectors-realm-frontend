@@ -45,3 +45,6 @@ yarn-error.*
 
 # исходники нейроартов карт — уже загружены на Cloudinary, URL в БД
 /art-cards
+
+# скриншоты отладки Playwright MCP
+/.playwright-mcp
