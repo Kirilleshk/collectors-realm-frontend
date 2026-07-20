@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react'
 import { View, Text, Image, FlatList, ScrollView, StyleSheet, ActivityIndicator, Pressable, Alert, Platform, useWindowDimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useFocusEffect } from '@react-navigation/native'
-import * as ScreenOrientation from 'expo-screen-orientation'
 import { GestureDetector, Gesture } from 'react-native-gesture-handler'
 import { LinearGradient } from 'expo-linear-gradient'
 import { game } from '../api'
@@ -24,7 +23,12 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
 export default function BattleScreen({ route, navigation }) {
   const insets = useSafeAreaInsets()
   const { width, height } = useWindowDimensions()
-  const isLandscape = width > height
+  // compact — реально короткий по вертикали экран (телефон в ландшафте,
+  // ~390-428px высоты), а НЕ "широкий, чем высокий" (width > height путал
+  // компактный телефонный ландшафт с обычным широким десктопным окном —
+  // на десктопе/планшете компактные размеры карт выглядели мелкими без
+  // всякой причины, там высоты всегда достаточно)
+  const compact = height < 500
   // Высота арены считается явно числом от useWindowDimensions (надёжно
   // обновляется при повороте), а не через flex внутри ScrollView — на вебе
   // flex-контейнер со ScrollView схлопывается в 0 при живом ресайзе окна:
@@ -39,7 +43,7 @@ export default function BattleScreen({ route, navigation }) {
   // телефонах в ландшафте (стол обрезался до нечитаемого состояния)
   const HEADER_ESTIMATE = 0
   const TAB_BAR_ESTIMATE = 0
-  const LOG_HEIGHT = isLandscape ? 44 : 90
+  const LOG_HEIGHT = compact ? 44 : 90
   // Пол поднят с 80 до 140 — старое значение было меньше высоты одного
   // компактного баннера босса, из-за чего арена почти всегда обрезала стол
   // до нечитаемого состояния на телефонах; 140 хотя бы показывает баннер
@@ -81,18 +85,13 @@ export default function BattleScreen({ route, navigation }) {
   const playerSlotWrapRefs = useRef({})
   const faceZoneRef = useRef(null)
 
-  // Бой удобнее вести в ландшафте — больше места для стола. На вебе раскладка
-  // сама подстраивается под ширину окна (см. isLandscape выше), а на нативных
-  // платформах разворот приложения теперь свободный (see commit 1a6dbcf) — если
-  // у пользователя выключен авто-поворот экрана в системе, игра без явного
-  // lockAsync никогда не перейдёт в ландшафт. Возвращаем портрет при выходе из боя.
-  useEffect(() => {
-    if (Platform.OS === 'web') return
-    ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE).catch(() => {})
-    return () => {
-      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {})
-    }
-  }, [])
+  // Поворот больше НЕ навязывается — раньше здесь принудительно лочили
+  // ландшафт при входе в бой (и портрет при выходе), пользователь просил
+  // убрать это требование. Ориентация теперь полностью свободная, как и на
+  // остальных экранах приложения (app.json: orientation "default", это был
+  // единственный экран, где вообще что-то лочилось) — раскладка сама
+  // подстраивается под реальные width/height через useWindowDimensions
+  // (см. compact выше), кем бы ни была текущая ориентация устройства.
 
   // Прячем нижний таб-бар вкладок, пока экран боя в фокусе — освобождает
   // место под арену (см. HEADER_ESTIMATE/TAB_BAR_ESTIMATE выше). На blur
@@ -366,29 +365,16 @@ export default function BattleScreen({ route, navigation }) {
 
   if (loading || !battle || !resolved) return <View style={s.center}><ActivityIndicator color={colors.accent} size="large" /></View>
 
-  // На вебе expo-screen-orientation не может физически повернуть экран
-  // телефона (JS не управляет ориентацией браузера без Fullscreen API,
-  // ненадёжного на iOS Safari) — раньше при портретной ориентации стол боя
-  // просто сжимался в узкую колонку, что и выглядело "не переворачивается".
-  // Вместо борьбы с ориентацией браузера — просим пользователя повернуть
-  // телефон физически, как это делают большинство веб-игр.
-  const isMobileWeb = Platform.OS === 'web' && Math.min(width, height) < 900
-  if (isMobileWeb && !isLandscape) {
-    return (
-      <View style={s.rotateWrap}>
-        <Text style={s.rotateIcon}>🔄</Text>
-        <Text style={s.rotateTitle}>Поверните телефон</Text>
-        <Text style={s.rotateText}>Бой ведётся в альбомной ориентации — поверните устройство боком, чтобы продолжить</Text>
-      </View>
-    )
-  }
-
   const theme = battle.theme
   const isOver = battle.status !== 'ACTIVE'
   const lastLog = Array.isArray(battle.log) ? battle.log[battle.log.length - 1] : null
   const board = displayBoard || resolved
   const boardSlots = battle.boardSlots || 5
-  const slotSize = boardSlots > 3 ? 48 : 60
+  // Раньше размер слота не зависел ни от чего, кроме числа слотов — на
+  // просторном экране (десктоп/планшет, compact=false) карты выглядели мелко
+  // без всякой причины. Компактные значения (48/60) оставлены как есть —
+  // это протестированный на реальном телефоне в ландшафте минимум.
+  const slotSize = compact ? (boardSlots > 3 ? 48 : 60) : (boardSlots > 3 ? 72 : 88)
   const bossSlots = Array.from({ length: boardSlots }, (_, i) => board.bossBoard[i] || null)
   const playerSlots = Array.from({ length: boardSlots }, (_, i) => board.playerBoard[i] || null)
   const boardFull = resolved.playerBoard.length >= boardSlots
@@ -413,7 +399,7 @@ export default function BattleScreen({ route, navigation }) {
   const isDedicatedArena = !!theme.arenaImageUrl
 
   return (
-    <View style={[s.wrap, isLandscape && s.wrapLandscape]}>
+    <View style={s.wrap}>
       {!!arenaUrl && (
         <Image
           source={{ uri: arenaUrl }}
@@ -456,8 +442,8 @@ export default function BattleScreen({ route, navigation }) {
           popups={popups.filter(p => p.target === 'boss')}
           faceAttackable={faceAttackable}
           onPress={faceAttackable ? () => onAttack(null) : undefined}
-          height={isLandscape ? 68 : 168}
-          compact={isLandscape}
+          height={compact ? 68 : 168}
+          compact={compact}
           handCount={deckCounts.bossHand}
         />
       </View>
@@ -565,11 +551,11 @@ export default function BattleScreen({ route, navigation }) {
         )
       })()}
 
-      <View style={[s.playerBar, isLandscape && s.playerBarCompact]} onLayout={e => setPlayerBarH(e.nativeEvent.layout.height)}>
+      <View style={[s.playerBar, compact && s.playerBarCompact]} onLayout={e => setPlayerBarH(e.nativeEvent.layout.height)}>
         <HpBar label="Вы" value={battle.playerHp} max={battle.playerMaxHp} color={colors.green} popups={popups.filter(p => p.target === 'player')} />
-        <View style={[s.statsRow, isLandscape && s.statsRowCompact]}>
-          <View style={[s.statBadge, isLandscape && s.statBadgeCompact]}><Text style={s.statBadgeText}>💧 {battle.mana}/{MANA_CAP}</Text></View>
-          <View style={[s.statBadge, isLandscape && s.statBadgeCompact]}><Text style={s.statBadgeText}>🔄 Ход {battle.turn}</Text></View>
+        <View style={[s.statsRow, compact && s.statsRowCompact]}>
+          <View style={[s.statBadge, compact && s.statBadgeCompact]}><Text style={s.statBadgeText}>💧 {battle.mana}/{MANA_CAP}</Text></View>
+          <View style={[s.statBadge, compact && s.statBadgeCompact]}><Text style={s.statBadgeText}>🔄 Ход {battle.turn}</Text></View>
         </View>
       </View>
 
@@ -598,7 +584,7 @@ export default function BattleScreen({ route, navigation }) {
               horizontal
               data={resolved.playerHand}
               keyExtractor={(entry, i) => `${entry.cardId}-${i}`}
-              contentContainerStyle={[s.hand, isLandscape && s.handCompact]}
+              contentContainerStyle={[s.hand, compact && s.handCompact]}
               showsHorizontalScrollIndicator={false}
               renderItem={({ item }) => {
                 const playable = !acting && !boardFull && item.card.cost <= battle.mana
@@ -608,15 +594,15 @@ export default function BattleScreen({ route, navigation }) {
                     playable={playable}
                     onPress={() => onPlayCard(item.cardId)}
                     onLongPress={card => setZoomCard({ card, currentHealth: null })}
-                    width={isLandscape ? 54 : 96}
-                    height={isLandscape ? 76 : 136}
+                    width={compact ? 54 : 96}
+                    height={compact ? 76 : 136}
                   />
                 )
               }}
             />
-            <View style={[s.actions, isLandscape && s.actionsCompact, { paddingBottom: (isLandscape ? 6 : 12) + insets.bottom }]}>
+            <View style={[s.actions, compact && s.actionsCompact, { paddingBottom: (compact ? 6 : 12) + insets.bottom }]}>
               <Pressable
-                style={({ pressed }) => [s.endTurnBtn, isLandscape && s.endTurnBtnCompact, pressed && { opacity: 0.8 }, acting && { opacity: 0.6 }]}
+                style={({ pressed }) => [s.endTurnBtn, compact && s.endTurnBtnCompact, pressed && { opacity: 0.8 }, acting && { opacity: 0.6 }]}
                 onPress={onEndTurn}
                 disabled={acting}
               >
@@ -639,17 +625,12 @@ export default function BattleScreen({ route, navigation }) {
 
 const s = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.bg },
-  wrapLandscape: { paddingTop: 0 },
   backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.35 },
   backdropSharp: { opacity: 0.55 },
   backdropOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   backBtn: { position: 'absolute', left: 8, zIndex: 10, width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(10,11,14,0.6)', alignItems: 'center', justifyContent: 'center' },
   backBtnText: { fontSize: 18, fontWeight: '700', color: colors.text },
   center: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center' },
-  rotateWrap: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center', padding: 32 },
-  rotateIcon: { fontSize: 56, marginBottom: 16, transform: [{ rotate: '90deg' }] },
-  rotateTitle: { fontSize: 20, fontWeight: '800', color: colors.text, marginBottom: 8, textAlign: 'center' },
-  rotateText: { fontSize: 14, color: colors.text2, textAlign: 'center', lineHeight: 20 },
   // Высота задаётся явно числом (arenaHeight, см. компонент) — ScrollView внутри
   // flex-колонки схлопывается в 0 при живом ресайзе окна/повороте на вебе,
   // не пересчитывая flex корректно; explicit height полностью обходит эту проблему
