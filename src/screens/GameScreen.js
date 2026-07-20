@@ -49,6 +49,20 @@ function buildCollectionRows(userCards) {
 function CollectionCardTile({ entry }) {
   const card = entry.card
   const r = RARITY[card.rarity] || RARITY.COMMON
+  // Реюскин-карты (20.07.2026, boardImageUrl не null) — imageUrl уже целая карта
+  // с рамкой/именем/маной/статами/текстом эффекта. По прямой просьбе пользователя
+  // в коллекции показываем картинку как есть, целиком, без обрезки (contain, не
+  // cover) и без своих дублирующих бейджей/рамки — только счётчик количества
+  // (единственное, чего на картинке нет).
+  if (card.boardImageUrl) {
+    return (
+      <View style={s.cardFullArt}>
+        <Image source={{ uri: card.imageUrl }} style={s.fullArtImage} resizeMode="contain" />
+        {entry.quantity > 1 ? <View style={s.qtyBadge}><Text style={s.qtyBadgeText}>×{entry.quantity}</Text></View> : null}
+      </View>
+    )
+  }
+
   // Металлическая градиентная рамка по редкости вместо тонкой цветной линии —
   // по прямому запросу пользователя карты должны выглядеть как в референсе
   // (золото/серебро выглядит как настоящий металл). Рамка рисуется отдельным
@@ -254,6 +268,8 @@ const s = StyleSheet.create({
   row: { flexDirection: 'row', gap: 12 },
   rowSlot: { flex: 1 },
   cardOuter: { borderRadius: 16, marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 3 },
+  cardFullArt: { marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 3 },
+  fullArtImage: { width: '100%', height: 320 },
   card: { backgroundColor: colors.surface, borderRadius: 12, overflow: 'hidden' },
   artArea: { height: 150 },
   artFallback: { alignItems: 'center', justifyContent: 'center' },

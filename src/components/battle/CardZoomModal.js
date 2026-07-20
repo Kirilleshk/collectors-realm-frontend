@@ -13,6 +13,25 @@ export default function CardZoomModal({ card, currentHealth, visible, onClose })
   if (!card) return null
   const r = RARITY[card.rarity] || RARITY.COMMON
   const health = currentHealth ?? card.health
+  // Реюскин-карты (20.07.2026, boardImageUrl не null) — imageUrl уже целая карта
+  // с рамкой/именем/маной/статами/текстом эффекта, нарисованными на картинке.
+  // Свои рамку/бейджи/текст поверх не рисуем — картинка и так самодостаточна.
+  const isFullArt = !!card.boardImageUrl
+
+  if (isFullArt) {
+    return (
+      <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+        <Pressable style={s.backdrop} onPress={onClose}>
+          <Pressable style={s.cardWrap} onPress={() => {}}>
+            <Image source={{ uri: card.imageUrl }} style={s.fullArtImage} resizeMode="contain" />
+            <Pressable style={s.closeBtn} onPress={onClose}>
+              <Text style={s.closeBtnText}>Закрыть</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    )
+  }
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -64,6 +83,7 @@ export default function CardZoomModal({ card, currentHealth, visible, onClose })
 const s = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(6,7,10,0.86)', alignItems: 'center', justifyContent: 'center', padding: 20 },
   cardWrap: { alignItems: 'center', maxWidth: 320, width: '100%' },
+  fullArtImage: { width: '100%', height: 420 },
   cardOuter: { width: 200, height: 280, borderRadius: 20, shadowColor: '#000', shadowOpacity: 0.45, shadowRadius: 6, shadowOffset: { width: 0, height: 3 }, elevation: 4 },
   card: { flex: 1, borderRadius: 16, overflow: 'hidden', backgroundColor: colors.surface },
   art: { width: '100%', height: '100%' },

@@ -113,8 +113,13 @@ export default function BoardSlot({ entry, size = 60, effect, popups = [], onPre
           { transform: [{ translateY }, { scale }], opacity },
         ]}
       >
-        {card.imageUrl
-          ? <Image source={{ uri: card.imageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        {/* На столе — ВСЕГДА обрезанный портрет (boardImageUrl), не целая карта с
+            рамкой/текстом: HP/атака тут живые (урон, ауры), рисуем их своими
+            бейджами поверх, дублировать статичные цифры с картинки нельзя.
+            Старые карты без boardImageUrl (просто квадратный портрет без рамки) —
+            падают на card.imageUrl как и раньше, там ничего дублировать не с чем. */}
+        {(card.boardImageUrl || card.imageUrl)
+          ? <Image source={{ uri: card.boardImageUrl || card.imageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
           : <View style={[StyleSheet.absoluteFill, s.artFallback, { backgroundColor: `${r.color}22` }]}><Text style={{ fontSize: size * 0.4 }}>{cardIcon(card)}</Text></View>}
         <View style={s.statsRow}>
           <HealthBadge value={currentHealth} size={Math.round(size * 0.26)} damaged={damaged} />
