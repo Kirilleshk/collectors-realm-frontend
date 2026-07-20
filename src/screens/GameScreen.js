@@ -5,7 +5,7 @@ import { useNavigation } from '@react-navigation/native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { game } from '../api'
 import { colors } from '../theme'
-import { RARITY, FACTION, rarityFrameStyle, RarityInnerRing, CardCorners, cardIcon, ManaBadge, HealthBadge, AttackBadge, nameplateGradient, noCalloutProps, noCalloutStyle } from '../utils/cardArt'
+import { RARITY, FACTION, rarityGradientColors, rarityGradientWidth, CardCorners, cardIcon, ManaBadge, HealthBadge, AttackBadge, nameplateGradient, noCalloutProps, noCalloutStyle } from '../utils/cardArt'
 import StarterPackModal from '../utils/StarterPackModal'
 import HowToPlayModal from '../utils/HowToPlayModal'
 
@@ -49,32 +49,42 @@ function buildCollectionRows(userCards) {
 function CollectionCardTile({ entry }) {
   const card = entry.card
   const r = RARITY[card.rarity] || RARITY.COMMON
-  const frame = rarityFrameStyle(card.rarity)
+  // Металлическая градиентная рамка по редкости вместо тонкой цветной линии —
+  // по прямому запросу пользователя карты должны выглядеть как в референсе
+  // (золото/серебро выглядит как настоящий металл). Рамка рисуется отдельным
+  // внешним слоем-градиентом (обычный приём в RN — border-image недоступен),
+  // толщина padding'ом растёт с редкостью через rarityGradientWidth.
   return (
-    <View style={[s.card, frame, noCalloutStyle, { borderColor: r.color }]} {...noCalloutProps}>
-      <View style={s.artArea}>
-        {card.imageUrl
-          ? <Image source={{ uri: card.imageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-          : <View style={[StyleSheet.absoluteFill, s.artFallback, { backgroundColor: `${r.color}22` }]}><Text style={s.artFallbackIcon}>{cardIcon(card)}</Text></View>}
-        <LinearGradient {...nameplateGradient(card)} style={StyleSheet.absoluteFill} pointerEvents="none" />
+    <LinearGradient
+      colors={rarityGradientColors(card.rarity)}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={[s.cardOuter, { padding: rarityGradientWidth(card.rarity) }]}
+    >
+      <View style={[s.card, noCalloutStyle]} {...noCalloutProps}>
+        <View style={s.artArea}>
+          {card.imageUrl
+            ? <Image source={{ uri: card.imageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+            : <View style={[StyleSheet.absoluteFill, s.artFallback, { backgroundColor: `${r.color}22` }]}><Text style={s.artFallbackIcon}>{cardIcon(card)}</Text></View>}
+          <LinearGradient {...nameplateGradient(card)} style={StyleSheet.absoluteFill} pointerEvents="none" />
 
-        <View style={s.costBadge}><ManaBadge value={card.cost} size={20} /></View>
-        <View style={[s.rarityBadge, { backgroundColor: `${r.color}30`, borderColor: r.color }]}>
-          <Text style={[s.rarityText, { color: r.color }]}>{r.label}</Text>
+          <View style={s.costBadge}><ManaBadge value={card.cost} size={20} /></View>
+          <View style={[s.rarityBadge, { backgroundColor: `${r.color}30`, borderColor: r.color }]}>
+            <Text style={[s.rarityText, { color: r.color }]}>{r.label}</Text>
+          </View>
+          {entry.quantity > 1 ? <View style={s.qtyBadge}><Text style={s.qtyBadgeText}>×{entry.quantity}</Text></View> : null}
+
+          <Text style={s.cardName} numberOfLines={2}>{card.name}</Text>
+          <View style={s.medallionsRow}>
+            <HealthBadge value={card.health} size={24} />
+            <AttackBadge value={card.attack} size={24} />
+          </View>
+
+          <CardCorners card={card} scale={1.6} />
         </View>
-        {entry.quantity > 1 ? <View style={s.qtyBadge}><Text style={s.qtyBadgeText}>×{entry.quantity}</Text></View> : null}
-
-        <Text style={s.cardName} numberOfLines={2}>{card.name}</Text>
-        <View style={s.medallionsRow}>
-          <HealthBadge value={card.health} size={24} />
-          <AttackBadge value={card.attack} size={24} />
-        </View>
-
-        <RarityInnerRing rarity={card.rarity} borderRadius={14} />
-        <CardCorners card={card} />
+        {card.effectText ? <Text style={s.effectText} numberOfLines={3}>{card.effectText}</Text> : null}
       </View>
-      {card.effectText ? <Text style={s.effectText} numberOfLines={3}>{card.effectText}</Text> : null}
-    </View>
+    </LinearGradient>
   )
 }
 
@@ -243,7 +253,8 @@ const s = StyleSheet.create({
   groupTitle: { fontSize: 14, fontWeight: '800', letterSpacing: 0.5, textTransform: 'uppercase' },
   row: { flexDirection: 'row', gap: 12 },
   rowSlot: { flex: 1 },
-  card: { backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1.5, overflow: 'hidden', marginBottom: 12 },
+  cardOuter: { borderRadius: 16, marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 3 },
+  card: { backgroundColor: colors.surface, borderRadius: 12, overflow: 'hidden' },
   artArea: { height: 150 },
   artFallback: { alignItems: 'center', justifyContent: 'center' },
   artFallbackIcon: { fontSize: 40 },

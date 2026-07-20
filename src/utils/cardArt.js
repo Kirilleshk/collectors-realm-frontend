@@ -51,6 +51,26 @@ export function rarityFrameStyle(rarity) {
   }
 }
 
+// Металлический градиент рамки по редкости — для крупных карт (коллекция,
+// увеличенный вид), где тонкой цветной линии мало: по референсу Марка золото/
+// серебро/бронза должны выглядеть как настоящий полированный металл, не как
+// плоская линия. Тройной стоп света (светлый край → тёмная середина →
+// светлый край) на LinearGradient создаёт "блик" металла без растровых
+// ассетов. Толщина рамки тоже растёт с тиром — GOLD заметно массивнее COMMON.
+export function rarityGradientColors(rarity) {
+  switch (rarity) {
+    case 'GOLD': return ['#fff3c4', '#e0b144', '#7a5215', '#e0b144', '#fff3c4']
+    case 'SILVER': return ['#ffffff', '#b9bdc6', '#6e727c', '#b9bdc6', '#ffffff']
+    case 'EPIC': return ['#d9b3ff', '#8b4fd4', '#4a2570', '#8b4fd4', '#d9b3ff']
+    default: return ['#8fc3f2', '#2e7fd6', '#194a80', '#2e7fd6', '#8fc3f2']
+  }
+}
+
+export function rarityGradientWidth(rarity) {
+  const tier = (RARITY[rarity] || RARITY.COMMON).tier
+  return 3 + tier * 2
+}
+
 // Внутренняя светлая обводка-бевел — только у редких карт (SILVER/GOLD),
 // создаёт ощущение объёма рамки без растрового арта
 export function RarityInnerRing({ rarity, borderRadius = 8 }) {
@@ -80,11 +100,11 @@ export function RarityCorners({ rarity }) {
 // места под текстовую подпись FactionLabel. Если faction ещё не заполнен
 // (карта не попала в SQL-бэкафилл) — откатываемся на старые RarityCorners,
 // чтобы карта не осталась совсем без уголков.
-export function CardCorners({ card }) {
+export function CardCorners({ card, scale = 1 }) {
   const faction = factionOf(card)
   if (!faction) return <RarityCorners rarity={card?.rarity} />
   const tier = (RARITY[card.rarity] || RARITY.COMMON).tier
-  const size = 6 + tier * 1.5
+  const size = (6 + tier * 1.5) * scale
   const style = { width: size, height: size, borderRadius: size / 2, backgroundColor: faction.color, borderWidth: 1, borderColor: 'rgba(0,0,0,0.55)' }
   return (
     <>

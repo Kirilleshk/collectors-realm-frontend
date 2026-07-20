@@ -1,7 +1,8 @@
 import React from 'react'
 import { View, Text, Image, Modal, Pressable, StyleSheet } from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
 import { colors } from '../../theme'
-import { RARITY, rarityFrameStyle, RarityInnerRing, CardCorners, FactionLabel, cardIcon, ManaBadge, HealthBadge, AttackBadge, noCalloutProps, noCalloutStyle } from '../../utils/cardArt'
+import { RARITY, rarityGradientColors, rarityGradientWidth, CardCorners, FactionLabel, cardIcon, ManaBadge, HealthBadge, AttackBadge, noCalloutProps, noCalloutStyle } from '../../utils/cardArt'
 
 // Увеличенная карточка по долгому нажатию — полный арт + все характеристики
 // и текст эффекта (на маленьком бейдже в руке/на столе effectText не влезает
@@ -11,21 +12,28 @@ import { RARITY, rarityFrameStyle, RarityInnerRing, CardCorners, FactionLabel, c
 export default function CardZoomModal({ card, currentHealth, visible, onClose }) {
   if (!card) return null
   const r = RARITY[card.rarity] || RARITY.COMMON
-  const frame = rarityFrameStyle(card.rarity)
   const health = currentHealth ?? card.health
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={s.backdrop} onPress={onClose}>
         <Pressable style={s.cardWrap} onPress={() => {}}>
-          <View style={[s.card, frame, noCalloutStyle, { borderColor: r.color }]} {...noCalloutProps}>
-            {card.imageUrl
-              ? <Image source={{ uri: card.imageUrl }} style={s.art} resizeMode="cover" />
-              : <View style={[s.art, s.artFallback, { backgroundColor: `${r.color}22` }]}><Text style={s.artFallbackIcon}>{cardIcon(card)}</Text></View>}
-            <RarityInnerRing rarity={card.rarity} borderRadius={18} />
-            <CardCorners card={card} />
-            <View style={s.costBadge}><ManaBadge value={card.cost} size={30} /></View>
-          </View>
+          {/* Металлическая градиентная рамка по редкости (как в коллекции,
+              GameScreen.js) — тонкой цветной линии мало на такой крупной карте */}
+          <LinearGradient
+            colors={rarityGradientColors(card.rarity)}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[s.cardOuter, { padding: rarityGradientWidth(card.rarity) }]}
+          >
+            <View style={[s.card, noCalloutStyle]} {...noCalloutProps}>
+              {card.imageUrl
+                ? <Image source={{ uri: card.imageUrl }} style={s.art} resizeMode="cover" />
+                : <View style={[s.art, s.artFallback, { backgroundColor: `${r.color}22` }]}><Text style={s.artFallbackIcon}>{cardIcon(card)}</Text></View>}
+              <CardCorners card={card} scale={1.6} />
+              <View style={s.costBadge}><ManaBadge value={card.cost} size={30} /></View>
+            </View>
+          </LinearGradient>
 
           <Text style={s.name}>{card.name}</Text>
           <View style={s.rarityRow}>
@@ -56,7 +64,8 @@ export default function CardZoomModal({ card, currentHealth, visible, onClose })
 const s = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(6,7,10,0.86)', alignItems: 'center', justifyContent: 'center', padding: 20 },
   cardWrap: { alignItems: 'center', maxWidth: 320, width: '100%' },
-  card: { width: 200, height: 280, borderRadius: 18, borderWidth: 2, overflow: 'hidden', backgroundColor: colors.surface },
+  cardOuter: { width: 200, height: 280, borderRadius: 20, shadowColor: '#000', shadowOpacity: 0.45, shadowRadius: 6, shadowOffset: { width: 0, height: 3 }, elevation: 4 },
+  card: { flex: 1, borderRadius: 16, overflow: 'hidden', backgroundColor: colors.surface },
   art: { width: '100%', height: '100%' },
   artFallback: { alignItems: 'center', justifyContent: 'center' },
   artFallbackIcon: { fontSize: 72 },
