@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react'
 import { View, Text, Image, Pressable, Animated, StyleSheet } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { colors } from '../../theme'
-import { RARITY, rarityFrameStyle, RarityInnerRing, CardCorners, cardIcon, ManaBadge, HealthBadge, AttackBadge, nameplateGradient, noCalloutProps, noCalloutStyle } from '../../utils/cardArt'
+import { RARITY, rarityFrameStyle, RarityInnerRing, RarityCorners, cardIcon, ManaBadge, HealthBadge, AttackBadge, noCalloutProps, noCalloutStyle } from '../../utils/cardArt'
 
 const CARD_WIDTH = 96
 const CARD_HEIGHT = 136
@@ -17,12 +17,6 @@ const CARD_HEIGHT = 136
 export default function HandCard({ entry, playable, onPress, onLongPress, width = CARD_WIDTH, height = CARD_HEIGHT }) {
   const card = entry.card
   const r = RARITY[card.rarity] || RARITY.COMMON
-  // Карты с boardImageUrl — новый реюскин (20.07.2026): imageUrl у них уже целая
-  // карта с рамкой/именем/маной/статами, нарисованными на самой картинке. Свои
-  // бейджи/имя/рамку поверх такой картинки НЕ рисуем — задвоится с тем, что уже
-  // на картинке. Старые карты (boardImageUrl нет) — как раньше, полная сборка
-  // из отдельных бейджей на голом квадратном портрете.
-  const isFullArt = !!card.boardImageUrl
   const [busy, setBusy] = useState(false)
   const lift = useRef(new Animated.Value(0)).current
 
@@ -54,8 +48,7 @@ export default function HandCard({ entry, playable, onPress, onLongPress, width 
       <Pressable
         style={({ pressed }) => [
           s.card,
-          { width, height },
-          isFullArt ? null : { borderColor: r.color, borderWidth: frameBorderWidth },
+          { width, height, borderColor: r.color, borderWidth: frameBorderWidth },
           noCalloutStyle,
           !playable && s.cardOff,
           pressed && playable && { opacity: 0.8 },
@@ -69,19 +62,19 @@ export default function HandCard({ entry, playable, onPress, onLongPress, width 
           ? <Image source={{ uri: card.imageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
           : <View style={[StyleSheet.absoluteFill, s.artFallback, { backgroundColor: `${r.color}22` }]}><Text style={s.artFallbackIcon}>{cardIcon(card)}</Text></View>}
 
-        {!isFullArt && (
-          <>
-            <LinearGradient {...nameplateGradient(card)} style={StyleSheet.absoluteFill} pointerEvents="none" />
-            <View style={s.costBadge}><ManaBadge value={card.cost} size={20} /></View>
-            <Text style={s.cardName} numberOfLines={2}>{card.name}</Text>
-            <View style={s.medallionsRow}>
-              <HealthBadge value={card.health} size={22} />
-              <AttackBadge value={card.attack} size={22} />
-            </View>
-            <RarityInnerRing rarity={card.rarity} borderRadius={14} />
-            <CardCorners card={card} />
-          </>
-        )}
+        <LinearGradient colors={['transparent', 'rgba(10,11,14,0.92)']} locations={[0.4, 1]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+
+        <View style={s.costBadge}><ManaBadge value={card.cost} size={20} /></View>
+
+        <Text style={s.cardName} numberOfLines={2}>{card.name}</Text>
+
+        <View style={s.medallionsRow}>
+          <HealthBadge value={card.health} size={22} />
+          <AttackBadge value={card.attack} size={22} />
+        </View>
+
+        <RarityInnerRing rarity={card.rarity} borderRadius={14} />
+        <RarityCorners rarity={card.rarity} />
       </Pressable>
     </Animated.View>
   )

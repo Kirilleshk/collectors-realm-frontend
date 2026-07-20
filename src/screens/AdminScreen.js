@@ -10,7 +10,7 @@ import { pickAndUploadPhoto } from '../utils/uploadPhoto'
 import SmartInput from '../utils/SmartInput'
 import { track } from '../utils/analytics'
 import ScreenBackground from '../components/ScreenBackground'
-import { CardArt, RARITY, FactionLabel } from '../utils/cardArt'
+import { CardArt, RARITY } from '../utils/cardArt'
 
 const CLOUD_NAME = 'dqutmb1rm'
 const UPLOAD_PRESET = 'collectors_realm'
@@ -682,10 +682,7 @@ export default function AdminScreen() {
                   <View key={c.id} style={[s.gameCardTile, { borderColor: r.color }]}>
                     <CardArt card={c} size={64} />
                     <Text style={s.gameCardName} numberOfLines={1}>{c.name}</Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Text style={[s.gameCardRarity, { color: r.color }]}>{r.label}</Text>
-                      <FactionLabel card={c} style={{ fontSize: 9 }} />
-                    </View>
+                    <Text style={[s.gameCardRarity, { color: r.color }]}>{r.label}</Text>
                     <View style={{ flexDirection: 'row', gap: 8, marginTop: 2 }}>
                       <Text style={s.gameCardStat}>💧{c.cost}</Text>
                       <Text style={s.gameCardStat}>⚔️{c.attack}</Text>

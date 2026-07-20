@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef } from 'react'
 import { View, Text, Image, Animated, Pressable, StyleSheet } from 'react-native'
 import { colors } from '../../theme'
-import { RARITY, rarityFrameStyle, RarityInnerRing, CardCorners, cardIcon, HealthBadge, AttackBadge, noCalloutProps, noCalloutStyle } from '../../utils/cardArt'
+import { RARITY, rarityFrameStyle, RarityInnerRing, RarityCorners, cardIcon, HealthBadge, AttackBadge, noCalloutProps, noCalloutStyle } from '../../utils/cardArt'
 import DamagePopup from './DamagePopup'
 
 // Один слот стола. entry = { instanceId, cardId, currentHealth, card } | null
@@ -113,13 +113,8 @@ export default function BoardSlot({ entry, size = 60, effect, popups = [], onPre
           { transform: [{ translateY }, { scale }], opacity },
         ]}
       >
-        {/* На столе — ВСЕГДА обрезанный портрет (boardImageUrl), не целая карта с
-            рамкой/текстом: HP/атака тут живые (урон, ауры), рисуем их своими
-            бейджами поверх, дублировать статичные цифры с картинки нельзя.
-            Старые карты без boardImageUrl (просто квадратный портрет без рамки) —
-            падают на card.imageUrl как и раньше, там ничего дублировать не с чем. */}
-        {(card.boardImageUrl || card.imageUrl)
-          ? <Image source={{ uri: card.boardImageUrl || card.imageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        {card.imageUrl
+          ? <Image source={{ uri: card.imageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
           : <View style={[StyleSheet.absoluteFill, s.artFallback, { backgroundColor: `${r.color}22` }]}><Text style={{ fontSize: size * 0.4 }}>{cardIcon(card)}</Text></View>}
         <View style={s.statsRow}>
           <HealthBadge value={currentHealth} size={Math.round(size * 0.26)} damaged={damaged} />
@@ -130,7 +125,7 @@ export default function BoardSlot({ entry, size = 60, effect, popups = [], onPre
           />
         </View>
         <RarityInnerRing rarity={card.rarity} borderRadius={borderRadius} />
-        <CardCorners card={card} />
+        <RarityCorners rarity={card.rarity} />
         <Animated.View pointerEvents="none" style={[s.hitOverlay, { borderRadius, backgroundColor: colors.accent, opacity: flashOpacity }]} />
         {popups.map(p => <DamagePopup key={p.id} amount={p.amount} positive={p.positive} />)}
       </Animated.View>

@@ -5,102 +5,14 @@ import { useNavigation } from '@react-navigation/native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { game } from '../api'
 import { colors } from '../theme'
-import { RARITY, FACTION, rarityGradientColors, rarityGradientWidth, CardCorners, cardIcon, ManaBadge, HealthBadge, AttackBadge, nameplateGradient, noCalloutProps, noCalloutStyle } from '../utils/cardArt'
+import { RARITY, rarityFrameStyle, RarityInnerRing, RarityCorners, cardIcon, ManaBadge, HealthBadge, AttackBadge, noCalloutProps, noCalloutStyle } from '../utils/cardArt'
 import StarterPackModal from '../utils/StarterPackModal'
 import HowToPlayModal from '../utils/HowToPlayModal'
 
-// Коллекция группируется по фракции (по референсу Марка — отдельные группы
-// "Хищники"/"Чужие"), внутри группы — по редкости (GOLD → COMMON), при равной
-// редкости — по card.order, чтобы порядок был стабильным между обновлениями,
-// а не "как получены". Карты без faction (до бэкафилла на бэкенде) попадают
-// в отдельную группу "Без фракции", чтобы не потеряться молча.
-function buildCollectionRows(userCards) {
-  const byFaction = { PREDATOR: [], ALIEN: [], OTHER: [] }
-  for (const uc of userCards) {
-    const f = uc.card.faction
-    ;(byFaction[f] || byFaction.OTHER).push(uc)
-  }
-  const byRarityThenOrder = (a, b) => {
-    const ta = (RARITY[a.card.rarity] || RARITY.COMMON).tier
-    const tb = (RARITY[b.card.rarity] || RARITY.COMMON).tier
-    if (tb !== ta) return tb - ta
-    return (a.card.order ?? 0) - (b.card.order ?? 0)
-  }
-  byFaction.PREDATOR.sort(byRarityThenOrder)
-  byFaction.ALIEN.sort(byRarityThenOrder)
-  byFaction.OTHER.sort(byRarityThenOrder)
-
-  const rows = []
-  function pushGroup(label, color, cards) {
-    if (!cards.length) return
-    rows.push({ type: 'header', key: `h-${label}`, label, color })
-    for (let i = 0; i < cards.length; i += 2) {
-      rows.push({ type: 'row', key: `r-${label}-${i}`, items: cards.slice(i, i + 2) })
-    }
-  }
-  pushGroup('Хищники', FACTION.PREDATOR.color, byFaction.PREDATOR)
-  pushGroup('Чужие', FACTION.ALIEN.color, byFaction.ALIEN)
-  pushGroup('Без фракции', colors.text2, byFaction.OTHER)
-  return rows
-}
-
-// Одна карточка коллекции — вынесена из renderItem, т.к. теперь строка данных
-// FlatList — это целая пара карт (см. buildCollectionRows), а не одна карта
-function CollectionCardTile({ entry }) {
-  const card = entry.card
-  const r = RARITY[card.rarity] || RARITY.COMMON
-  // Реюскин-карты (20.07.2026, boardImageUrl не null) — imageUrl уже целая карта
-  // с рамкой/именем/маной/статами/текстом эффекта. По прямой просьбе пользователя
-  // в коллекции показываем картинку как есть, целиком, без обрезки (contain, не
-  // cover) и без своих дублирующих бейджей/рамки — только счётчик количества
-  // (единственное, чего на картинке нет).
-  if (card.boardImageUrl) {
-    return (
-      <View style={s.cardFullArt}>
-        <Image source={{ uri: card.imageUrl }} style={s.fullArtImage} resizeMode="contain" />
-        {entry.quantity > 1 ? <View style={s.qtyBadge}><Text style={s.qtyBadgeText}>×{entry.quantity}</Text></View> : null}
-      </View>
-    )
-  }
-
-  // Металлическая градиентная рамка по редкости вместо тонкой цветной линии —
-  // по прямому запросу пользователя карты должны выглядеть как в референсе
-  // (золото/серебро выглядит как настоящий металл). Рамка рисуется отдельным
-  // внешним слоем-градиентом (обычный приём в RN — border-image недоступен),
-  // толщина padding'ом растёт с редкостью через rarityGradientWidth.
-  return (
-    <LinearGradient
-      colors={rarityGradientColors(card.rarity)}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={[s.cardOuter, { padding: rarityGradientWidth(card.rarity) }]}
-    >
-      <View style={[s.card, noCalloutStyle]} {...noCalloutProps}>
-        <View style={s.artArea}>
-          {card.imageUrl
-            ? <Image source={{ uri: card.imageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-            : <View style={[StyleSheet.absoluteFill, s.artFallback, { backgroundColor: `${r.color}22` }]}><Text style={s.artFallbackIcon}>{cardIcon(card)}</Text></View>}
-          <LinearGradient {...nameplateGradient(card)} style={StyleSheet.absoluteFill} pointerEvents="none" />
-
-          <View style={s.costBadge}><ManaBadge value={card.cost} size={20} /></View>
-          <View style={[s.rarityBadge, { backgroundColor: `${r.color}30`, borderColor: r.color }]}>
-            <Text style={[s.rarityText, { color: r.color }]}>{r.label}</Text>
-          </View>
-          {entry.quantity > 1 ? <View style={s.qtyBadge}><Text style={s.qtyBadgeText}>×{entry.quantity}</Text></View> : null}
-
-          <Text style={s.cardName} numberOfLines={2}>{card.name}</Text>
-          <View style={s.medallionsRow}>
-            <HealthBadge value={card.health} size={24} />
-            <AttackBadge value={card.attack} size={24} />
-          </View>
-
-          <CardCorners card={card} scale={1.6} />
-        </View>
-        {card.effectText ? <Text style={s.effectText} numberOfLines={3}>{card.effectText}</Text> : null}
-      </View>
-    </LinearGradient>
-  )
-}
+const SORT_OPTIONS = [
+  { key: 'default', label: 'Как получены' },
+  { key: 'rarity', label: 'По редкости' },
+]
 
 export default function GameScreen() {
   const insets = useSafeAreaInsets()
@@ -112,12 +24,29 @@ export default function GameScreen() {
   const [claimingStarter, setClaimingStarter] = useState(false)
   const [claimError, setClaimError] = useState(null)
   const [starterGrant, setStarterGrant] = useState(null)
+  const [sortBy, setSortBy] = useState('default')
   const [themeArt, setThemeArt] = useState(null)
   const [helpVisible, setHelpVisible] = useState(false)
 
   useEffect(() => { load() }, [])
 
-  const collectionRows = useMemo(() => buildCollectionRows(userCards), [userCards])
+  // Бэкенд (GET /api/cards/my) уже отдаёт карты отсортированными по редкости
+  // (orderBy card.rarity desc) — поэтому "по умолчанию" сортируем по дате
+  // получения, иначе чип "По редкости" всегда выглядел бы no-op (оба режима
+  // показывали бы один и тот же порядок)
+  const sortedCards = useMemo(() => {
+    const arr = [...userCards]
+    if (sortBy === 'rarity') {
+      arr.sort((a, b) => {
+        const ta = (RARITY[a.card.rarity] || RARITY.COMMON).tier
+        const tb = (RARITY[b.card.rarity] || RARITY.COMMON).tier
+        return tb - ta
+      })
+    } else {
+      arr.sort((a, b) => new Date(a.obtainedAt) - new Date(b.obtainedAt))
+    }
+    return arr
+  }, [userCards, sortBy])
 
   async function load() {
     try {
@@ -172,18 +101,12 @@ export default function GameScreen() {
       {!!themeArt && (
         <Image source={{ uri: themeArt }} style={s.backdrop} resizeMode="cover" blurRadius={Platform.OS === 'android' ? 12 : 30} pointerEvents="none" />
       )}
-      {/* Виньетка темнее у верха (там заголовок/фильтры) и мягче в середине сетки
-          карт — сами карточки уже опаковые (colors.surface), фон нужен только
-          для атмосферы в промежутках и под шапкой. */}
-      <LinearGradient
-        pointerEvents="none"
-        colors={['rgba(10,11,14,0.8)', 'rgba(10,11,14,0.5)', 'rgba(10,11,14,0.68)']}
-        locations={[0, 0.35, 1]}
-        style={s.backdropOverlay}
-      />
+      <View pointerEvents="none" style={s.backdropOverlay} />
       <FlatList
-        data={collectionRows}
-        keyExtractor={row => row.key}
+        data={sortedCards}
+        keyExtractor={uc => uc.id}
+        numColumns={2}
+        columnWrapperStyle={{ gap: 12 }}
         contentContainerStyle={[s.list, { paddingBottom: 24 + insets.bottom }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
         ListHeaderComponent={
@@ -195,6 +118,19 @@ export default function GameScreen() {
               </Pressable>
             </View>
             <Text style={s.headerSub}>{userCards.length} карт в коллекции</Text>
+            {userCards.length > 0 && (
+              <View style={s.sortRow}>
+                {SORT_OPTIONS.map(opt => (
+                  <Pressable
+                    key={opt.key}
+                    style={[s.sortChip, sortBy === opt.key && s.sortChipActive]}
+                    onPress={() => setSortBy(opt.key)}
+                  >
+                    <Text style={[s.sortChipText, sortBy === opt.key && s.sortChipTextActive]}>{opt.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
             <Pressable
               style={({ pressed }) => [s.battleBtn, pressed && { opacity: 0.8 }]}
               onPress={onStartBattle}
@@ -224,20 +160,33 @@ export default function GameScreen() {
           </View>
         }
         renderItem={({ item }) => {
-          if (item.type === 'header') {
-            return (
-              <View style={s.groupHeader}>
-                <View style={[s.groupDot, { backgroundColor: item.color }]} />
-                <Text style={[s.groupTitle, { color: item.color }]}>{item.label}</Text>
-              </View>
-            )
-          }
+          const card = item.card
+          const r = RARITY[card.rarity] || RARITY.COMMON
+          const frame = rarityFrameStyle(card.rarity)
           return (
-            <View style={s.row}>
-              {item.items.map(entry => (
-                <View key={entry.id} style={s.rowSlot}><CollectionCardTile entry={entry} /></View>
-              ))}
-              {item.items.length < 2 && <View style={s.rowSlot} />}
+            <View style={[s.card, frame, noCalloutStyle, { borderColor: r.color }]} {...noCalloutProps}>
+              <View style={s.artArea}>
+                {card.imageUrl
+                  ? <Image source={{ uri: card.imageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                  : <View style={[StyleSheet.absoluteFill, s.artFallback, { backgroundColor: `${r.color}22` }]}><Text style={s.artFallbackIcon}>{cardIcon(card)}</Text></View>}
+                <LinearGradient colors={['transparent', 'rgba(10,11,14,0.92)']} locations={[0.4, 1]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+
+                <View style={s.costBadge}><ManaBadge value={card.cost} size={20} /></View>
+                <View style={[s.rarityBadge, { backgroundColor: `${r.color}30`, borderColor: r.color }]}>
+                  <Text style={[s.rarityText, { color: r.color }]}>{r.label}</Text>
+                </View>
+                {item.quantity > 1 ? <View style={s.qtyBadge}><Text style={s.qtyBadgeText}>×{item.quantity}</Text></View> : null}
+
+                <Text style={s.cardName} numberOfLines={2}>{card.name}</Text>
+                <View style={s.medallionsRow}>
+                  <HealthBadge value={card.health} size={24} />
+                  <AttackBadge value={card.attack} size={24} />
+                </View>
+
+                <RarityInnerRing rarity={card.rarity} borderRadius={14} />
+                <RarityCorners rarity={card.rarity} />
+              </View>
+              {card.effectText ? <Text style={s.effectText} numberOfLines={3}>{card.effectText}</Text> : null}
             </View>
           )
         }}
@@ -252,7 +201,7 @@ const s = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.bg },
   center: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center' },
   backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.5 },
-  backdropOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  backdropOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(10,11,14,0.55)' },
   list: { padding: 16 },
   header: { marginBottom: 16 },
   headerTop: { flexDirection: 'row', alignItems: 'center', gap: 8 },
@@ -262,15 +211,12 @@ const s = StyleSheet.create({
   helpBtnText: { fontSize: 12, fontWeight: '600', color: colors.text2 },
   battleBtn: { backgroundColor: colors.accent, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
   battleBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
-  groupHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, marginBottom: 10 },
-  groupDot: { width: 8, height: 8, borderRadius: 4 },
-  groupTitle: { fontSize: 14, fontWeight: '800', letterSpacing: 0.5, textTransform: 'uppercase' },
-  row: { flexDirection: 'row', gap: 12 },
-  rowSlot: { flex: 1 },
-  cardOuter: { borderRadius: 16, marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 3 },
-  cardFullArt: { marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 3 },
-  fullArtImage: { width: '100%', height: 320 },
-  card: { backgroundColor: colors.surface, borderRadius: 12, overflow: 'hidden' },
+  sortRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  sortChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.border },
+  sortChipActive: { backgroundColor: `${colors.accent}22`, borderColor: colors.accent },
+  sortChipText: { fontSize: 12, fontWeight: '600', color: colors.text2 },
+  sortChipTextActive: { color: colors.accent, fontWeight: '700' },
+  card: { flex: 1, backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1.5, overflow: 'hidden', marginBottom: 12 },
   artArea: { height: 150 },
   artFallback: { alignItems: 'center', justifyContent: 'center' },
   artFallbackIcon: { fontSize: 40 },
