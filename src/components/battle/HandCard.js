@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react'
 import { View, Text, Image, Pressable, Animated, StyleSheet } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { colors } from '../../theme'
-import { RARITY, rarityFrameStyle, RarityInnerRing, RarityCorners, cardIcon, ManaBadge, HealthBadge, AttackBadge, noCalloutProps, noCalloutStyle } from '../../utils/cardArt'
+import { RARITY, rarityFrameStyle, RarityInnerRing, CardCorners, cardIcon, ManaBadge, HealthBadge, AttackBadge, nameplateGradient, noCalloutProps, noCalloutStyle } from '../../utils/cardArt'
 
 const CARD_WIDTH = 96
 const CARD_HEIGHT = 136
@@ -62,7 +62,7 @@ export default function HandCard({ entry, playable, onPress, onLongPress, width 
           ? <Image source={{ uri: card.imageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
           : <View style={[StyleSheet.absoluteFill, s.artFallback, { backgroundColor: `${r.color}22` }]}><Text style={s.artFallbackIcon}>{cardIcon(card)}</Text></View>}
 
-        <LinearGradient colors={['transparent', 'rgba(10,11,14,0.92)']} locations={[0.4, 1]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+        <LinearGradient {...nameplateGradient(card)} style={StyleSheet.absoluteFill} pointerEvents="none" />
 
         <View style={s.costBadge}><ManaBadge value={card.cost} size={20} /></View>
 
@@ -74,7 +74,7 @@ export default function HandCard({ entry, playable, onPress, onLongPress, width 
         </View>
 
         <RarityInnerRing rarity={card.rarity} borderRadius={14} />
-        <RarityCorners rarity={card.rarity} />
+        <CardCorners card={card} />
       </Pressable>
     </Animated.View>
   )

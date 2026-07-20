@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef } from 'react'
 import { View, Text, Image, Animated, Pressable, StyleSheet } from 'react-native'
 import { colors } from '../../theme'
-import { RARITY, rarityFrameStyle, RarityInnerRing, RarityCorners, cardIcon, HealthBadge, AttackBadge, noCalloutProps, noCalloutStyle } from '../../utils/cardArt'
+import { RARITY, rarityFrameStyle, RarityInnerRing, CardCorners, cardIcon, HealthBadge, AttackBadge, noCalloutProps, noCalloutStyle } from '../../utils/cardArt'
 import DamagePopup from './DamagePopup'
 
 // Один слот стола. entry = { instanceId, cardId, currentHealth, card } | null
@@ -125,7 +125,7 @@ export default function BoardSlot({ entry, size = 60, effect, popups = [], onPre
           />
         </View>
         <RarityInnerRing rarity={card.rarity} borderRadius={borderRadius} />
-        <RarityCorners rarity={card.rarity} />
+        <CardCorners card={card} />
         <Animated.View pointerEvents="none" style={[s.hitOverlay, { borderRadius, backgroundColor: colors.accent, opacity: flashOpacity }]} />
         {popups.map(p => <DamagePopup key={p.id} amount={p.amount} positive={p.positive} />)}
       </Animated.View>

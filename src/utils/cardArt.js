@@ -21,6 +21,20 @@ export const RARITY = {
   GOLD: { label: 'Золотая', color: colors.gold, tier: 3 },
 }
 
+// Палитра фракций (Card.faction, добавлено 20.07.2026 по референсу визуала от
+// Марка). Цвета намеренно НЕ переиспользуют colors.green/colors.gold — те уже
+// заняты смыслом «жизни»/«редкость GOLD», совпадение сбивало бы с толку рядом
+// на одной карте. Тис/бронза — тематически близко к Alien (биомех/кислота) и
+// Predator (латунь/кость), но визуально самостоятельны.
+export const FACTION = {
+  ALIEN: { label: 'Чужой', color: '#2dd4bf' },
+  PREDATOR: { label: 'Хищник', color: '#b06a2c' },
+}
+
+export function factionOf(card) {
+  return FACTION[card?.faction] || null
+}
+
 // Объём рамки по редкости без отдельных арт-ассетов: толще рамка + цветное
 // свечение (shadow/elevation) растут с tier. Применяется к внешнему контейнеру
 // карты (BoardSlot/HandCard) поверх их собственного borderColor.
@@ -45,7 +59,8 @@ export function RarityInnerRing({ rarity, borderRadius = 8 }) {
   return <View pointerEvents="none" style={[s.innerRing, { borderRadius: Math.max(0, borderRadius - 3), borderColor: `${r.color}90` }]} />
 }
 
-// Декоративные уголки-«вензели» — только у золотых карт, самый престижный тир
+// Декоративные уголки-«вензели» — только у золотых карт, самый престижный тир.
+// Фоллбэк для карт без faction (старые данные до бэкафилла) — см. CardCorners.
 export function RarityCorners({ rarity }) {
   if (rarity !== 'GOLD') return null
   const color = RARITY.GOLD.color
@@ -57,6 +72,37 @@ export function RarityCorners({ rarity }) {
       <View pointerEvents="none" style={[s.corner, s.cornerBR, { backgroundColor: color }]} />
     </>
   )
+}
+
+// Уголки-«гемы» по фракции — видны на карте ЛЮБОЙ редкости (не только GOLD, в
+// отличие от RarityCorners), растут в размере с тиром редкости. Это основной
+// визуальный маркер фракции на маленьких карте-тайлах (руки/стола), где нет
+// места под текстовую подпись FactionLabel. Если faction ещё не заполнен
+// (карта не попала в SQL-бэкафилл) — откатываемся на старые RarityCorners,
+// чтобы карта не осталась совсем без уголков.
+export function CardCorners({ card }) {
+  const faction = factionOf(card)
+  if (!faction) return <RarityCorners rarity={card?.rarity} />
+  const tier = (RARITY[card.rarity] || RARITY.COMMON).tier
+  const size = 6 + tier * 1.5
+  const style = { width: size, height: size, borderRadius: size / 2, backgroundColor: faction.color, borderWidth: 1, borderColor: 'rgba(0,0,0,0.55)' }
+  return (
+    <>
+      <View pointerEvents="none" style={[s.corner, s.cornerTL, style]} />
+      <View pointerEvents="none" style={[s.corner, s.cornerTR, style]} />
+      <View pointerEvents="none" style={[s.corner, s.cornerBL, style]} />
+      <View pointerEvents="none" style={[s.corner, s.cornerBR, style]} />
+    </>
+  )
+}
+
+// Подпись фракции под именем карты — только там, где есть место (коллекция,
+// увеличенная карта по долгому нажатию). На маленьких HandCard/BoardSlot её не
+// показываем — текст такого размера нечитаем и просто зашумляет карту.
+export function FactionLabel({ card, style }) {
+  const faction = factionOf(card)
+  if (!faction) return null
+  return <Text style={[s.factionLabel, { color: faction.color }, style]}>{faction.label.toUpperCase()}</Text>
 }
 
 // Пока не у всех карт есть нейросгенерированный арт (рисуется постепенно) —
@@ -142,15 +188,28 @@ export function hasActivatableAbility(card) {
   return card?.effectType === 'stealth' || card?.effectType === 'stealth_buff'
 }
 
-export function auraAttackBonus(board) {
+// recipientFaction — та же фракционная фильтрация, что и в auraAttackBonus на
+// бэкенде (cards.routes.ts) — карта без faction у баффера/получателя не
+// блокирует бонус (обратная совместимость со старыми незаполненными данными).
+export function auraAttackBonus(board, recipientFaction) {
   let bonus = 0
   for (const c of board || []) {
     if (!c || c.currentHealth <= 0 || !c.card) continue
     if (['buff_allies', 'acid_blood_buff', 'stealth_buff'].includes(c.card.effectType)) {
+      if (c.card.faction && recipientFaction && c.card.faction !== recipientFaction) continue
       bonus += c.card.effectValue ?? 1
     }
   }
   return bonus
+}
+
+// Строка-подсветка фона за именем/статами — тёмный градиент с лёгким тинтом
+// цвета фракции, вместо нейтрального чёрного затемнения. faction=null (карта
+// без данных) — падает обратно на старый нейтральный градиент.
+export function nameplateGradient(card) {
+  const faction = factionOf(card)
+  if (!faction) return { colors: ['transparent', 'rgba(10,11,14,0.92)'], locations: [0.4, 1] }
+  return { colors: ['transparent', `${faction.color}2e`, 'rgba(10,11,14,0.92)'], locations: [0.3, 0.55, 1] }
 }
 
 // Атака — клинок-ромб красного цвета. buffed=true — атака увеличена аурой
@@ -176,6 +235,7 @@ const s = StyleSheet.create({
   cornerBR: { bottom: 3, right: 3 },
   statTextWrap: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
   statText: { fontWeight: '800', color: '#fff', textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.85)', textShadowRadius: 2, textShadowOffset: { width: 0, height: 1 } },
+  factionLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 1.2 },
   manaShadow: { alignItems: 'center', justifyContent: 'center', shadowOpacity: 0.85, shadowRadius: 6, shadowOffset: { width: 0, height: 0 }, elevation: 6 },
   manaHalo: { position: 'absolute' },
   manaCircle: { position: 'absolute', overflow: 'hidden' },

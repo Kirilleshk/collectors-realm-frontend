@@ -119,10 +119,15 @@ export default function BattleScreen({ route, navigation }) {
   // остальных на том же столе, пока сама жива — видно уже сейчас через
   // effectiveAttack на бейдже, но по фидбэку Марка нужен ещё и всплывающий
   // "+N" на каждой затронутой карте в момент выхода баффера на стол
+  // buffFaction — фракция самого баффера: попап "+N" должен появляться только
+  // на карточках той же фракции (см. фикс auraAttackBonus в cardArt.js), иначе
+  // визуально обещает бонус картам, которых он на самом деле не коснётся
   const AURA_EFFECTS = ['buff_allies', 'acid_blood_buff', 'stealth_buff']
-  function popAuraBonus(board, bonus) {
+  function popAuraBonus(board, bonus, buffFaction) {
     for (const c of board) {
-      if (c && c.currentHealth > 0) popDamage(c.instanceId, bonus, true)
+      if (!c || c.currentHealth <= 0) continue
+      if (buffFaction && c.card?.faction && c.card.faction !== buffFaction) continue
+      popDamage(c.instanceId, bonus, true)
     }
   }
 
@@ -182,7 +187,7 @@ export default function BattleScreen({ route, navigation }) {
         dBoss = [...dBoss, { instanceId: ev.instanceId, cardId: ev.cardId, currentHealth: card?.health ?? 0, card }]
         setDisplayBoard({ playerBoard: dPlayer, bossBoard: dBoss })
         triggerEffect(ev.instanceId, 'spawn')
-        if (card && AURA_EFFECTS.includes(card.effectType)) popAuraBonus(dBoss, card.effectValue ?? 1)
+        if (card && AURA_EFFECTS.includes(card.effectType)) popAuraBonus(dBoss, card.effectValue ?? 1, card.faction)
         await sleep(420)
         continue
       }
@@ -234,7 +239,7 @@ export default function BattleScreen({ route, navigation }) {
         triggerEffect(added.instanceId, 'spawn')
         const addedCard = res.data.resolved.playerBoard.find(c => c.instanceId === added.instanceId)?.card
         if (addedCard && AURA_EFFECTS.includes(addedCard.effectType)) {
-          popAuraBonus(res.data.resolved.playerBoard, addedCard.effectValue ?? 1)
+          popAuraBonus(res.data.resolved.playerBoard, addedCard.effectValue ?? 1, addedCard.faction)
         }
       }
       setTimeout(() => logRef.current?.scrollToEnd({ animated: true }), 100)
@@ -392,9 +397,15 @@ export default function BattleScreen({ route, navigation }) {
   const faceAttackable = !!selectedAttacker && !hasValidBossTarget && !acting
   // Актуальная сила удара с учётом аур союзников на столе (buff_allies и т.п.) —
   // без этого бейдж показывал базовое значение карты, а реальный урон в бою
-  // получался выше на бонус ауры, что выглядело как баг ("на карте 8, а бьёт на 12")
-  const bossAura = auraAttackBonus(board.bossBoard)
-  const playerAura = auraAttackBonus(board.playerBoard)
+  // получался выше на бонус ауры, что выглядело как баг ("на карте 8, а бьёт на 12").
+  // Бонус считается ОТДЕЛЬНО для каждого существа по его фракции (см.
+  // auraAttackBonus в cardArt.js) — общий бонус на весь стол был багом: аура
+  // Преторианца/Волка усиливала весь стол владельца, даже карты чужой фракции,
+  // хотя текст эффекта обещает усиление только своей.
+  function effectiveAttackOf(entry, ownBoard) {
+    if (!entry?.card) return undefined
+    return entry.card.attack + auraAttackBonus(ownBoard, entry.card.faction)
+  }
 
   // Выделенный арт арены (сгенерирован под фон, не портрет) показываем чётче —
   // портрет босса как раньше сильно размываем, иначе крупный кроп лица выглядит странно
@@ -412,7 +423,17 @@ export default function BattleScreen({ route, navigation }) {
           pointerEvents="none"
         />
       )}
-      <View pointerEvents="none" style={[s.backdropOverlay, isDedicatedArena && s.backdropOverlayLight]} />
+      {/* Виньетка вместо сплошного затемнения — темнее у краёв (там баннер босса,
+          рука игрока, деки), чуть светлее в центре, где сам стол боя. Даёт больше
+          атмосферы фону арены и не спорит с читаемостью текста по краям экрана. */}
+      <LinearGradient
+        pointerEvents="none"
+        colors={isDedicatedArena
+          ? ['rgba(10,11,14,0.7)', 'rgba(10,11,14,0.32)', 'rgba(10,11,14,0.7)']
+          : ['rgba(10,11,14,0.85)', 'rgba(10,11,14,0.55)', 'rgba(10,11,14,0.85)']}
+        locations={[0, 0.5, 1]}
+        style={s.backdropOverlay}
+      />
 
       {/* Своя кнопка "назад" — нативная шапка Stack-навигатора скрыта
           (headerShown:false в App.js), чтобы не съедать высоту. Абсолютное
@@ -468,7 +489,7 @@ export default function BattleScreen({ route, navigation }) {
                 selectable={isTargetable}
                 onPress={isTargetable ? () => onAttack(entry.instanceId) : undefined}
                 onLongPress={entry ? () => setZoomCard({ card: entry.card, currentHealth: entry.currentHealth }) : undefined}
-                effectiveAttack={entry?.card ? entry.card.attack + bossAura : undefined}
+                effectiveAttack={effectiveAttackOf(entry, board.bossBoard)}
               />
             </View>
           )
@@ -500,7 +521,7 @@ export default function BattleScreen({ route, navigation }) {
               popups={entry ? popups.filter(p => p.target === entry.instanceId) : []}
               selectable={canSelect}
               selected={!!entry && selectedAttacker === entry.instanceId}
-              effectiveAttack={entry?.card ? entry.card.attack + playerAura : undefined}
+              effectiveAttack={effectiveAttackOf(entry, board.playerBoard)}
               onLongPress={!canSelect && entry ? () => setZoomCard({ card: entry.card, currentHealth: entry.currentHealth }) : undefined}
             />
           )
@@ -621,8 +642,7 @@ const s = StyleSheet.create({
   wrapLandscape: { paddingTop: 0 },
   backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.35 },
   backdropSharp: { opacity: 0.55 },
-  backdropOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(10,11,14,0.72)' },
-  backdropOverlayLight: { backgroundColor: 'rgba(10,11,14,0.5)' },
+  backdropOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   backBtn: { position: 'absolute', left: 8, zIndex: 10, width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(10,11,14,0.6)', alignItems: 'center', justifyContent: 'center' },
   backBtnText: { fontSize: 18, fontWeight: '700', color: colors.text },
   center: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center' },

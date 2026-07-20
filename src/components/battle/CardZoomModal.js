@@ -1,7 +1,7 @@
 import React from 'react'
 import { View, Text, Image, Modal, Pressable, StyleSheet } from 'react-native'
 import { colors } from '../../theme'
-import { RARITY, rarityFrameStyle, RarityInnerRing, RarityCorners, cardIcon, ManaBadge, HealthBadge, AttackBadge, noCalloutProps, noCalloutStyle } from '../../utils/cardArt'
+import { RARITY, rarityFrameStyle, RarityInnerRing, CardCorners, FactionLabel, cardIcon, ManaBadge, HealthBadge, AttackBadge, noCalloutProps, noCalloutStyle } from '../../utils/cardArt'
 
 // Увеличенная карточка по долгому нажатию — полный арт + все характеристики
 // и текст эффекта (на маленьком бейдже в руке/на столе effectText не влезает
@@ -23,12 +23,15 @@ export default function CardZoomModal({ card, currentHealth, visible, onClose })
               ? <Image source={{ uri: card.imageUrl }} style={s.art} resizeMode="cover" />
               : <View style={[s.art, s.artFallback, { backgroundColor: `${r.color}22` }]}><Text style={s.artFallbackIcon}>{cardIcon(card)}</Text></View>}
             <RarityInnerRing rarity={card.rarity} borderRadius={18} />
-            <RarityCorners rarity={card.rarity} />
+            <CardCorners card={card} />
             <View style={s.costBadge}><ManaBadge value={card.cost} size={30} /></View>
           </View>
 
           <Text style={s.name}>{card.name}</Text>
-          <Text style={[s.rarity, { color: r.color }]}>{r.label}</Text>
+          <View style={s.rarityRow}>
+            <Text style={[s.rarity, { color: r.color }]}>{r.label}</Text>
+            <FactionLabel card={card} style={s.factionLabelGap} />
+          </View>
 
           <View style={s.statsRow}>
             <View style={s.statItem}><HealthBadge value={health} size={30} damaged={health < card.health} /><Text style={s.statLabel}>Жизни</Text></View>
@@ -59,7 +62,9 @@ const s = StyleSheet.create({
   artFallbackIcon: { fontSize: 72 },
   costBadge: { position: 'absolute', top: 8, left: 8 },
   name: { fontSize: 20, fontWeight: '800', color: colors.text, marginTop: 14, textAlign: 'center' },
-  rarity: { fontSize: 13, fontWeight: '700', marginTop: 2 },
+  rarityRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
+  rarity: { fontSize: 13, fontWeight: '700' },
+  factionLabelGap: { marginTop: 0 },
   statsRow: { flexDirection: 'row', gap: 28, marginTop: 14 },
   statItem: { alignItems: 'center', gap: 4 },
   statLabel: { fontSize: 11, color: colors.text2 },

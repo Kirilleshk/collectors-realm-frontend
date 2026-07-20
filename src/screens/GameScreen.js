@@ -5,7 +5,7 @@ import { useNavigation } from '@react-navigation/native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { game } from '../api'
 import { colors } from '../theme'
-import { RARITY, rarityFrameStyle, RarityInnerRing, RarityCorners, cardIcon, ManaBadge, HealthBadge, AttackBadge, noCalloutProps, noCalloutStyle } from '../utils/cardArt'
+import { RARITY, rarityFrameStyle, RarityInnerRing, CardCorners, cardIcon, ManaBadge, HealthBadge, AttackBadge, nameplateGradient, noCalloutProps, noCalloutStyle } from '../utils/cardArt'
 import StarterPackModal from '../utils/StarterPackModal'
 import HowToPlayModal from '../utils/HowToPlayModal'
 
@@ -101,7 +101,15 @@ export default function GameScreen() {
       {!!themeArt && (
         <Image source={{ uri: themeArt }} style={s.backdrop} resizeMode="cover" blurRadius={Platform.OS === 'android' ? 12 : 30} pointerEvents="none" />
       )}
-      <View pointerEvents="none" style={s.backdropOverlay} />
+      {/* Виньетка темнее у верха (там заголовок/фильтры) и мягче в середине сетки
+          карт — сами карточки уже опаковые (colors.surface), фон нужен только
+          для атмосферы в промежутках и под шапкой. */}
+      <LinearGradient
+        pointerEvents="none"
+        colors={['rgba(10,11,14,0.8)', 'rgba(10,11,14,0.5)', 'rgba(10,11,14,0.68)']}
+        locations={[0, 0.35, 1]}
+        style={s.backdropOverlay}
+      />
       <FlatList
         data={sortedCards}
         keyExtractor={uc => uc.id}
@@ -169,7 +177,7 @@ export default function GameScreen() {
                 {card.imageUrl
                   ? <Image source={{ uri: card.imageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
                   : <View style={[StyleSheet.absoluteFill, s.artFallback, { backgroundColor: `${r.color}22` }]}><Text style={s.artFallbackIcon}>{cardIcon(card)}</Text></View>}
-                <LinearGradient colors={['transparent', 'rgba(10,11,14,0.92)']} locations={[0.4, 1]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+                <LinearGradient {...nameplateGradient(card)} style={StyleSheet.absoluteFill} pointerEvents="none" />
 
                 <View style={s.costBadge}><ManaBadge value={card.cost} size={20} /></View>
                 <View style={[s.rarityBadge, { backgroundColor: `${r.color}30`, borderColor: r.color }]}>
@@ -184,7 +192,7 @@ export default function GameScreen() {
                 </View>
 
                 <RarityInnerRing rarity={card.rarity} borderRadius={14} />
-                <RarityCorners rarity={card.rarity} />
+                <CardCorners card={card} />
               </View>
               {card.effectText ? <Text style={s.effectText} numberOfLines={3}>{card.effectText}</Text> : null}
             </View>
@@ -201,7 +209,7 @@ const s = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.bg },
   center: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center' },
   backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.5 },
-  backdropOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(10,11,14,0.55)' },
+  backdropOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   list: { padding: 16 },
   header: { marginBottom: 16 },
   headerTop: { flexDirection: 'row', alignItems: 'center', gap: 8 },
