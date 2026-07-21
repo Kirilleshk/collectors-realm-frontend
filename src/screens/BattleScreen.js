@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { View, Text, Image, FlatList, ScrollView, StyleSheet, ActivityIndicator, Pressable, Alert, Platform, useWindowDimensions } from 'react-native'
+import { View, Text, Image, FlatList, ScrollView, StyleSheet, ActivityIndicator, Pressable, Alert, Platform } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useFocusEffect } from '@react-navigation/native'
 import { GestureDetector, Gesture } from 'react-native-gesture-handler'
@@ -22,36 +22,6 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
 
 export default function BattleScreen({ route, navigation }) {
   const insets = useSafeAreaInsets()
-  const { width, height } = useWindowDimensions()
-  // compact — реально короткий по вертикали экран (телефон в ландшафте,
-  // ~390-428px высоты), а НЕ "широкий, чем высокий" (width > height путал
-  // компактный телефонный ландшафт с обычным широким десктопным окном —
-  // на десктопе/планшете компактные размеры карт выглядели мелкими без
-  // всякой причины, там высоты всегда достаточно)
-  const compact = height < 500
-  // Высота арены считается явно числом от useWindowDimensions (надёжно
-  // обновляется при повороте), а не через flex внутри ScrollView — на вебе
-  // flex-контейнер со ScrollView схлопывается в 0 при живом ресайзе окна:
-  // onLayout корневого View не успевает переотработать, и без min-height:0
-  // скроллящийся flex-child проваливается в классическую CSS-ловушку
-  const [playerBarH, setPlayerBarH] = useState(0)
-  const [bottomH, setBottomH] = useState(0)
-  // Нативная шапка Stack-навигатора и нижний таб-бар вкладок во время боя не
-  // нужны (не видно ни «← Бой», ни Магазин/Карта/Профиль) и скрываются на
-  // фокусе экрана (см. useFocusEffect ниже + headerShown:false в App.js) —
-  // высвобождает ~104px, которых раньше катастрофически не хватало на реальных
-  // телефонах в ландшафте (стол обрезался до нечитаемого состояния)
-  const HEADER_ESTIMATE = 0
-  const TAB_BAR_ESTIMATE = 0
-  const LOG_HEIGHT = compact ? 44 : 90
-  // Пол поднят с 80 до 140 — старое значение было меньше высоты одного
-  // компактного баннера босса, из-за чего арена почти всегда обрезала стол
-  // до нечитаемого состояния на телефонах; 140 хотя бы показывает баннер
-  // босса + один ряд стола как аварийный минимум
-  const arenaHeight = Math.max(
-    140,
-    height - insets.top - insets.bottom - HEADER_ESTIMATE - TAB_BAR_ESTIMATE - playerBarH - bottomH - LOG_HEIGHT
-  )
   const [battle, setBattle] = useState(null)
   const [resolved, setResolved] = useState(null)
   const [deckCounts, setDeckCounts] = useState(EMPTY_DECK_COUNTS)
@@ -70,7 +40,14 @@ export default function BattleScreen({ route, navigation }) {
   // currentHealth есть только для существ на столе, для карт в руке — null
   // (там показываем полное здоровье карты)
   const [zoomCard, setZoomCard] = useState(null)
-  const logRef = useRef(null)
+  // Раньше высота арены высчитывалась в пикселях под оставшееся место (arenaHeight),
+  // а всё остальное просто НЕ скроллилось — если расчёт ошибался (десктоп/планшет/
+  // нестандартный телефон), низ экрана (карты в руке, кнопка "Закончить ход")
+  // пропадал за пределами экрана без возможности до него докрутить. По прямой
+  // просьбе — весь экран теперь ОДИН вертикальный ScrollView (как в большинстве
+  // веб-карточных игр): что бы ни случилось с размерами, всегда можно долистать
+  // до любого элемента, ничего не может быть навсегда скрыто или перекрыто.
+  const scrollRef = useRef(null)
   const popupId = useRef(0)
 
   // Drag-таргетинг (v2 над тапом): { x1, y1, x2, y2 } экранных координат линии
@@ -89,17 +66,14 @@ export default function BattleScreen({ route, navigation }) {
   // ландшафт при входе в бой (и портрет при выходе), пользователь просил
   // убрать это требование. Ориентация теперь полностью свободная, как и на
   // остальных экранах приложения (app.json: orientation "default", это был
-  // единственный экран, где вообще что-то лочилось) — раскладка сама
-  // подстраивается под реальные width/height через useWindowDimensions
-  // (см. compact выше), кем бы ни была текущая ориентация устройства.
+  // единственный экран, где вообще что-то лочилось).
 
   // Прячем нижний таб-бар вкладок, пока экран боя в фокусе — освобождает
-  // место под арену (см. HEADER_ESTIMATE/TAB_BAR_ESTIMATE выше). На blur
-  // (не unmount — GameScreen под этим экраном не размонтируется при переходе
-  // в бой) обязательно восстанавливаем ИМЕННО getTabBarStyle(insets), а не
-  // undefined — react-navigation мёржит undefined как собственное свойство
-  // опций и не откатывается к style из screenOptions, из-за этого таб-бар
-  // остался бы без фона/рамки/высоты после возврата из боя на любую вкладку.
+  // место под арену. На blur (не unmount — GameScreen под этим экраном не
+  // размонтируется при переходе в бой) обязательно восстанавливаем ИМЕННО
+  // getTabBarStyle(insets), а не undefined — react-navigation мёржит undefined
+  // как собственное свойство опций и не откатывается к style из screenOptions,
+  // из-за этого таб-бар остался бы без фона/рамки/высоты после возврата из боя.
   useFocusEffect(
     React.useCallback(() => {
       const parent = navigation.getParent()
@@ -135,6 +109,10 @@ export default function BattleScreen({ route, navigation }) {
     setEffects(prev => ({ ...prev, [instanceId]: { kind, dir, token: Math.random() } }))
   }
 
+  function scrollToBottom() {
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)
+  }
+
   useEffect(() => { load() }, [])
 
   function applyData(data) {
@@ -167,7 +145,7 @@ export default function BattleScreen({ route, navigation }) {
     const events = Array.isArray(data.events) ? data.events : []
     if (events.length === 0) {
       applyData(data)
-      setTimeout(() => logRef.current?.scrollToEnd({ animated: true }), 100)
+      scrollToBottom()
       return
     }
 
@@ -220,7 +198,7 @@ export default function BattleScreen({ route, navigation }) {
     applyData(data)
     setDisplayBoard(null)
     setEffects({})
-    setTimeout(() => logRef.current?.scrollToEnd({ animated: true }), 100)
+    scrollToBottom()
   }
 
   // Возвращает true при успехе — HandCard так понимает, что карту не нужно
@@ -241,7 +219,7 @@ export default function BattleScreen({ route, navigation }) {
           popAuraBonus(res.data.resolved.playerBoard, addedCard.effectValue ?? 1, addedCard.faction)
         }
       }
-      setTimeout(() => logRef.current?.scrollToEnd({ animated: true }), 100)
+      scrollToBottom()
       ok = true
     } catch (e) {
       Alert.alert('Ошибка', e?.response?.data?.error || 'Не удалось разыграть карту.')
@@ -282,7 +260,7 @@ export default function BattleScreen({ route, navigation }) {
     try {
       const res = await game.activateAbility(battle.id, instanceId)
       applyData(res.data)
-      setTimeout(() => logRef.current?.scrollToEnd({ animated: true }), 100)
+      scrollToBottom()
     } catch (e) {
       Alert.alert('Ошибка', e?.response?.data?.error || 'Не удалось активировать способность.')
     }
@@ -370,11 +348,7 @@ export default function BattleScreen({ route, navigation }) {
   const lastLog = Array.isArray(battle.log) ? battle.log[battle.log.length - 1] : null
   const board = displayBoard || resolved
   const boardSlots = battle.boardSlots || 5
-  // Раньше размер слота не зависел ни от чего, кроме числа слотов — на
-  // просторном экране (десктоп/планшет, compact=false) карты выглядели мелко
-  // без всякой причины. Компактные значения (48/60) оставлены как есть —
-  // это протестированный на реальном телефоне в ландшафте минимум.
-  const slotSize = compact ? (boardSlots > 3 ? 48 : 60) : (boardSlots > 3 ? 72 : 88)
+  const slotSize = boardSlots > 3 ? 72 : 88
   const bossSlots = Array.from({ length: boardSlots }, (_, i) => board.bossBoard[i] || null)
   const playerSlots = Array.from({ length: boardSlots }, (_, i) => board.playerBoard[i] || null)
   const boardFull = resolved.playerBoard.length >= boardSlots
@@ -409,9 +383,8 @@ export default function BattleScreen({ route, navigation }) {
           pointerEvents="none"
         />
       )}
-      {/* Виньетка вместо сплошного затемнения — темнее у краёв (там баннер босса,
-          рука игрока, деки), чуть светлее в центре, где сам стол боя. Даёт больше
-          атмосферы фону арены и не спорит с читаемостью текста по краям экрана. */}
+      {/* Виньетка вместо сплошного затемнения — темнее у краёв, чуть светлее в
+          центре, где сам стол боя. */}
       <LinearGradient
         pointerEvents="none"
         colors={isDedicatedArena
@@ -423,112 +396,174 @@ export default function BattleScreen({ route, navigation }) {
 
       {/* Своя кнопка "назад" — нативная шапка Stack-навигатора скрыта
           (headerShown:false в App.js), чтобы не съедать высоту. Абсолютное
-          позиционирование поверх фона — не участвует в расчёте arenaHeight. */}
+          позиционирование — только в углу, ничего важного не закрывает. */}
       <Pressable style={[s.backBtn, { top: insets.top + 6 }]} onPress={() => navigation.goBack()}>
         <Text style={s.backBtnText}>←</Text>
       </Pressable>
 
+      {/* Весь экран боя — один вертикальный скролл (арена → полоса игрока →
+          лог → рука → кнопка хода). Ничего не обрезается по высоте и не
+          перекрывается: на любом экране можно докрутить до любого элемента. */}
       <ScrollView
-        style={[s.arenaScroll, { height: arenaHeight }]}
-        contentContainerStyle={s.arenaScrollContent}
-        showsVerticalScrollIndicator={false}
+        ref={scrollRef}
+        style={s.pageScroll}
+        contentContainerStyle={[s.pageContent, { paddingTop: insets.top + 48, paddingBottom: insets.bottom + 16 }]}
+        showsVerticalScrollIndicator={true}
       >
-      <View ref={faceZoneRef} collapsable={false}>
-        <BossBanner
-          bossName={theme.bossName}
-          imageUrl={theme.bossImageUrl}
-          hp={battle.bossHp}
-          maxHp={battle.bossMaxHp}
-          popups={popups.filter(p => p.target === 'boss')}
-          faceAttackable={faceAttackable}
-          onPress={faceAttackable ? () => onAttack(null) : undefined}
-          height={compact ? 68 : 168}
-          compact={compact}
-          handCount={deckCounts.bossHand}
-        />
-      </View>
+        <View ref={faceZoneRef} collapsable={false}>
+          <BossBanner
+            bossName={theme.bossName}
+            imageUrl={theme.bossImageUrl}
+            hp={battle.bossHp}
+            maxHp={battle.bossMaxHp}
+            popups={popups.filter(p => p.target === 'boss')}
+            faceAttackable={faceAttackable}
+            onPress={faceAttackable ? () => onAttack(null) : undefined}
+            height={168}
+            handCount={deckCounts.bossHand}
+          />
+        </View>
 
-      <LinearGradient
-        colors={[`${colors.accent}22`, 'transparent', 'transparent']}
-        locations={[0, 0.4, 1]}
-        style={s.arena}
-      >
-      <View style={s.boardRow}>
-        {bossSlots.map((entry, i) => {
-          // Невидимые (stealthCharge) карты тоже можно выбрать целью — атака
-          // по ним просто промахнётся (сервер резолвит это как уклонение и
-          // снимает заряд невидимости), а не отклоняется как раньше. Иначе
-          // Pressable у такой карты был вообще отключён — с точки зрения
-          // игрока карту противника нельзя было выбрать вообще никак.
-          const isTargetable = !!selectedAttacker && !!entry && entry.currentHealth > 0
-          return (
-            <View
-              key={`boss-${i}`}
-              collapsable={false}
-              ref={el => { if (entry && el) bossSlotWrapRefs.current[entry.instanceId] = el }}
-            >
-              <BoardSlot
-                entry={entry}
-                size={slotSize}
-                effect={entry ? effects[entry.instanceId] : null}
-                popups={entry ? popups.filter(p => p.target === entry.instanceId) : []}
-                selectable={isTargetable}
-                onPress={isTargetable ? () => onAttack(entry.instanceId) : undefined}
-                onLongPress={entry ? () => setZoomCard({ card: entry.card, currentHealth: entry.currentHealth }) : undefined}
-                effectiveAttack={effectiveAttackOf(entry, board.bossBoard)}
-              />
-            </View>
-          )
-        })}
-      </View>
+        <LinearGradient
+          colors={[`${colors.accent}22`, 'transparent', 'transparent']}
+          locations={[0, 0.4, 1]}
+          style={s.arena}
+        >
+          <View style={s.boardRow}>
+            {bossSlots.map((entry, i) => {
+              // Невидимые (stealthCharge) карты тоже можно выбрать целью — атака
+              // по ним просто промахнётся (сервер резолвит это как уклонение и
+              // снимает заряд невидимости), а не отклоняется как раньше. Иначе
+              // Pressable у такой карты был вообще отключён — с точки зрения
+              // игрока карту противника нельзя было выбрать вообще никак.
+              const isTargetable = !!selectedAttacker && !!entry && entry.currentHealth > 0
+              return (
+                <View
+                  key={`boss-${i}`}
+                  collapsable={false}
+                  ref={el => { if (entry && el) bossSlotWrapRefs.current[entry.instanceId] = el }}
+                >
+                  <BoardSlot
+                    entry={entry}
+                    size={slotSize}
+                    effect={entry ? effects[entry.instanceId] : null}
+                    popups={entry ? popups.filter(p => p.target === entry.instanceId) : []}
+                    selectable={isTargetable}
+                    onPress={isTargetable ? () => onAttack(entry.instanceId) : undefined}
+                    onLongPress={entry ? () => setZoomCard({ card: entry.card, currentHealth: entry.currentHealth }) : undefined}
+                    effectiveAttack={effectiveAttackOf(entry, board.bossBoard)}
+                  />
+                </View>
+              )
+            })}
+          </View>
 
-      <View style={s.deckRow}>
-        <DeckPile count={deckCounts.playerDiscard} label="Сброс" icon="🗑️" color={colors.text2} />
-        <DeckPile count={deckCounts.playerDeck} label="Колода" icon="🂠" color={colors.blue} backImageUrl={theme.backImageUrl} />
-      </View>
+          <View style={s.deckRow}>
+            <DeckPile count={deckCounts.playerDiscard} label="Сброс" icon="🗑️" color={colors.text2} />
+            <DeckPile count={deckCounts.playerDeck} label="Колода" icon="🂠" color={colors.blue} backImageUrl={theme.backImageUrl} />
+          </View>
 
-      <View style={s.boardRow}>
-        {playerSlots.map((entry, i) => {
-          const canSelect = !isOver && !acting && !!entry && entry.currentHealth > 0 && !attackedThisTurn.includes(entry.instanceId)
-          // onPress карте НЕ передаём, когда ей управляет жест (canSelect) — BoardSlot
-          // рендерит свой Pressable, и если он активен одновременно с GestureDetector
-          // снаружи, на вебе RNGH перехватывает указатель и обычный клик не доходит.
-          // И тап, и drag теперь полностью разруливаются внутри makeAttackDrag
-          // (см. onFinalize: success=false — это был тап, ведём себя как выбор атакующего)
-          // onLongPress только когда карта НЕ под управлением жеста (!canSelect) —
-          // Pressable внутри BoardSlot иначе снова станет активным touch-responder-ом
-          // и конфликтует с GestureDetector на вебе (тот самый баг с перехватом
-          // указателя, из-за которого onPress тоже намеренно не передаётся здесь)
-          const slot = (
-            <BoardSlot
-              entry={entry}
-              size={slotSize}
-              effect={entry ? effects[entry.instanceId] : null}
-              popups={entry ? popups.filter(p => p.target === entry.instanceId) : []}
-              selectable={canSelect}
-              selected={!!entry && selectedAttacker === entry.instanceId}
-              effectiveAttack={effectiveAttackOf(entry, board.playerBoard)}
-              onLongPress={!canSelect && entry ? () => setZoomCard({ card: entry.card, currentHealth: entry.currentHealth }) : undefined}
+          <View style={s.boardRow}>
+            {playerSlots.map((entry, i) => {
+              const canSelect = !isOver && !acting && !!entry && entry.currentHealth > 0 && !attackedThisTurn.includes(entry.instanceId)
+              // onPress карте НЕ передаём, когда ей управляет жест (canSelect) — BoardSlot
+              // рендерит свой Pressable, и если он активен одновременно с GestureDetector
+              // снаружи, на вебе RNGH перехватывает указатель и обычный клик не доходит.
+              // И тап, и drag теперь полностью разруливаются внутри makeAttackDrag
+              // (см. onFinalize: success=false — это был тап, ведём себя как выбор атакующего)
+              // onLongPress только когда карта НЕ под управлением жеста (!canSelect) —
+              // Pressable внутри BoardSlot иначе снова станет активным touch-responder-ом
+              // и конфликтует с GestureDetector на вебе (тот самый баг с перехватом
+              // указателя, из-за которого onPress тоже намеренно не передаётся здесь)
+              const slot = (
+                <BoardSlot
+                  entry={entry}
+                  size={slotSize}
+                  effect={entry ? effects[entry.instanceId] : null}
+                  popups={entry ? popups.filter(p => p.target === entry.instanceId) : []}
+                  selectable={canSelect}
+                  selected={!!entry && selectedAttacker === entry.instanceId}
+                  effectiveAttack={effectiveAttackOf(entry, board.playerBoard)}
+                  onLongPress={!canSelect && entry ? () => setZoomCard({ card: entry.card, currentHealth: entry.currentHealth }) : undefined}
+                />
+              )
+              // Кнопка активации способности — сиблинг GestureDetector'а, а не его
+              // ребёнок (так же как и лупа выше): свой Pressable внутри области жеста
+              // конфликтует с перехватом указателя на вебе. Показываем, только пока
+              // способность ещё не активна — активная невидимость не нуждается в кнопке.
+              const canActivate = !isOver && !acting && !!entry && entry.currentHealth > 0 && hasActivatableAbility(entry.card) && !entry.stealthCharge
+              return (
+                <View key={`player-${i}`} collapsable={false} style={s.playerSlotWrap} ref={el => { if (entry && el) playerSlotWrapRefs.current[entry.instanceId] = el }}>
+                  {canSelect ? <GestureDetector gesture={makeAttackDrag(entry)}>{slot}</GestureDetector> : slot}
+                  {canActivate && (
+                    <Pressable style={s.activateBtn} onPress={() => onActivateAbility(entry.instanceId)}>
+                      <Text style={s.activateBtnText}>👁️</Text>
+                    </Pressable>
+                  )}
+                </View>
+              )
+            })}
+          </View>
+        </LinearGradient>
+
+        <View style={s.playerBar}>
+          <HpBar label="Вы" value={battle.playerHp} max={battle.playerMaxHp} color={colors.green} popups={popups.filter(p => p.target === 'player')} />
+          <View style={s.statsRow}>
+            <View style={s.statBadge}><Text style={s.statBadgeText}>💧 {battle.mana}/{MANA_CAP}</Text></View>
+            <View style={s.statBadge}><Text style={s.statBadgeText}>🔄 Ход {battle.turn}</Text></View>
+          </View>
+        </View>
+
+        {/* Лог хода — раньше был отдельным FlatList с фиксированной высотой
+            (вложенный вертикальный список внутри вертикального скролла — сам
+            по себе спорный паттерн в RN). Записей за один бой немного, обычная
+            виртуализация не нужна — просто рендерим все строки как часть общей
+            скроллящейся страницы. */}
+        <View style={s.logContent}>
+          {(Array.isArray(battle.log) ? battle.log : []).map((entry, i) => (
+            <LogEntry key={i} text={entry} />
+          ))}
+        </View>
+
+        {isOver ? (
+          <View style={[s.banner, battle.status === 'WON' ? s.bannerWin : s.bannerLose]}>
+            <Text style={s.bannerTitle}>{battle.status === 'WON' ? '🏆 Победа!' : '💀 Поражение'}</Text>
+            {!!lastLog && <Text style={s.bannerText}>{lastLog}</Text>}
+            <Pressable style={({ pressed }) => [s.newBattleBtn, pressed && { opacity: 0.8 }]} onPress={onNewBattle}>
+              <Text style={s.newBattleBtnText}>Новый бой</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <>
+            <FlatList
+              horizontal
+              data={resolved.playerHand}
+              keyExtractor={(entry, i) => `${entry.cardId}-${i}`}
+              contentContainerStyle={s.hand}
+              showsHorizontalScrollIndicator={false}
+              renderItem={({ item }) => {
+                const playable = !acting && !boardFull && item.card.cost <= battle.mana
+                return (
+                  <HandCard
+                    entry={item}
+                    playable={playable}
+                    onPress={() => onPlayCard(item.cardId)}
+                    onLongPress={card => setZoomCard({ card, currentHealth: null })}
+                  />
+                )
+              }}
             />
-          )
-          // Кнопка активации способности — сиблинг GestureDetector'а, а не его
-          // ребёнок (так же как и лупа выше): свой Pressable внутри области жеста
-          // конфликтует с перехватом указателя на вебе. Показываем, только пока
-          // способность ещё не активна — активная невидимость не нуждается в кнопке.
-          const canActivate = !isOver && !acting && !!entry && entry.currentHealth > 0 && hasActivatableAbility(entry.card) && !entry.stealthCharge
-          return (
-            <View key={`player-${i}`} collapsable={false} style={s.playerSlotWrap} ref={el => { if (entry && el) playerSlotWrapRefs.current[entry.instanceId] = el }}>
-              {canSelect ? <GestureDetector gesture={makeAttackDrag(entry)}>{slot}</GestureDetector> : slot}
-              {canActivate && (
-                <Pressable style={s.activateBtn} onPress={() => onActivateAbility(entry.instanceId)}>
-                  <Text style={s.activateBtnText}>👁️</Text>
-                </Pressable>
-              )}
+            <View style={s.actions}>
+              <Pressable
+                style={({ pressed }) => [s.endTurnBtn, pressed && { opacity: 0.8 }, acting && { opacity: 0.6 }]}
+                onPress={onEndTurn}
+                disabled={acting}
+              >
+                {acting ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.endTurnBtnText}>Закончить ход</Text>}
+              </Pressable>
             </View>
-          )
-        })}
-      </View>
-      </LinearGradient>
+          </>
+        )}
       </ScrollView>
 
       {dragLine && (() => {
@@ -551,68 +586,6 @@ export default function BattleScreen({ route, navigation }) {
         )
       })()}
 
-      <View style={[s.playerBar, compact && s.playerBarCompact]} onLayout={e => setPlayerBarH(e.nativeEvent.layout.height)}>
-        <HpBar label="Вы" value={battle.playerHp} max={battle.playerMaxHp} color={colors.green} popups={popups.filter(p => p.target === 'player')} />
-        <View style={[s.statsRow, compact && s.statsRowCompact]}>
-          <View style={[s.statBadge, compact && s.statBadgeCompact]}><Text style={s.statBadgeText}>💧 {battle.mana}/{MANA_CAP}</Text></View>
-          <View style={[s.statBadge, compact && s.statBadgeCompact]}><Text style={s.statBadgeText}>🔄 Ход {battle.turn}</Text></View>
-        </View>
-      </View>
-
-      <FlatList
-        ref={logRef}
-        style={[s.log, { height: LOG_HEIGHT }]}
-        contentContainerStyle={s.logContent}
-        data={Array.isArray(battle.log) ? battle.log : []}
-        keyExtractor={(_, i) => String(i)}
-        onContentSizeChange={() => logRef.current?.scrollToEnd({ animated: false })}
-        renderItem={({ item }) => <LogEntry text={item} />}
-      />
-
-      <View onLayout={e => setBottomH(e.nativeEvent.layout.height)}>
-        {isOver ? (
-          <View style={[s.banner, battle.status === 'WON' ? s.bannerWin : s.bannerLose]}>
-            <Text style={s.bannerTitle}>{battle.status === 'WON' ? '🏆 Победа!' : '💀 Поражение'}</Text>
-            {!!lastLog && <Text style={s.bannerText}>{lastLog}</Text>}
-            <Pressable style={({ pressed }) => [s.newBattleBtn, pressed && { opacity: 0.8 }]} onPress={onNewBattle}>
-              <Text style={s.newBattleBtnText}>Новый бой</Text>
-            </Pressable>
-          </View>
-        ) : (
-          <>
-            <FlatList
-              horizontal
-              data={resolved.playerHand}
-              keyExtractor={(entry, i) => `${entry.cardId}-${i}`}
-              contentContainerStyle={[s.hand, compact && s.handCompact]}
-              showsHorizontalScrollIndicator={false}
-              renderItem={({ item }) => {
-                const playable = !acting && !boardFull && item.card.cost <= battle.mana
-                return (
-                  <HandCard
-                    entry={item}
-                    playable={playable}
-                    onPress={() => onPlayCard(item.cardId)}
-                    onLongPress={card => setZoomCard({ card, currentHealth: null })}
-                    width={compact ? 54 : 96}
-                    height={compact ? 76 : 136}
-                  />
-                )
-              }}
-            />
-            <View style={[s.actions, compact && s.actionsCompact, { paddingBottom: (compact ? 6 : 12) + insets.bottom }]}>
-              <Pressable
-                style={({ pressed }) => [s.endTurnBtn, compact && s.endTurnBtnCompact, pressed && { opacity: 0.8 }, acting && { opacity: 0.6 }]}
-                onPress={onEndTurn}
-                disabled={acting}
-              >
-                {acting ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.endTurnBtnText}>Закончить ход</Text>}
-              </Pressable>
-            </View>
-          </>
-        )}
-      </View>
-
       <CardZoomModal
         card={zoomCard?.card}
         currentHealth={zoomCard?.currentHealth}
@@ -631,37 +604,25 @@ const s = StyleSheet.create({
   backBtn: { position: 'absolute', left: 8, zIndex: 10, width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(10,11,14,0.6)', alignItems: 'center', justifyContent: 'center' },
   backBtnText: { fontSize: 18, fontWeight: '700', color: colors.text },
   center: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center' },
-  // Высота задаётся явно числом (arenaHeight, см. компонент) — ScrollView внутри
-  // flex-колонки схлопывается в 0 при живом ресайзе окна/повороте на вебе,
-  // не пересчитывая flex корректно; explicit height полностью обходит эту проблему
-  // flexGrow/flexShrink: 0 — высота полностью управляется явным числом
-  // (arenaHeight), не отдаём её на откуп CSS flex-negotiation с соседями
-  arenaScroll: { flexGrow: 0, flexShrink: 0, minHeight: 0 },
-  arenaScrollContent: { flexGrow: 1, justifyContent: 'center' },
+  pageScroll: { flex: 1 },
+  pageContent: { flexGrow: 1 },
   arena: {},
   dragOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 50 },
   dragLine: { position: 'absolute', height: 3, borderRadius: 1.5, backgroundColor: colors.gold },
   dragTip: { position: 'absolute', width: 10, height: 10, borderRadius: 5, backgroundColor: colors.gold },
-  boardRow: { flexDirection: 'row', justifyContent: 'center', gap: 10, paddingVertical: 8 },
+  boardRow: { flexDirection: 'row', justifyContent: 'center', gap: 10, paddingVertical: 8, flexWrap: 'wrap' },
   playerSlotWrap: { position: 'relative' },
   activateBtn: { position: 'absolute', top: -8, right: -8, width: 24, height: 24, borderRadius: 12, backgroundColor: colors.surface2, borderWidth: 1.5, borderColor: colors.gold, alignItems: 'center', justifyContent: 'center', zIndex: 5 },
   activateBtnText: { fontSize: 12 },
   deckRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 24, paddingVertical: 2 },
   playerBar: { paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.border },
-  playerBarCompact: { paddingVertical: 3 },
   statsRow: { flexDirection: 'row', gap: 8, marginTop: 2 },
-  statsRowCompact: { marginTop: 0 },
   statBadge: { backgroundColor: colors.surface2, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
-  statBadgeCompact: { paddingVertical: 2 },
   statBadgeText: { fontSize: 12, fontWeight: '700', color: colors.text },
-  log: {},
   logContent: { padding: 12 },
   hand: { paddingHorizontal: 16, paddingVertical: 8, gap: 8 },
-  handCompact: { paddingVertical: 4, gap: 4 },
-  actions: { paddingHorizontal: 16, paddingTop: 4, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border },
-  actionsCompact: { paddingTop: 2 },
+  actions: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 12, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border },
   endTurnBtn: { backgroundColor: colors.accent, borderRadius: 10, paddingVertical: 14, alignItems: 'center' },
-  endTurnBtnCompact: { paddingVertical: 8 },
   endTurnBtnText: { fontSize: 15, fontWeight: '700', color: '#fff' },
   banner: { margin: 16, borderRadius: 14, borderWidth: 1.5, padding: 20, alignItems: 'center' },
   bannerWin: { backgroundColor: `${colors.green}18`, borderColor: colors.green },
