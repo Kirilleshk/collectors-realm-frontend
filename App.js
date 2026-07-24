@@ -44,7 +44,7 @@ function ShopStack() {
       headerTintColor: colors.text,
       headerTitleStyle: { fontWeight: '700' },
     }}>
-      <Stack.Screen name="ShopList" component={ShopScreen} options={{ title: 'Магазин' }} />
+      <Stack.Screen name="ShopList" component={ShopScreen} options={{ headerShown: false }} />
       <Stack.Screen name="ProductDetail" component={ProductDetailScreen} options={{ title: 'Товар' }} />
       <Stack.Screen name="Chat" component={ChatScreen} options={{ title: 'Чат с продавцом' }} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: 'Уведомления' }} />
@@ -61,7 +61,7 @@ function MapStack() {
       headerTintColor: colors.text,
       headerTitleStyle: { fontWeight: '700' },
     }}>
-      <Stack.Screen name="MapMain" component={MapScreen} options={{ title: 'Карта' }} />
+      <Stack.Screen name="MapMain" component={MapScreen} options={{ headerShown: false }} />
       <Stack.Screen name="UserProfileMap" component={UserProfileScreen} options={{ title: 'Профиль' }} />
     </Stack.Navigator>
   )
@@ -74,7 +74,7 @@ function GameStack() {
       headerTintColor: colors.text,
       headerTitleStyle: { fontWeight: '700' },
     }}>
-      <Stack.Screen name="GameMain" component={GameScreen} options={{ title: 'Игра' }} />
+      <Stack.Screen name="GameMain" component={GameScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Battle" component={BattleScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   )
@@ -101,8 +101,8 @@ function MainTabs() {
       <Tab.Screen name="Карта" component={MapStack} options={{ headerShown: false }} listeners={{ focus: () => track('screen_view', { screen: 'Map' }) }} />
       <Tab.Screen name="Моё" component={MyItemsScreen} options={{ headerShown: false }} listeners={{ focus: () => track('screen_view', { screen: 'MyItems' }) }} />
       {SHOW_GAME && <Tab.Screen name="Игра" component={GameStack} options={{ headerShown: false }} listeners={{ focus: () => track('screen_view', { screen: 'Game' }) }} />}
-      {isAdmin && <Tab.Screen name="Админ" component={AdminScreen} />}
-      <Tab.Screen name="Профиль" component={ProfileScreen} listeners={{ focus: () => track('screen_view', { screen: 'Profile' }) }} />
+      {isAdmin && <Tab.Screen name="Админ" component={AdminScreen} options={{ headerShown: false }} />}
+      <Tab.Screen name="Профиль" component={ProfileScreen} options={{ headerShown: false }} listeners={{ focus: () => track('screen_view', { screen: 'Profile' }) }} />
     </Tab.Navigator>
   )
 }

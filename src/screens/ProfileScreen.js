@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Image, Modal, KeyboardAvoidingView, Platform, FlatList, useWindowDimensions } from 'react-native'
 import * as Location from 'expo-location'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuth } from '../AuthContext'
 import { colors } from '../theme'
 import { pickAndUploadPhoto } from '../utils/uploadPhoto'
@@ -55,6 +56,7 @@ function ReviewCardSmall({ review: r }) {
 }
 
 export default function ProfileScreen() {
+  const insets = useSafeAreaInsets()
   const { width } = useWindowDimensions()
   const collCardWidth = (width - 48) / 2
   const { user, token, logout, updateUser } = useAuth()
@@ -350,7 +352,7 @@ export default function ProfileScreen() {
     <ScrollView style={s.wrap} showsVerticalScrollIndicator={false}>
 
       {/* Переключатель вкладок профиля */}
-      <View style={s.profileTabs}>
+      <View style={[s.profileTabs, { paddingTop: insets.top }]}>
         <TouchableOpacity style={[s.profileTab, profileTab === 'profile' && s.profileTabActive]} onPress={() => setProfileTab('profile')}>
           <Text style={[s.profileTabText, profileTab === 'profile' && s.profileTabTextActive]}>👤 Профиль</Text>
         </TouchableOpacity>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { View, Text, Image, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl, useWindowDimensions, TextInput, Animated } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { products } from '../api'
 import { colors } from '../theme'
 import ScreenBackground from '../components/ScreenBackground'
@@ -32,6 +33,7 @@ const STATUS_BADGE = {
 }
 
 export default function ShopScreen({ navigation }) {
+  const insets = useSafeAreaInsets()
   const { width } = useWindowDimensions()
   const numColumns = getNumColumns(width)
   const cardWidth = (width - 12 * (numColumns + 1)) / numColumns
@@ -100,7 +102,7 @@ export default function ShopScreen({ navigation }) {
   }
 
   if (loading) return (
-    <View style={s.center}>
+    <View style={[s.center, { paddingTop: insets.top }]}>
       <ActivityIndicator color={colors.accent} size="large" />
       <Text style={s.loadingText}>Загружаем коллекцию...</Text>
       {slowLoad && (
@@ -110,7 +112,7 @@ export default function ShopScreen({ navigation }) {
   )
 
   if (error) return (
-    <View style={s.center}>
+    <View style={[s.center, { paddingTop: insets.top }]}>
       <Text style={{ fontSize: 40, marginBottom: 8 }}>⚠️</Text>
       <Text style={s.errorTitle}>Нет соединения</Text>
       <Text style={s.errorSub}>{error}</Text>
@@ -121,7 +123,7 @@ export default function ShopScreen({ navigation }) {
   )
 
   return (
-    <ScreenBackground style={s.wrap}>
+    <ScreenBackground style={[s.wrap, { paddingTop: insets.top }]}>
       {/* Кнопка Анонсы */}
       <TouchableOpacity style={s.announceBanner} onPress={() => navigation.navigate('Releases')}>
         <Text style={s.announceBannerText}>📅 Анонсы новых фигурок →</Text>

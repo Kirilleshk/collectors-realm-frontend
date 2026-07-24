@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView, Modal, Image, Platform, Alert } from 'react-native'
 import { WebView } from 'react-native-webview'
 import * as Location from 'expo-location'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuth } from '../AuthContext'
 import { colors } from '../theme'
 import ScreenBackground from '../components/ScreenBackground'
@@ -147,6 +148,7 @@ users.forEach(function(u) {
 }
 
 export default function MapScreen({ navigation }) {
+  const insets = useSafeAreaInsets()
   const { token, user: me } = useAuth()
   const [users, setUsers] = useState([])
   const usersRef = useRef([])
@@ -245,7 +247,7 @@ export default function MapScreen({ navigation }) {
     })
 
   if (loading) return (
-    <View style={s.center}>
+    <View style={[s.center, { paddingTop: insets.top }]}>
       <ActivityIndicator color={colors.accent} size="large" />
       <Text style={{ color: colors.text2, marginTop: 12 }}>Загружаем карту...</Text>
       {slowLoad && (
@@ -257,7 +259,7 @@ export default function MapScreen({ navigation }) {
   )
 
   if (error) return (
-    <View style={s.center}>
+    <View style={[s.center, { paddingTop: insets.top }]}>
       <Text style={{ fontSize: 40, marginBottom: 8 }}>⚠️</Text>
       <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text }}>Нет соединения</Text>
       <Text style={{ fontSize: 14, color: colors.text2, textAlign: 'center', paddingHorizontal: 32 }}>{error}</Text>
@@ -271,7 +273,7 @@ export default function MapScreen({ navigation }) {
   )
 
   const FilterBar = () => (
-    <View style={s.filtersWrap}>
+    <View style={[s.filtersWrap, { paddingTop: insets.top + 8 }]}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}>
         <TouchableOpacity style={[s.filterBtn, !filter && s.filterBtnActive]} onPress={() => setFilter(null)}>
           <Text style={[s.filterText, !filter && s.filterTextActive]}>Все ({users.length})</Text>

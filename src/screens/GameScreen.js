@@ -94,7 +94,7 @@ export default function GameScreen() {
     setStartingBattle(false)
   }
 
-  if (loading) return <View style={s.center}><ActivityIndicator color={colors.accent} size="large" /></View>
+  if (loading) return <View style={[s.center, { paddingTop: insets.top }]}><ActivityIndicator color={colors.accent} size="large" /></View>
 
   return (
     <View style={s.wrap}>
@@ -107,7 +107,7 @@ export default function GameScreen() {
         keyExtractor={uc => uc.id}
         numColumns={2}
         columnWrapperStyle={{ gap: 12 }}
-        contentContainerStyle={[s.list, { paddingBottom: 24 + insets.bottom }]}
+        contentContainerStyle={[s.list, { paddingTop: 16 + insets.top, paddingBottom: 24 + insets.bottom }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
         ListHeaderComponent={
           <View style={s.header}>

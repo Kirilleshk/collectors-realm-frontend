@@ -3,6 +3,7 @@ import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   ActivityIndicator, Alert, Modal, Image, Platform, KeyboardAvoidingView
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuth } from '../AuthContext'
 import { colors } from '../theme'
 import { notifications as notifApi, releases as releasesApi, support as supportApi, users, game } from '../api'
@@ -33,6 +34,7 @@ const STATUS_LABELS = {
 }
 
 export default function AdminScreen() {
+  const insets = useSafeAreaInsets()
   const { user, token } = useAuth()
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
@@ -402,7 +404,7 @@ export default function AdminScreen() {
   }
 
   if (!isAdmin && !isModerator && !isAnalytics) return (
-    <View style={s.center}>
+    <View style={[s.center, { paddingTop: insets.top }]}>
       <Text style={{ fontSize: 48, marginBottom: 16 }}>🔒</Text>
       <Text style={{ fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: 8 }}>Нет доступа</Text>
       <Text style={{ fontSize: 14, color: colors.text2 }}>Только для администраторов</Text>
@@ -412,7 +414,7 @@ export default function AdminScreen() {
   return (
     <ScreenBackground style={s.wrap}>
       {/* Переключатель вкладок */}
-      <View style={s.tabs}>
+      <View style={[s.tabs, { paddingTop: insets.top }]}>
         {isStaff && (
           <TouchableOpacity style={[s.tabBtn, tab === 'products' && s.tabBtnActive]} onPress={() => setTab('products')}>
             <Text style={[s.tabText, tab === 'products' && s.tabTextActive]}>📦 Товары</Text>
