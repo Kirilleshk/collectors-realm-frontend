@@ -129,6 +129,11 @@ export default function ShopScreen({ navigation }) {
         <Text style={s.announceBannerText}>📅 Анонсы новых фигурок →</Text>
       </TouchableOpacity>
 
+      {/* Кнопка Библиотека знаний */}
+      <TouchableOpacity style={s.libraryBanner} onPress={() => navigation.navigate('Library')}>
+        <Text style={s.libraryBannerText}>📖 Библиотека гик-культуры →</Text>
+      </TouchableOpacity>
+
       {/* Поиск */}
       <Animated.View style={[s.searchWrap, { opacity: searchAnim }]}>
         <Text style={s.searchIcon}>🔍</Text>
@@ -255,6 +260,8 @@ const s = StyleSheet.create({
   searchClear: { color: colors.text2, fontSize: 16, padding: 4 },
   announceBanner: { marginHorizontal: 12, marginTop: 8, marginBottom: 4, backgroundColor: `${colors.blue}15`, borderRadius: 10, borderWidth: 1, borderColor: `${colors.blue}30`, paddingHorizontal: 14, paddingVertical: 10 },
   announceBannerText: { fontSize: 13, fontWeight: '600', color: colors.blue },
+  libraryBanner: { marginHorizontal: 12, marginTop: 4, marginBottom: 4, backgroundColor: `${colors.purple}15`, borderRadius: 10, borderWidth: 1, borderColor: `${colors.purple}30`, paddingHorizontal: 14, paddingVertical: 10 },
+  libraryBannerText: { fontSize: 13, fontWeight: '600', color: colors.purple },
   filtersWrap: { marginBottom: 4 },
   filterBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   filterBtnActive: { backgroundColor: colors.accent, borderColor: colors.accent },

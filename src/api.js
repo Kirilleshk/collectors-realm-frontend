@@ -132,4 +132,8 @@ export const bids = {
   place: (productId, amount) => api.post(`/products/${productId}/bids`, { amount }),
 }
 
+export const library = {
+  getArticle: (query) => api.get('/library/article', { params: { q: query } }),
+}
+
 export default api

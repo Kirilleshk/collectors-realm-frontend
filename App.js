@@ -28,6 +28,7 @@ import MyItemsScreen from './src/screens/MyItemsScreen'
 import ReleasesScreen from './src/screens/ReleasesScreen'
 import GameScreen from './src/screens/GameScreen'
 import BattleScreen from './src/screens/BattleScreen'
+import LibraryScreen from './src/screens/LibraryScreen'
 
 // Флаг видимости карточной игры — поставить false, чтобы мгновенно скрыть вкладку
 const SHOW_GAME = true
@@ -50,6 +51,7 @@ function ShopStack() {
       <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: 'Уведомления' }} />
       <Stack.Screen name="UserProfile" component={UserProfileScreen} options={{ title: 'Профиль' }} />
       <Stack.Screen name="Releases" component={ReleasesScreen} options={{ title: 'Анонсы' }} />
+      <Stack.Screen name="Library" component={LibraryScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   )
 }
