@@ -124,15 +124,18 @@ export default function ShopScreen({ navigation }) {
 
   return (
     <ScreenBackground style={[s.wrap, { paddingTop: insets.top }]}>
-      {/* Кнопка Анонсы */}
-      <TouchableOpacity style={s.announceBanner} onPress={() => navigation.navigate('Releases')}>
-        <Text style={s.announceBannerText}>📅 Анонсы новых фигурок →</Text>
-      </TouchableOpacity>
+      <View style={s.topRow}>
+        {/* Кнопка Анонсы */}
+        <TouchableOpacity style={s.announceBanner} onPress={() => navigation.navigate('Releases')}>
+          <Text style={s.announceBannerText}>📅 Анонсы новых фигурок →</Text>
+        </TouchableOpacity>
 
-      {/* Кнопка Библиотека знаний */}
-      <TouchableOpacity style={s.libraryBanner} onPress={() => navigation.navigate('Library')}>
-        <Text style={s.libraryBannerText}>📖 Библиотека гик-культуры →</Text>
-      </TouchableOpacity>
+        {/* Кнопка Библиотека знаний — открытая книжка с контуром, не в кружке */}
+        <TouchableOpacity style={s.libraryIconBtn} onPress={() => navigation.navigate('Library')}>
+          <Text style={s.libraryIcon}>📖</Text>
+          <Text style={s.libraryIconLabel}>Библиотека</Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Поиск */}
       <Animated.View style={[s.searchWrap, { opacity: searchAnim }]}>
@@ -258,10 +261,12 @@ const s = StyleSheet.create({
   searchIcon: { fontSize: 16 },
   searchInput: { flex: 1, color: colors.text, fontSize: 14 },
   searchClear: { color: colors.text2, fontSize: 16, padding: 4 },
-  announceBanner: { marginHorizontal: 12, marginTop: 8, marginBottom: 4, backgroundColor: `${colors.blue}15`, borderRadius: 10, borderWidth: 1, borderColor: `${colors.blue}30`, paddingHorizontal: 14, paddingVertical: 10 },
+  topRow: { flexDirection: 'row', alignItems: 'stretch', gap: 8, marginHorizontal: 12, marginTop: 8, marginBottom: 4 },
+  announceBanner: { flex: 1, justifyContent: 'center', backgroundColor: `${colors.blue}15`, borderRadius: 10, borderWidth: 1, borderColor: `${colors.blue}30`, paddingHorizontal: 14, paddingVertical: 10 },
   announceBannerText: { fontSize: 13, fontWeight: '600', color: colors.blue },
-  libraryBanner: { marginHorizontal: 12, marginTop: 4, marginBottom: 4, backgroundColor: `${colors.purple}15`, borderRadius: 10, borderWidth: 1, borderColor: `${colors.purple}30`, paddingHorizontal: 14, paddingVertical: 10 },
-  libraryBannerText: { fontSize: 13, fontWeight: '600', color: colors.purple },
+  libraryIconBtn: { alignItems: 'center', justifyContent: 'center', gap: 2, backgroundColor: `${colors.purple}15`, borderRadius: 10, borderWidth: 2, borderColor: '#000', paddingHorizontal: 12, paddingVertical: 6, minWidth: 76 },
+  libraryIcon: { fontSize: 26 },
+  libraryIconLabel: { fontSize: 10, fontWeight: '700', color: colors.purple },
   filtersWrap: { marginBottom: 4 },
   filterBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   filterBtnActive: { backgroundColor: colors.accent, borderColor: colors.accent },

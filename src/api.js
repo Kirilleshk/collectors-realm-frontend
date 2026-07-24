@@ -134,6 +134,7 @@ export const bids = {
 
 export const library = {
   getArticle: (query) => api.get('/library/article', { params: { q: query } }),
+  getRecent: () => api.get('/library/recent'),
 }
 
 export default api

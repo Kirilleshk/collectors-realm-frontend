@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, StyleSheet, Platform } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { library } from '../api'
@@ -11,16 +11,28 @@ export default function LibraryScreen({ navigation }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [article, setArticle] = useState(null)
+  const [recent, setRecent] = useState([])
 
-  async function onSearch() {
-    const q = query.trim()
+  useEffect(() => { loadRecent() }, [])
+
+  async function loadRecent() {
+    try {
+      const res = await library.getRecent()
+      setRecent(Array.isArray(res.data) ? res.data : [])
+    } catch (e) { /* лента не критична, тихо пропускаем */ }
+  }
+
+  async function onSearch(name) {
+    const q = (name ?? query).trim()
     if (!q) return
+    setQuery(q)
     setLoading(true)
     setError(null)
     setArticle(null)
     try {
       const res = await library.getArticle(q)
       setArticle(res.data)
+      loadRecent()
     } catch (e) {
       setError(e?.response?.data?.error || 'Не удалось найти статью. Попробуйте ещё раз.')
     }
@@ -43,10 +55,10 @@ export default function LibraryScreen({ navigation }) {
           onChangeText={setQuery}
           placeholder="Найдите персонажа, о котором хотите прочитать..."
           placeholderTextColor={colors.text2}
-          onSubmitEditing={onSearch}
+          onSubmitEditing={() => onSearch()}
           returnKeyType="search"
         />
-        <TouchableOpacity style={s.searchBtn} onPress={onSearch} disabled={loading || !query.trim()}>
+        <TouchableOpacity style={s.searchBtn} onPress={() => onSearch()} disabled={loading || !query.trim()}>
           {loading
             ? <ActivityIndicator color="#fff" size="small" />
             : <Text style={s.searchBtnText}>🔍</Text>}
@@ -59,6 +71,19 @@ export default function LibraryScreen({ navigation }) {
             <Text style={s.emptyIcon}>📚</Text>
             <Text style={s.emptyTitle}>Энциклопедия гик-культуры</Text>
             <Text style={s.emptySub}>Введите имя персонажа из комиксов, фильмов, игр или аниме — статья о нём сгенерируется автоматически</Text>
+
+            {recent.length > 0 && (
+              <View style={s.recentWrap}>
+                <Text style={s.recentTitle}>Недавно искали</Text>
+                <View style={s.recentChips}>
+                  {recent.map((name, i) => (
+                    <TouchableOpacity key={`${name}-${i}`} style={s.recentChip} onPress={() => onSearch(name)}>
+                      <Text style={s.recentChipText}>{name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
           </View>
         )}
 
@@ -109,6 +134,11 @@ const s = StyleSheet.create({
   emptyIcon: { fontSize: 44 },
   emptyTitle: { fontSize: 17, fontWeight: '700', color: colors.text },
   emptySub: { fontSize: 14, color: colors.text2, textAlign: 'center', lineHeight: 20 },
+  recentWrap: { width: '100%', marginTop: 16, gap: 10 },
+  recentTitle: { fontSize: 12, fontWeight: '700', color: colors.text2, textTransform: 'uppercase', letterSpacing: 0.5 },
+  recentChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center' },
+  recentChip: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 },
+  recentChipText: { fontSize: 13, fontWeight: '600', color: colors.text },
   article: { backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 18, gap: 6 },
   articleName: { fontSize: 20, fontWeight: '800', color: colors.text },
   articleUniverse: { fontSize: 13, fontWeight: '600', color: colors.accent, marginBottom: 8 },
