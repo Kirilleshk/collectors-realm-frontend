@@ -12,6 +12,19 @@ export const noCalloutStyle = Platform.OS === 'web'
   ? { userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', WebkitUserDrag: 'none' }
   : null
 
+// preventDefault на contextmenu гасит десктопный ПКМ, но на Android Chrome
+// долгое нажатие именно на элементе <img> открывает свою "quick menu" (Открыть
+// картинку/Скопировать/Скачать) до всплытия JS-события — это и есть баг,
+// который Марк продолжил видеть после noCalloutProps/noCalloutStyle. Рисуем
+// арт карты как CSS-фон обычного View вместо <img> — у div такого меню нет
+// в принципе, поэтому это надёжнее point-patch'ей самого <Image>.
+export function CardImage({ uri, style }) {
+  if (Platform.OS === 'web') {
+    return <View style={[style, { backgroundImage: `url("${uri}")`, backgroundSize: 'cover', backgroundPosition: 'center' }]} {...noCalloutProps} />
+  }
+  return <Image source={{ uri }} style={style} resizeMode="cover" />
+}
+
 // Палитра редкости — общая для экрана коллекции и боя. tier растёт с редкостью —
 // от него зависит толщина рамки/свечение в rarityFrameStyle ниже
 export const RARITY = {
@@ -74,7 +87,7 @@ export function CardArt({ card, size = 56 }) {
   return (
     <View style={[s.wrap, { width: size, height: size, borderRadius: size * 0.22, backgroundColor: `${r.color}1f`, borderColor: r.color, overflow: 'hidden' }]}>
       {card.imageUrl
-        ? <Image source={{ uri: card.imageUrl }} style={{ width: size, height: size }} resizeMode="cover" />
+        ? <CardImage uri={card.imageUrl} style={{ width: size, height: size }} />
         : <Text style={{ fontSize: size * 0.5 }}>{cardIcon(card)}</Text>}
     </View>
   )

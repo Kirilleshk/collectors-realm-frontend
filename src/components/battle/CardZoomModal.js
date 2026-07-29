@@ -1,7 +1,7 @@
-import React from 'react'
-import { View, Text, Image, Modal, Pressable, StyleSheet } from 'react-native'
+import React, { useEffect, useRef } from 'react'
+import { View, Text, Modal, Pressable, StyleSheet } from 'react-native'
 import { colors } from '../../theme'
-import { RARITY, rarityFrameStyle, RarityInnerRing, RarityCorners, cardIcon, ManaBadge, HealthBadge, AttackBadge, noCalloutProps, noCalloutStyle } from '../../utils/cardArt'
+import { RARITY, rarityFrameStyle, RarityInnerRing, RarityCorners, cardIcon, ManaBadge, HealthBadge, AttackBadge, noCalloutProps, noCalloutStyle, CardImage } from '../../utils/cardArt'
 
 // Увеличенная карточка по долгому нажатию — полный арт + все характеристики
 // и текст эффекта (на маленьком бейдже в руке/на столе effectText не влезает
@@ -9,18 +9,36 @@ import { RARITY, rarityFrameStyle, RarityInnerRing, RarityCorners, cardIcon, Man
 // currentHealth — опционально текущее HP существа на столе (если не передано,
 // показывается полное здоровье карты, как в руке/коллекции).
 export default function CardZoomModal({ card, currentHealth, visible, onClose }) {
+  // На вебе mousedown идёт по карте, но пока карта под пальцем "держится"
+  // (долгое нажатие), модалка уже открывается поверх — и mouseup у браузера
+  // приходится на новый верхний элемент (сам backdrop), а не на карту. Без
+  // защиты это читается backdrop'ом как "тап по фону" и закрывает модалку
+  // в тот же миг, когда она появилась (баг "не увеличивается, что-то
+  // мелькает", репортнутый в тг-боте). Игнорируем закрытие в первые ~350мс
+  // после открытия — этого достаточно, чтобы погасить именно тот самый
+  // "хвостовой" отпуск пальца/мыши, но не мешает обычному последующему тапу.
+  const openedAtRef = useRef(0)
+  useEffect(() => {
+    if (visible) openedAtRef.current = Date.now()
+  }, [visible])
+
+  function guardedClose() {
+    if (Date.now() - openedAtRef.current < 350) return
+    onClose()
+  }
+
   if (!card) return null
   const r = RARITY[card.rarity] || RARITY.COMMON
   const frame = rarityFrameStyle(card.rarity)
   const health = currentHealth ?? card.health
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={s.backdrop} onPress={onClose}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={guardedClose}>
+      <Pressable style={s.backdrop} onPress={guardedClose}>
         <Pressable style={s.cardWrap} onPress={() => {}}>
           <View style={[s.card, frame, noCalloutStyle, { borderColor: r.color }]} {...noCalloutProps}>
             {card.imageUrl
-              ? <Image source={{ uri: card.imageUrl }} style={s.art} resizeMode="cover" />
+              ? <CardImage uri={card.imageUrl} style={s.art} />
               : <View style={[s.art, s.artFallback, { backgroundColor: `${r.color}22` }]}><Text style={s.artFallbackIcon}>{cardIcon(card)}</Text></View>}
             <RarityInnerRing rarity={card.rarity} borderRadius={18} />
             <RarityCorners rarity={card.rarity} />
@@ -41,7 +59,7 @@ export default function CardZoomModal({ card, currentHealth, visible, onClose })
             </View>
           )}
 
-          <Pressable style={s.closeBtn} onPress={onClose}>
+          <Pressable style={s.closeBtn} onPress={guardedClose}>
             <Text style={s.closeBtnText}>Закрыть</Text>
           </Pressable>
         </Pressable>

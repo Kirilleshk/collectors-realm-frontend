@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { View, Text, Image, FlatList, ScrollView, StyleSheet, ActivityIndicator, Pressable, Alert, Platform } from 'react-native'
+import { View, Text, Image, FlatList, ScrollView, Modal, StyleSheet, ActivityIndicator, Pressable, Alert, Platform, useWindowDimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useFocusEffect } from '@react-navigation/native'
 import { GestureDetector, Gesture } from 'react-native-gesture-handler'
@@ -22,6 +22,7 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
 
 export default function BattleScreen({ route, navigation }) {
   const insets = useSafeAreaInsets()
+  const { height: winHeight } = useWindowDimensions()
   const [battle, setBattle] = useState(null)
   const [resolved, setResolved] = useState(null)
   const [deckCounts, setDeckCounts] = useState(EMPTY_DECK_COUNTS)
@@ -40,14 +41,14 @@ export default function BattleScreen({ route, navigation }) {
   // currentHealth есть только для существ на столе, для карт в руке — null
   // (там показываем полное здоровье карты)
   const [zoomCard, setZoomCard] = useState(null)
-  // Раньше высота арены высчитывалась в пикселях под оставшееся место (arenaHeight),
-  // а всё остальное просто НЕ скроллилось — если расчёт ошибался (десктоп/планшет/
-  // нестандартный телефон), низ экрана (карты в руке, кнопка "Закончить ход")
-  // пропадал за пределами экрана без возможности до него докрутить. По прямой
-  // просьбе — весь экран теперь ОДИН вертикальный ScrollView (как в большинстве
-  // веб-карточных игр): что бы ни случилось с размерами, всегда можно долистать
-  // до любого элемента, ничего не может быть навсегда скрыто или перекрыто.
-  const scrollRef = useRef(null)
+  // Текстовый лог хода — по фидбэку Марка не должен быть частью основного
+  // экрана боя вообще ("убери текстовый вариант боя, ничего не нужно
+  // прокручивать, стол и рука должны быть видны всегда"). Экран боя снова
+  // фиксированный (без общего скролла, как было временно на 21.07) — стол,
+  // полоса игрока и рука всегда помещаются на экране; лог при этом никуда не
+  // делся, просто убран из основного вида и открывается отдельным окном по
+  // кнопке — если что-то пошло не так, историю ходов всё ещё можно посмотреть.
+  const [logVisible, setLogVisible] = useState(false)
   const popupId = useRef(0)
 
   // Drag-таргетинг (v2 над тапом): { x1, y1, x2, y2 } экранных координат линии
@@ -109,10 +110,6 @@ export default function BattleScreen({ route, navigation }) {
     setEffects(prev => ({ ...prev, [instanceId]: { kind, dir, token: Math.random() } }))
   }
 
-  function scrollToBottom() {
-    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)
-  }
-
   useEffect(() => { load() }, [])
 
   function applyData(data) {
@@ -145,7 +142,6 @@ export default function BattleScreen({ route, navigation }) {
     const events = Array.isArray(data.events) ? data.events : []
     if (events.length === 0) {
       applyData(data)
-      scrollToBottom()
       return
     }
 
@@ -198,7 +194,6 @@ export default function BattleScreen({ route, navigation }) {
     applyData(data)
     setDisplayBoard(null)
     setEffects({})
-    scrollToBottom()
   }
 
   // Возвращает true при успехе — HandCard так понимает, что карту не нужно
@@ -219,7 +214,6 @@ export default function BattleScreen({ route, navigation }) {
           popAuraBonus(res.data.resolved.playerBoard, addedCard.effectValue ?? 1, addedCard.faction)
         }
       }
-      scrollToBottom()
       ok = true
     } catch (e) {
       Alert.alert('Ошибка', e?.response?.data?.error || 'Не удалось разыграть карту.')
@@ -260,7 +254,6 @@ export default function BattleScreen({ route, navigation }) {
     try {
       const res = await game.activateAbility(battle.id, instanceId)
       applyData(res.data)
-      scrollToBottom()
     } catch (e) {
       Alert.alert('Ошибка', e?.response?.data?.error || 'Не удалось активировать способность.')
     }
@@ -348,7 +341,12 @@ export default function BattleScreen({ route, navigation }) {
   const lastLog = Array.isArray(battle.log) ? battle.log[battle.log.length - 1] : null
   const board = displayBoard || resolved
   const boardSlots = battle.boardSlots || 5
-  const slotSize = boardSlots > 3 ? 72 : 88
+  // Экран боя фиксированный (см. комментарий у logVisible выше) — реального
+  // дефицита ВЫСОТЫ (не соотношения сторон, см. коммит от 20.07 про ту же
+  // ошибку) достаточно много (телефон-ландшафт ~390px), приходится ужимать
+  // размеры стола/руки/баннера босса, иначе низ экрана обрежется без скролла
+  const compact = winHeight < 500
+  const slotSize = compact ? 48 : (boardSlots > 3 ? 72 : 88)
   const bossSlots = Array.from({ length: boardSlots }, (_, i) => board.bossBoard[i] || null)
   const playerSlots = Array.from({ length: boardSlots }, (_, i) => board.playerBoard[i] || null)
   const boardFull = resolved.playerBoard.length >= boardSlots
@@ -401,15 +399,12 @@ export default function BattleScreen({ route, navigation }) {
         <Text style={s.backBtnText}>←</Text>
       </Pressable>
 
-      {/* Весь экран боя — один вертикальный скролл (арена → полоса игрока →
-          лог → рука → кнопка хода). Ничего не обрезается по высоте и не
-          перекрывается: на любом экране можно докрутить до любого элемента. */}
-      <ScrollView
-        ref={scrollRef}
-        style={s.pageScroll}
-        contentContainerStyle={[s.pageContent, { paddingTop: insets.top + 48, paddingBottom: insets.bottom + 16 }]}
-        showsVerticalScrollIndicator={true}
-      >
+      {/* Экран боя фиксированный, без общего скролла (см. комментарий у
+          logVisible) — стол, полоса игрока и рука всегда видны целиком.
+          Арена растягивается на всё оставшееся место (flex:1) между
+          баннером босса и нижним блоком, размеры внутри подстраиваются
+          под compact при реальном дефиците высоты. */}
+      <View style={[s.pageFixed, { paddingTop: insets.top + 48, paddingBottom: insets.bottom }]}>
         <View ref={faceZoneRef} collapsable={false}>
           <BossBanner
             bossName={theme.bossName}
@@ -419,8 +414,9 @@ export default function BattleScreen({ route, navigation }) {
             popups={popups.filter(p => p.target === 'boss')}
             faceAttackable={faceAttackable}
             onPress={faceAttackable ? () => onAttack(null) : undefined}
-            height={168}
+            height={compact ? 92 : 168}
             handCount={deckCounts.bossHand}
+            compact={compact}
           />
         </View>
 
@@ -511,18 +507,10 @@ export default function BattleScreen({ route, navigation }) {
           <View style={s.statsRow}>
             <View style={s.statBadge}><Text style={s.statBadgeText}>💧 {battle.mana}/{MANA_CAP}</Text></View>
             <View style={s.statBadge}><Text style={s.statBadgeText}>🔄 Ход {battle.turn}</Text></View>
+            <Pressable style={s.statBadge} onPress={() => setLogVisible(true)}>
+              <Text style={s.statBadgeText}>📜 Лог</Text>
+            </Pressable>
           </View>
-        </View>
-
-        {/* Лог хода — раньше был отдельным FlatList с фиксированной высотой
-            (вложенный вертикальный список внутри вертикального скролла — сам
-            по себе спорный паттерн в RN). Записей за один бой немного, обычная
-            виртуализация не нужна — просто рендерим все строки как часть общей
-            скроллящейся страницы. */}
-        <View style={s.logContent}>
-          {(Array.isArray(battle.log) ? battle.log : []).map((entry, i) => (
-            <LogEntry key={i} text={entry} />
-          ))}
         </View>
 
         {isOver ? (
@@ -549,6 +537,8 @@ export default function BattleScreen({ route, navigation }) {
                     playable={playable}
                     onPress={() => onPlayCard(item.cardId)}
                     onLongPress={card => setZoomCard({ card, currentHealth: null })}
+                    width={compact ? 54 : 96}
+                    height={compact ? 76 : 136}
                   />
                 )
               }}
@@ -564,7 +554,7 @@ export default function BattleScreen({ route, navigation }) {
             </View>
           </>
         )}
-      </ScrollView>
+      </View>
 
       {dragLine && (() => {
         const dx = dragLine.x2 - dragLine.x1
@@ -592,6 +582,22 @@ export default function BattleScreen({ route, navigation }) {
         visible={!!zoomCard}
         onClose={() => setZoomCard(null)}
       />
+
+      <Modal visible={logVisible} transparent animationType="fade" onRequestClose={() => setLogVisible(false)}>
+        <Pressable style={s.logBackdrop} onPress={() => setLogVisible(false)}>
+          <Pressable style={s.logPanel} onPress={() => {}}>
+            <Text style={s.logPanelTitle}>Лог хода</Text>
+            <ScrollView style={s.logScroll} contentContainerStyle={s.logContent}>
+              {(Array.isArray(battle.log) ? battle.log : []).map((entry, i) => (
+                <LogEntry key={i} text={entry} />
+              ))}
+            </ScrollView>
+            <Pressable style={s.closeLogBtn} onPress={() => setLogVisible(false)}>
+              <Text style={s.closeLogBtnText}>Закрыть</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   )
 }
@@ -604,9 +610,8 @@ const s = StyleSheet.create({
   backBtn: { position: 'absolute', left: 8, zIndex: 10, width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(10,11,14,0.6)', alignItems: 'center', justifyContent: 'center' },
   backBtnText: { fontSize: 18, fontWeight: '700', color: colors.text },
   center: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center' },
-  pageScroll: { flex: 1 },
-  pageContent: { flexGrow: 1 },
-  arena: {},
+  pageFixed: { flex: 1 },
+  arena: { flex: 1, minHeight: 0, justifyContent: 'space-evenly', overflow: 'hidden' },
   dragOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 50 },
   dragLine: { position: 'absolute', height: 3, borderRadius: 1.5, backgroundColor: colors.gold },
   dragTip: { position: 'absolute', width: 10, height: 10, borderRadius: 5, backgroundColor: colors.gold },
@@ -619,7 +624,6 @@ const s = StyleSheet.create({
   statsRow: { flexDirection: 'row', gap: 8, marginTop: 2 },
   statBadge: { backgroundColor: colors.surface2, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
   statBadgeText: { fontSize: 12, fontWeight: '700', color: colors.text },
-  logContent: { padding: 12 },
   hand: { paddingHorizontal: 16, paddingVertical: 8, gap: 8 },
   actions: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 12, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border },
   endTurnBtn: { backgroundColor: colors.accent, borderRadius: 10, paddingVertical: 14, alignItems: 'center' },
@@ -631,4 +635,11 @@ const s = StyleSheet.create({
   bannerText: { fontSize: 13, color: colors.text2, textAlign: 'center', marginBottom: 16, lineHeight: 19 },
   newBattleBtn: { backgroundColor: colors.accent, borderRadius: 10, paddingVertical: 12, paddingHorizontal: 28 },
   newBattleBtnText: { fontSize: 15, fontWeight: '700', color: '#fff' },
+  logBackdrop: { flex: 1, backgroundColor: 'rgba(6,7,10,0.86)', alignItems: 'center', justifyContent: 'center', padding: 20 },
+  logPanel: { width: '100%', maxWidth: 420, maxHeight: '80%', backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.border, padding: 16 },
+  logPanelTitle: { fontSize: 16, fontWeight: '800', color: colors.text, marginBottom: 10 },
+  logScroll: { flexGrow: 0 },
+  logContent: { paddingBottom: 8 },
+  closeLogBtn: { marginTop: 12, backgroundColor: colors.accent, borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
+  closeLogBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
 })

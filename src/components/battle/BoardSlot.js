@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef } from 'react'
-import { View, Text, Image, Animated, Pressable, StyleSheet } from 'react-native'
+import { View, Text, Animated, Pressable, StyleSheet } from 'react-native'
 import { colors } from '../../theme'
-import { RARITY, rarityFrameStyle, RarityInnerRing, RarityCorners, cardIcon, HealthBadge, AttackBadge, noCalloutProps, noCalloutStyle } from '../../utils/cardArt'
+import { RARITY, rarityFrameStyle, RarityInnerRing, RarityCorners, cardIcon, HealthBadge, AttackBadge, noCalloutProps, noCalloutStyle, CardImage } from '../../utils/cardArt'
 import DamagePopup from './DamagePopup'
 
 // Один слот стола. entry = { instanceId, cardId, currentHealth, card } | null
@@ -114,7 +114,7 @@ export default function BoardSlot({ entry, size = 60, effect, popups = [], onPre
         ]}
       >
         {card.imageUrl
-          ? <Image source={{ uri: card.imageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+          ? <CardImage uri={card.imageUrl} style={StyleSheet.absoluteFill} />
           : <View style={[StyleSheet.absoluteFill, s.artFallback, { backgroundColor: `${r.color}22` }]}><Text style={{ fontSize: size * 0.4 }}>{cardIcon(card)}</Text></View>}
         <View style={s.statsRow}>
           <HealthBadge value={currentHealth} size={Math.round(size * 0.26)} damaged={damaged} />

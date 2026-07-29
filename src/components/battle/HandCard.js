@@ -1,8 +1,8 @@
 import React, { useRef, useState } from 'react'
-import { View, Text, Image, Pressable, Animated, StyleSheet } from 'react-native'
+import { View, Text, Pressable, Animated, StyleSheet } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { colors } from '../../theme'
-import { RARITY, rarityFrameStyle, RarityInnerRing, RarityCorners, cardIcon, ManaBadge, HealthBadge, AttackBadge, noCalloutProps, noCalloutStyle } from '../../utils/cardArt'
+import { RARITY, rarityFrameStyle, RarityInnerRing, RarityCorners, cardIcon, ManaBadge, HealthBadge, AttackBadge, noCalloutProps, noCalloutStyle, CardImage } from '../../utils/cardArt'
 
 const CARD_WIDTH = 96
 const CARD_HEIGHT = 136
@@ -59,7 +59,7 @@ export default function HandCard({ entry, playable, onPress, onLongPress, width 
         {...noCalloutProps}
       >
         {card.imageUrl
-          ? <Image source={{ uri: card.imageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+          ? <CardImage uri={card.imageUrl} style={StyleSheet.absoluteFill} />
           : <View style={[StyleSheet.absoluteFill, s.artFallback, { backgroundColor: `${r.color}22` }]}><Text style={s.artFallbackIcon}>{cardIcon(card)}</Text></View>}
 
         <LinearGradient colors={['transparent', 'rgba(10,11,14,0.92)']} locations={[0.4, 1]} style={StyleSheet.absoluteFill} pointerEvents="none" />

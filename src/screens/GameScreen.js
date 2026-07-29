@@ -5,9 +5,10 @@ import { useNavigation } from '@react-navigation/native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { game } from '../api'
 import { colors } from '../theme'
-import { RARITY, rarityFrameStyle, RarityInnerRing, RarityCorners, cardIcon, ManaBadge, HealthBadge, AttackBadge, noCalloutProps, noCalloutStyle } from '../utils/cardArt'
+import { RARITY, rarityFrameStyle, RarityInnerRing, RarityCorners, cardIcon, ManaBadge, HealthBadge, AttackBadge, noCalloutProps, noCalloutStyle, CardImage } from '../utils/cardArt'
 import StarterPackModal from '../utils/StarterPackModal'
 import HowToPlayModal from '../utils/HowToPlayModal'
+import CardZoomModal from '../components/battle/CardZoomModal'
 
 const SORT_OPTIONS = [
   { key: 'default', label: 'Как получены' },
@@ -27,6 +28,7 @@ export default function GameScreen() {
   const [sortBy, setSortBy] = useState('default')
   const [themeArt, setThemeArt] = useState(null)
   const [helpVisible, setHelpVisible] = useState(false)
+  const [zoomCard, setZoomCard] = useState(null)
 
   useEffect(() => { load() }, [])
 
@@ -164,10 +166,14 @@ export default function GameScreen() {
           const r = RARITY[card.rarity] || RARITY.COMMON
           const frame = rarityFrameStyle(card.rarity)
           return (
-            <View style={[s.card, frame, noCalloutStyle, { borderColor: r.color }]} {...noCalloutProps}>
+            <Pressable
+              onLongPress={() => setZoomCard({ card, currentHealth: null })}
+              style={[s.card, frame, noCalloutStyle, { borderColor: r.color }]}
+              {...noCalloutProps}
+            >
               <View style={s.artArea}>
                 {card.imageUrl
-                  ? <Image source={{ uri: card.imageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                  ? <CardImage uri={card.imageUrl} style={StyleSheet.absoluteFill} />
                   : <View style={[StyleSheet.absoluteFill, s.artFallback, { backgroundColor: `${r.color}22` }]}><Text style={s.artFallbackIcon}>{cardIcon(card)}</Text></View>}
                 <LinearGradient colors={['transparent', 'rgba(10,11,14,0.92)']} locations={[0.4, 1]} style={StyleSheet.absoluteFill} pointerEvents="none" />
 
@@ -187,12 +193,18 @@ export default function GameScreen() {
                 <RarityCorners rarity={card.rarity} />
               </View>
               {card.effectText ? <Text style={s.effectText} numberOfLines={3}>{card.effectText}</Text> : null}
-            </View>
+            </Pressable>
           )
         }}
       />
       <StarterPackModal cards={starterGrant} onClose={() => setStarterGrant(null)} />
       <HowToPlayModal visible={helpVisible} onClose={() => setHelpVisible(false)} />
+      <CardZoomModal
+        card={zoomCard?.card}
+        currentHealth={zoomCard?.currentHealth}
+        visible={!!zoomCard}
+        onClose={() => setZoomCard(null)}
+      />
     </View>
   )
 }
