@@ -365,7 +365,13 @@ export default function BattleScreen({ route, navigation }) {
   // ряды существ получали основную часть места, а не 14px обрезанный кусок.
   // На compact в арене только 2 ряда (boss+player), на обычных экранах — 3
   // (+ colodeRow, 60px пилы + 4px паддинг).
-  const maxSlotSize = compact ? 48 : (boardSlots > 3 ? 72 : 88)
+  // Стол — главный визуальный акцент боя (по прямой просьбе Марка 01.08:
+  // "размер карт в руке уменьши, размер карт на столе увеличь, чтобы все
+  // изображения на столе были хорошо видны") — раньше карта в руке (96×136)
+  // была КРУПНЕЕ слота стола (72-88px), выглядело перевёрнуто. Формула
+  // arenaHeight-based ниже всё равно подстраховывает от обрезки на тесных
+  // экранах — maxSlotSize здесь только "потолок" на просторных экранах.
+  const maxSlotSize = compact ? 64 : (boardSlots > 3 ? 96 : 112)
   const slotSize = arenaHeight > 0
     ? (compact
         ? Math.max(24, Math.min(maxSlotSize, Math.floor(arenaHeight / 2) - 8))
@@ -562,6 +568,13 @@ export default function BattleScreen({ route, navigation }) {
           <>
             <FlatList
               horizontal
+              // Без явного style горизонтальный FlatList в этом флекс-столбце
+              // неявно растягивался (flexGrow) и отжирал у арены (тоже
+              // flex:1) в разы больше места, чем требовал её реальный
+              // контент (285px вместо ожидаемых ~116px при карте 100px) —
+              // именно это весь день не давало столу вырасти до заданного
+              // maxSlotSize, а не сама формула расчёта. Найдено 01.08.2026.
+              style={[s.handList, { height: (compact ? 64 : 100) + (compact ? 4 : 16) }]}
               data={resolved.playerHand}
               keyExtractor={(entry, i) => `${entry.cardId}-${i}`}
               contentContainerStyle={[s.hand, compact && s.handCompact]}
@@ -574,8 +587,8 @@ export default function BattleScreen({ route, navigation }) {
                     playable={playable}
                     onPress={() => onPlayCard(item.cardId)}
                     onLongPress={card => setZoomCard({ card, currentHealth: null })}
-                    width={compact ? 54 : 96}
-                    height={compact ? 76 : 136}
+                    width={compact ? 46 : 72}
+                    height={compact ? 64 : 100}
                   />
                 )
               }}
@@ -662,6 +675,7 @@ const s = StyleSheet.create({
   statsRow: { flexDirection: 'row', gap: 6, marginTop: 2, flexWrap: 'wrap' },
   statBadge: { backgroundColor: colors.surface2, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
   statBadgeText: { fontSize: 12, fontWeight: '700', color: colors.text },
+  handList: { flexGrow: 0, flexShrink: 0 },
   hand: { paddingHorizontal: 16, paddingVertical: 8, gap: 8 },
   handCompact: { paddingVertical: 2 },
   actions: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 12, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border },
