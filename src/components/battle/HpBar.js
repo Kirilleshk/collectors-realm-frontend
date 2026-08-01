@@ -3,11 +3,11 @@ import { View, Text, StyleSheet } from 'react-native'
 import { colors } from '../../theme'
 import DamagePopup from './DamagePopup'
 
-export default function HpBar({ label, value, max, color, popups = [], thick = false }) {
+export default function HpBar({ label, value, max, color, popups = [], thick = false, compact = false }) {
   const pct = max > 0 ? Math.max(0, Math.min(1, value / max)) : 0
   const trackHeight = thick ? 18 : 10
   return (
-    <View style={s.hpRow}>
+    <View style={[s.hpRow, compact && s.hpRowCompact]}>
       <Text style={[s.hpLabel, thick && s.hpLabelThick]}>{label}</Text>
       <View style={s.hpTrackWrap}>
         <View style={[s.hpTrack, { height: trackHeight, borderRadius: trackHeight / 2 }, thick && s.hpTrackThick]}>
@@ -22,6 +22,7 @@ export default function HpBar({ label, value, max, color, popups = [], thick = f
 
 const s = StyleSheet.create({
   hpRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6, alignSelf: 'stretch' },
+  hpRowCompact: { marginBottom: 2 },
   hpLabel: { fontSize: 12, color: colors.text2, width: 36 },
   hpLabelThick: { fontSize: 13, fontWeight: '700', color: colors.text, width: 44 },
   hpTrackWrap: { flex: 1 },

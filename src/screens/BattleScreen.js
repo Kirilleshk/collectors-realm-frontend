@@ -49,6 +49,15 @@ export default function BattleScreen({ route, navigation }) {
   // делся, просто убран из основного вида и открывается отдельным окном по
   // кнопке — если что-то пошло не так, историю ходов всё ещё можно посмотреть.
   const [logVisible, setLogVisible] = useState(false)
+  // Реально измеренная высота арены (onLayout) — статичный порог compact
+  // (высота экрана < 500) угадывал размер слотов НЕ по факту доступного
+  // места, а по общему разрешению экрана; на part реальных телефонов (не
+  // тех трёх, что тестировались в браузере) сумма banner+playerBar+рука+
+  // кнопка съедала больше места, чем предполагалось, и ряд существ игрока
+  // обрезался снизу (overflow:hidden арены) — Марк не мог выбрать карту на
+  // столе для атаки, потому что она была наполовину скрыта под полосой "Вы".
+  // Размер слота теперь считается от РЕАЛЬНОЙ высоты арены, а не от догадки.
+  const [arenaHeight, setArenaHeight] = useState(0)
   const popupId = useRef(0)
 
   // Drag-таргетинг (v2 над тапом): { x1, y1, x2, y2 } экранных координат линии
@@ -344,9 +353,24 @@ export default function BattleScreen({ route, navigation }) {
   // Экран боя фиксированный (см. комментарий у logVisible выше) — реального
   // дефицита ВЫСОТЫ (не соотношения сторон, см. коммит от 20.07 про ту же
   // ошибку) достаточно много (телефон-ландшафт ~390px), приходится ужимать
-  // размеры стола/руки/баннера босса, иначе низ экрана обрежется без скролла
+  // баннер босса и карты в руке, иначе низ экрана обрежется без скролла
   const compact = winHeight < 500
-  const slotSize = compact ? 48 : (boardSlots > 3 ? 72 : 88)
+  // Слот стола считается от РЕАЛЬНОЙ высоты арены (arenaHeight, onLayout), а
+  // не от догадки по winHeight — см. комментарий у arenaHeight выше. Первая
+  // версия этого расчёта всё равно резала ряд существ игрока на компактных
+  // экранах (телефон-ландшафт ~390px): baнnер+рука+статус-бар там съедали
+  // почти всё место, арене оставалось ~14px. Раз уж считаем по факту —
+  // заодно на compact убрали из арены ряд колоды/сброса (перенесён в
+  // статус-бар) и ужали баннер/руку/кнопку, чтобы реально важные для тапа
+  // ряды существ получали основную часть места, а не 14px обрезанный кусок.
+  // На compact в арене только 2 ряда (boss+player), на обычных экранах — 3
+  // (+ colodeRow, 60px пилы + 4px паддинг).
+  const maxSlotSize = compact ? 48 : (boardSlots > 3 ? 72 : 88)
+  const slotSize = arenaHeight > 0
+    ? (compact
+        ? Math.max(24, Math.min(maxSlotSize, Math.floor(arenaHeight / 2) - 8))
+        : Math.max(40, Math.min(maxSlotSize, Math.floor((arenaHeight - 64) / 2) - 8)))
+    : maxSlotSize
   const bossSlots = Array.from({ length: boardSlots }, (_, i) => board.bossBoard[i] || null)
   const playerSlots = Array.from({ length: boardSlots }, (_, i) => board.playerBoard[i] || null)
   const boardFull = resolved.playerBoard.length >= boardSlots
@@ -414,7 +438,7 @@ export default function BattleScreen({ route, navigation }) {
             popups={popups.filter(p => p.target === 'boss')}
             faceAttackable={faceAttackable}
             onPress={faceAttackable ? () => onAttack(null) : undefined}
-            height={compact ? 92 : 168}
+            height={compact ? 56 : 168}
             handCount={deckCounts.bossHand}
             compact={compact}
           />
@@ -424,6 +448,7 @@ export default function BattleScreen({ route, navigation }) {
           colors={[`${colors.accent}22`, 'transparent', 'transparent']}
           locations={[0, 0.4, 1]}
           style={s.arena}
+          onLayout={e => setArenaHeight(e.nativeEvent.layout.height)}
         >
           <View style={s.boardRow}>
             {bossSlots.map((entry, i) => {
@@ -454,10 +479,16 @@ export default function BattleScreen({ route, navigation }) {
             })}
           </View>
 
-          <View style={s.deckRow}>
-            <DeckPile count={deckCounts.playerDiscard} label="Сброс" icon="🗑️" color={colors.text2} />
-            <DeckPile count={deckCounts.playerDeck} label="Колода" icon="🂠" color={colors.blue} backImageUrl={theme.backImageUrl} />
-          </View>
+          {/* На компактной высоте (телефон-ландшафт) ряд колоды/сброса убран
+              отсюда целиком — счётчики перенесены в статус-бар ниже. Ряды
+              существ (единственное, чем реально нужно управлять пальцем)
+              получают взамен всю освободившуюся высоту арены. */}
+          {!compact && (
+            <View style={s.deckRow}>
+              <DeckPile count={deckCounts.playerDiscard} label="Сброс" icon="🗑️" color={colors.text2} />
+              <DeckPile count={deckCounts.playerDeck} label="Колода" icon="🂠" color={colors.blue} backImageUrl={theme.backImageUrl} />
+            </View>
+          )}
 
           <View style={s.boardRow}>
             {playerSlots.map((entry, i) => {
@@ -502,11 +533,17 @@ export default function BattleScreen({ route, navigation }) {
           </View>
         </LinearGradient>
 
-        <View style={s.playerBar}>
-          <HpBar label="Вы" value={battle.playerHp} max={battle.playerMaxHp} color={colors.green} popups={popups.filter(p => p.target === 'player')} />
+        <View style={[s.playerBar, compact && s.playerBarCompact]}>
+          <HpBar label="Вы" value={battle.playerHp} max={battle.playerMaxHp} color={colors.green} popups={popups.filter(p => p.target === 'player')} compact={compact} />
           <View style={s.statsRow}>
             <View style={s.statBadge}><Text style={s.statBadgeText}>💧 {battle.mana}/{MANA_CAP}</Text></View>
             <View style={s.statBadge}><Text style={s.statBadgeText}>🔄 Ход {battle.turn}</Text></View>
+            {compact && (
+              <>
+                <View style={s.statBadge}><Text style={s.statBadgeText}>🂠 {deckCounts.playerDeck}</Text></View>
+                <View style={s.statBadge}><Text style={s.statBadgeText}>🗑️ {deckCounts.playerDiscard}</Text></View>
+              </>
+            )}
             <Pressable style={s.statBadge} onPress={() => setLogVisible(true)}>
               <Text style={s.statBadgeText}>📜 Лог</Text>
             </Pressable>
@@ -527,7 +564,7 @@ export default function BattleScreen({ route, navigation }) {
               horizontal
               data={resolved.playerHand}
               keyExtractor={(entry, i) => `${entry.cardId}-${i}`}
-              contentContainerStyle={s.hand}
+              contentContainerStyle={[s.hand, compact && s.handCompact]}
               showsHorizontalScrollIndicator={false}
               renderItem={({ item }) => {
                 const playable = !acting && !boardFull && item.card.cost <= battle.mana
@@ -543,9 +580,9 @@ export default function BattleScreen({ route, navigation }) {
                 )
               }}
             />
-            <View style={s.actions}>
+            <View style={[s.actions, compact && s.actionsCompact]}>
               <Pressable
-                style={({ pressed }) => [s.endTurnBtn, pressed && { opacity: 0.8 }, acting && { opacity: 0.6 }]}
+                style={({ pressed }) => [s.endTurnBtn, compact && s.endTurnBtnCompact, pressed && { opacity: 0.8 }, acting && { opacity: 0.6 }]}
                 onPress={onEndTurn}
                 disabled={acting}
               >
@@ -615,18 +652,22 @@ const s = StyleSheet.create({
   dragOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 50 },
   dragLine: { position: 'absolute', height: 3, borderRadius: 1.5, backgroundColor: colors.gold },
   dragTip: { position: 'absolute', width: 10, height: 10, borderRadius: 5, backgroundColor: colors.gold },
-  boardRow: { flexDirection: 'row', justifyContent: 'center', gap: 10, paddingVertical: 8, flexWrap: 'wrap' },
+  boardRow: { flexDirection: 'row', justifyContent: 'center', gap: 10, paddingVertical: 4, flexWrap: 'wrap' },
   playerSlotWrap: { position: 'relative' },
   activateBtn: { position: 'absolute', top: -8, right: -8, width: 24, height: 24, borderRadius: 12, backgroundColor: colors.surface2, borderWidth: 1.5, borderColor: colors.gold, alignItems: 'center', justifyContent: 'center', zIndex: 5 },
   activateBtnText: { fontSize: 12 },
   deckRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 24, paddingVertical: 2 },
   playerBar: { paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.border },
-  statsRow: { flexDirection: 'row', gap: 8, marginTop: 2 },
+  playerBarCompact: { paddingVertical: 3 },
+  statsRow: { flexDirection: 'row', gap: 6, marginTop: 2, flexWrap: 'wrap' },
   statBadge: { backgroundColor: colors.surface2, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
   statBadgeText: { fontSize: 12, fontWeight: '700', color: colors.text },
   hand: { paddingHorizontal: 16, paddingVertical: 8, gap: 8 },
+  handCompact: { paddingVertical: 2 },
   actions: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 12, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border },
+  actionsCompact: { paddingTop: 2, paddingBottom: 4 },
   endTurnBtn: { backgroundColor: colors.accent, borderRadius: 10, paddingVertical: 14, alignItems: 'center' },
+  endTurnBtnCompact: { paddingVertical: 6 },
   endTurnBtnText: { fontSize: 15, fontWeight: '700', color: '#fff' },
   banner: { margin: 16, borderRadius: 14, borderWidth: 1.5, padding: 20, alignItems: 'center' },
   bannerWin: { backgroundColor: `${colors.green}18`, borderColor: colors.green },
