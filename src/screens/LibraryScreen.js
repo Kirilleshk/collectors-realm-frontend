@@ -5,6 +5,29 @@ import { library } from '../api'
 import { colors } from '../theme'
 import ScreenBackground from '../components/ScreenBackground'
 
+// Бэкенд размечает статью на разделы строкой "## Заголовок" (не настоящий
+// markdown, просто простой парсимый маркер, см. library.service.ts) — по
+// просьбе Марка каждый раздел должен идти с жирным подзаголовком, чтобы
+// статью можно было скроллить и читать только интересующее. Старые статьи
+// (сгенерированные до этого формата) не содержат "## " вообще — тогда весь
+// текст попадает в один раздел без заголовка, рендерится как раньше.
+function parseArticleSections(content) {
+  const lines = content.split('\n')
+  const sections = []
+  let current = { title: null, paragraphs: [] }
+  for (const line of lines) {
+    const match = line.match(/^##\s+(.+)$/)
+    if (match) {
+      if (current.title || current.paragraphs.length) sections.push(current)
+      current = { title: match[1].trim(), paragraphs: [] }
+    } else if (line.trim()) {
+      current.paragraphs.push(line.trim())
+    }
+  }
+  if (current.title || current.paragraphs.length) sections.push(current)
+  return sections
+}
+
 export default function LibraryScreen({ navigation }) {
   const insets = useSafeAreaInsets()
   const [query, setQuery] = useState('')
@@ -105,7 +128,14 @@ export default function LibraryScreen({ navigation }) {
           <View style={s.article}>
             <Text style={s.articleName}>{article.characterName}</Text>
             {article.universe ? <Text style={s.articleUniverse}>{article.universe}</Text> : null}
-            <Text style={s.articleContent}>{article.content}</Text>
+            {parseArticleSections(article.content).map((section, i) => (
+              <View key={i} style={s.section}>
+                {section.title ? <Text style={s.sectionTitle}>{section.title}</Text> : null}
+                {section.paragraphs.map((p, j) => (
+                  <Text key={j} style={s.articleContent}>{p}</Text>
+                ))}
+              </View>
+            ))}
           </View>
         )}
       </ScrollView>
@@ -142,5 +172,7 @@ const s = StyleSheet.create({
   article: { backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 18, gap: 6 },
   articleName: { fontSize: 20, fontWeight: '800', color: colors.text },
   articleUniverse: { fontSize: 13, fontWeight: '600', color: colors.accent, marginBottom: 8 },
+  section: { marginTop: 14, gap: 10 },
+  sectionTitle: { fontSize: 16, fontWeight: '800', color: colors.accent, marginBottom: 2 },
   articleContent: { fontSize: 15, color: colors.text, lineHeight: 23 },
 })
