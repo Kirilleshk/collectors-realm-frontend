@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, StyleSheet, Platform } from 'react-native'
+import { View, Text, Image, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, StyleSheet, Platform } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { library } from '../api'
 import { colors } from '../theme'
@@ -126,6 +126,12 @@ export default function LibraryScreen({ navigation }) {
 
         {article && !loading && (
           <View style={s.article}>
+            {/* Картинка персонажа — реальный кадр/постер из Wikipedia
+                (best-effort, найден по подписи через generateCharacterArticle
+                → findCharacterImageUrl, см. library.service.ts на бэкенде).
+                Не всегда находится (старые статьи без картинки, редкие
+                персонажи) — тогда просто не показываем блок вообще. */}
+            {article.imageUrl ? <Image source={{ uri: article.imageUrl }} style={s.articleImage} resizeMode="cover" /> : null}
             <Text style={s.articleName}>{article.characterName}</Text>
             {article.universe ? <Text style={s.articleUniverse}>{article.universe}</Text> : null}
             {parseArticleSections(article.content).map((section, i) => (
@@ -170,6 +176,7 @@ const s = StyleSheet.create({
   recentChip: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 },
   recentChipText: { fontSize: 13, fontWeight: '600', color: colors.text },
   article: { backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 18, gap: 6 },
+  articleImage: { width: '100%', height: 220, borderRadius: 12, marginBottom: 10, backgroundColor: colors.surface2 },
   articleName: { fontSize: 20, fontWeight: '800', color: colors.text },
   articleUniverse: { fontSize: 13, fontWeight: '600', color: colors.accent, marginBottom: 8 },
   section: { marginTop: 14, gap: 10 },
