@@ -46,6 +46,18 @@ export default function ShopScreen({ navigation }) {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState(null)
   const searchAnim = useRef(new Animated.Value(0)).current
+  // Автодополнение по названию товара (Марк, 05.08, пункт 3: та же функция,
+  // что и в библиотеке) — товары уже загружены на клиенте, поэтому просто
+  // фильтруем локально, без похода на бэкенд. Только по префиксу (как и в
+  // библиотеке), уникальные названия, до 8 штук.
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const nameSuggestions = search.trim().length >= 2
+    ? [...new Set(
+        items
+          .filter(i => i.name?.toLowerCase().startsWith(search.trim().toLowerCase()))
+          .map(i => i.name)
+      )].slice(0, 8)
+    : []
 
   useEffect(() => { load() }, [])
 
@@ -143,16 +155,33 @@ export default function ShopScreen({ navigation }) {
         <TextInput
           style={s.searchInput}
           value={search}
-          onChangeText={setSearch}
+          onChangeText={t => { setSearch(t); setShowSuggestions(t.trim().length >= 2) }}
+          onFocus={() => setShowSuggestions(search.trim().length >= 2)}
           placeholder="Поиск по названию или производителю..."
           placeholderTextColor={colors.text2}
         />
         {search ? (
-          <TouchableOpacity onPress={() => setSearch('')}>
+          <TouchableOpacity onPress={() => { setSearch(''); setShowSuggestions(false) }}>
             <Text style={s.searchClear}>✕</Text>
           </TouchableOpacity>
         ) : null}
       </Animated.View>
+
+      {/* Дропдаун автодополнения по названию — обычный поток, отодвигает
+          фильтры/сетку под собой вместо абсолютного оверлея */}
+      {showSuggestions && nameSuggestions.length > 0 && (
+        <View style={s.suggestDropdown}>
+          {nameSuggestions.map((name, i) => (
+            <TouchableOpacity
+              key={`${name}-${i}`}
+              style={[s.suggestItem, i === nameSuggestions.length - 1 && s.suggestItemLast]}
+              onPress={() => { setSearch(name); setShowSuggestions(false) }}
+            >
+              <Text style={s.suggestItemText}>{name}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
 
       {/* Фильтры */}
       <View style={s.filtersWrap}>
@@ -261,6 +290,15 @@ const s = StyleSheet.create({
   searchIcon: { fontSize: 16 },
   searchInput: { flex: 1, color: colors.text, fontSize: 14 },
   searchClear: { color: colors.text2, fontSize: 16, padding: 4 },
+  suggestDropdown: {
+    backgroundColor: colors.surface, borderRadius: 14,
+    borderWidth: 1, borderColor: colors.border,
+    marginHorizontal: 12, marginTop: -4, marginBottom: 8,
+    overflow: 'hidden',
+  },
+  suggestItem: { paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
+  suggestItemLast: { borderBottomWidth: 0 },
+  suggestItemText: { fontSize: 14, color: colors.text },
   topRow: { flexDirection: 'row', alignItems: 'stretch', gap: 8, marginHorizontal: 12, marginTop: 8, marginBottom: 4 },
   announceBanner: { flex: 1, justifyContent: 'center', backgroundColor: `${colors.blue}15`, borderRadius: 10, borderWidth: 1, borderColor: `${colors.blue}30`, paddingHorizontal: 14, paddingVertical: 10 },
   announceBannerText: { fontSize: 13, fontWeight: '600', color: colors.blue },

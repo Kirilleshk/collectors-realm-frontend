@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { View, Text, Image, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, StyleSheet, Platform } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { library } from '../api'
@@ -44,8 +44,28 @@ export default function LibraryScreen({ navigation }) {
   const [article, setArticle] = useState(null)
   const [recent, setRecent] = useState([])
   const [imageRatio, setImageRatio] = useState(null)
+  // Автодополнение по мере ввода (Марк, 05.08: "Ба..." → Барт Симпсон,
+  // Бакуго...) — только уже существующие в библиотеке персонажи, без
+  // обращения к ИИ. Дебаунс, чтобы не слать запрос на каждую букву.
+  const [suggestions, setSuggestions] = useState([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const suggestTimer = useRef(null)
 
   useEffect(() => { loadRecent() }, [])
+
+  useEffect(() => {
+    clearTimeout(suggestTimer.current)
+    const q = query.trim()
+    if (q.length < 2) { setSuggestions([]); return }
+    suggestTimer.current = setTimeout(async () => {
+      try {
+        const res = await library.getSuggestions(q)
+        setSuggestions(Array.isArray(res.data) ? res.data : [])
+        setShowSuggestions(true)
+      } catch (e) { /* автодополнение не критично, тихо пропускаем */ }
+    }, 250)
+    return () => clearTimeout(suggestTimer.current)
+  }, [query])
 
   useEffect(() => {
     if (!article?.imageUrl) { setImageRatio(null); return }
@@ -69,6 +89,7 @@ export default function LibraryScreen({ navigation }) {
     const q = (name ?? query).trim()
     if (!q) return
     setQuery(q)
+    setShowSuggestions(false)
     setLoading(true)
     setError(null)
     setArticle(null)
@@ -96,6 +117,7 @@ export default function LibraryScreen({ navigation }) {
           style={s.searchInput}
           value={query}
           onChangeText={setQuery}
+          onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
           placeholder="Найдите персонажа, о котором хотите прочитать..."
           placeholderTextColor={colors.text2}
           onSubmitEditing={() => onSearch()}
@@ -107,6 +129,22 @@ export default function LibraryScreen({ navigation }) {
             : <Text style={s.searchBtnText}>🔍</Text>}
         </TouchableOpacity>
       </View>
+
+      {/* Дропдаун автодополнения — обычный поток (не absolute), поэтому
+          просто отодвигает контент под собой, без z-index/оверлеев */}
+      {showSuggestions && suggestions.length > 0 && (
+        <View style={s.suggestDropdown}>
+          {suggestions.map((name, i) => (
+            <TouchableOpacity
+              key={`${name}-${i}`}
+              style={[s.suggestItem, i === suggestions.length - 1 && s.suggestItemLast]}
+              onPress={() => onSearch(name)}
+            >
+              <Text style={s.suggestItemText}>{name}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
 
       <ScrollView style={s.body} contentContainerStyle={{ padding: 16, paddingBottom: 24 + insets.bottom }} keyboardShouldPersistTaps="handled">
         {!article && !loading && !error && (
@@ -192,6 +230,15 @@ const s = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: Platform.OS === 'web' ? 10 : 4,
   },
   searchInput: { flex: 1, color: colors.text, fontSize: 14, paddingVertical: 10 },
+  suggestDropdown: {
+    backgroundColor: colors.surface, borderRadius: 14,
+    borderWidth: 1, borderColor: colors.border,
+    marginHorizontal: 16, marginTop: -4, marginBottom: 8,
+    overflow: 'hidden',
+  },
+  suggestItem: { paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
+  suggestItemLast: { borderBottomWidth: 0 },
+  suggestItemText: { fontSize: 14, color: colors.text },
   searchBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: colors.accent, justifyContent: 'center', alignItems: 'center' },
   searchBtnText: { fontSize: 16 },
   body: { flex: 1 },
