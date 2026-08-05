@@ -35,7 +35,13 @@ export default function CardZoomModal({ card, currentHealth, visible, onClose })
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={guardedClose}>
       <Pressable style={s.backdrop} onPress={guardedClose}>
-        <Pressable style={s.cardWrap} onPress={() => {}}>
+        {/* noCalloutStyle здесь (а не только на арте карты чуть ниже) —
+            модалка открывается по долгому нажатию, а это тот же жест, что
+            браузер на мобильном использует для выделения текста; userSelect:
+            'none' наследуется CSS-каскадом на все дочерние Text (имя,
+            редкость, подписи статов, текст эффекта), поэтому достаточно
+            повесить один раз на общую обёртку (жалоба Марка 03.08). */}
+        <Pressable style={[s.cardWrap, noCalloutStyle]} onPress={() => {}} {...noCalloutProps}>
           <View style={[s.card, frame, noCalloutStyle, { borderColor: r.color }]} {...noCalloutProps}>
             {card.imageUrl
               ? <CardImage uri={card.imageUrl} style={s.art} />

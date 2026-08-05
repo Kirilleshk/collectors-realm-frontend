@@ -28,6 +28,14 @@ function parseArticleSections(content) {
   return sections
 }
 
+// Ограничиваем итоговое соотношение сторон, чтобы совсем панорамные или
+// совсем вытянутые кадры не ломали вёрстку шапки статьи, но внутри этого
+// диапазона высота ВСЕГДА подстраивается под реальную картинку — без этого
+// фиксированная высота 220px обрезала сверху/снизу почти любое портретное
+// фото персонажа (жалоба Марка 03.08, на примере статьи про Аладдина)
+const IMAGE_MIN_RATIO = 0.62 // высокий портрет
+const IMAGE_MAX_RATIO = 1.9  // широкий кадр
+
 export default function LibraryScreen({ navigation }) {
   const insets = useSafeAreaInsets()
   const [query, setQuery] = useState('')
@@ -35,8 +43,20 @@ export default function LibraryScreen({ navigation }) {
   const [error, setError] = useState(null)
   const [article, setArticle] = useState(null)
   const [recent, setRecent] = useState([])
+  const [imageRatio, setImageRatio] = useState(null)
 
   useEffect(() => { loadRecent() }, [])
+
+  useEffect(() => {
+    if (!article?.imageUrl) { setImageRatio(null); return }
+    let cancelled = false
+    Image.getSize(
+      article.imageUrl,
+      (w, h) => { if (!cancelled && h > 0) setImageRatio(w / h) },
+      () => { if (!cancelled) setImageRatio(null) }
+    )
+    return () => { cancelled = true }
+  }, [article?.imageUrl])
 
   async function loadRecent() {
     try {
@@ -131,7 +151,16 @@ export default function LibraryScreen({ navigation }) {
                 → findCharacterImageUrl, см. library.service.ts на бэкенде).
                 Не всегда находится (старые статьи без картинки, редкие
                 персонажи) — тогда просто не показываем блок вообще. */}
-            {article.imageUrl ? <Image source={{ uri: article.imageUrl }} style={s.articleImage} resizeMode="cover" /> : null}
+            {article.imageUrl ? (
+              <Image
+                source={{ uri: article.imageUrl }}
+                style={[
+                  s.articleImage,
+                  imageRatio ? { height: undefined, aspectRatio: Math.min(Math.max(imageRatio, IMAGE_MIN_RATIO), IMAGE_MAX_RATIO) } : null,
+                ]}
+                resizeMode="cover"
+              />
+            ) : null}
             <Text style={s.articleName}>{article.characterName}</Text>
             {article.universe ? <Text style={s.articleUniverse}>{article.universe}</Text> : null}
             {parseArticleSections(article.content).map((section, i) => (

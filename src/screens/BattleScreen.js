@@ -58,6 +58,18 @@ export default function BattleScreen({ route, navigation }) {
   // столе для атаки, потому что она была наполовину скрыта под полосой "Вы".
   // Размер слота теперь считается от РЕАЛЬНОЙ высоты арены, а не от догадки.
   const [arenaHeight, setArenaHeight] = useState(0)
+  // Рука карт — горизонтальный скролл без индикатора (showsHorizontalScrollIndicator
+  // отключён по прошлой просьбе Марка). Когда карт в руке больше, чем влезает в
+  // ширину экрана, лишние карты просто уходят за правый край без единой визуальной
+  // подсказки, что там ещё что-то есть — с виду читается как "карты пропали/обрезаны"
+  // (жалоба Марка 03.08), хотя на деле достаточно свайпнуть. Затухание с правого
+  // края появляется, только когда контент реально не помещается целиком.
+  const [handOverflow, setHandOverflow] = useState(false)
+  const handViewportWidthRef = useRef(0)
+  const handContentWidthRef = useRef(0)
+  function checkHandOverflow() {
+    setHandOverflow(handContentWidthRef.current > handViewportWidthRef.current + 2)
+  }
   const popupId = useRef(0)
 
   // Drag-таргетинг (v2 над тапом): { x1, y1, x2, y2 } экранных координат линии
@@ -566,33 +578,46 @@ export default function BattleScreen({ route, navigation }) {
           </View>
         ) : (
           <>
-            <FlatList
-              horizontal
-              // Без явного style горизонтальный FlatList в этом флекс-столбце
-              // неявно растягивался (flexGrow) и отжирал у арены (тоже
-              // flex:1) в разы больше места, чем требовал её реальный
-              // контент (285px вместо ожидаемых ~116px при карте 100px) —
-              // именно это весь день не давало столу вырасти до заданного
-              // maxSlotSize, а не сама формула расчёта. Найдено 01.08.2026.
-              style={[s.handList, { height: (compact ? 64 : 100) + (compact ? 4 : 16) }]}
-              data={resolved.playerHand}
-              keyExtractor={(entry, i) => `${entry.cardId}-${i}`}
-              contentContainerStyle={[s.hand, compact && s.handCompact]}
-              showsHorizontalScrollIndicator={false}
-              renderItem={({ item }) => {
-                const playable = !acting && !boardFull && item.card.cost <= battle.mana
-                return (
-                  <HandCard
-                    entry={item}
-                    playable={playable}
-                    onPress={() => onPlayCard(item.cardId)}
-                    onLongPress={card => setZoomCard({ card, currentHealth: null })}
-                    width={compact ? 46 : 72}
-                    height={compact ? 64 : 100}
-                  />
-                )
-              }}
-            />
+            <View style={s.handWrap}>
+              <FlatList
+                horizontal
+                // Без явного style горизонтальный FlatList в этом флекс-столбце
+                // неявно растягивался (flexGrow) и отжирал у арены (тоже
+                // flex:1) в разы больше места, чем требовал её реальный
+                // контент (285px вместо ожидаемых ~116px при карте 100px) —
+                // именно это весь день не давало столу вырасти до заданного
+                // maxSlotSize, а не сама формула расчёта. Найдено 01.08.2026.
+                style={[s.handList, { height: (compact ? 64 : 100) + (compact ? 4 : 16) }]}
+                data={resolved.playerHand}
+                keyExtractor={(entry, i) => `${entry.cardId}-${i}`}
+                contentContainerStyle={[s.hand, compact && s.handCompact]}
+                showsHorizontalScrollIndicator={false}
+                onLayout={e => { handViewportWidthRef.current = e.nativeEvent.layout.width; checkHandOverflow() }}
+                onContentSizeChange={w => { handContentWidthRef.current = w; checkHandOverflow() }}
+                renderItem={({ item }) => {
+                  const playable = !acting && !boardFull && item.card.cost <= battle.mana
+                  return (
+                    <HandCard
+                      entry={item}
+                      playable={playable}
+                      onPress={() => onPlayCard(item.cardId)}
+                      onLongPress={card => setZoomCard({ card, currentHealth: null })}
+                      width={compact ? 46 : 72}
+                      height={compact ? 64 : 100}
+                    />
+                  )
+                }}
+              />
+              {handOverflow && (
+                <LinearGradient
+                  pointerEvents="none"
+                  colors={['transparent', colors.surface]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={s.handFade}
+                />
+              )}
+            </View>
             <View style={[s.actions, compact && s.actionsCompact]}>
               <Pressable
                 style={({ pressed }) => [s.endTurnBtn, compact && s.endTurnBtnCompact, pressed && { opacity: 0.8 }, acting && { opacity: 0.6 }]}
@@ -675,7 +700,9 @@ const s = StyleSheet.create({
   statsRow: { flexDirection: 'row', gap: 6, marginTop: 2, flexWrap: 'wrap' },
   statBadge: { backgroundColor: colors.surface2, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
   statBadgeText: { fontSize: 12, fontWeight: '700', color: colors.text },
+  handWrap: { position: 'relative' },
   handList: { flexGrow: 0, flexShrink: 0 },
+  handFade: { position: 'absolute', top: 0, right: 0, bottom: 0, width: 36 },
   hand: { paddingHorizontal: 16, paddingVertical: 8, gap: 8 },
   handCompact: { paddingVertical: 2 },
   actions: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 12, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border },
