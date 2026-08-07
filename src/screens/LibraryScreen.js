@@ -194,7 +194,16 @@ export default function LibraryScreen({ navigation }) {
                 source={{ uri: article.imageUrl }}
                 style={[
                   s.articleImage,
-                  imageRatio ? { height: undefined, aspectRatio: Math.min(Math.max(imageRatio, IMAGE_MIN_RATIO), IMAGE_MAX_RATIO) } : null,
+                  // ВАЖНО: react-native-web компилирует StyleSheet.create в CSS-классы;
+                  // { height: undefined } в инлайн-стиле НЕ переопределяет height из
+                  // класса (RNW просто не эмиттит undefined-свойство в inline style,
+                  // а класс со старым height остаётся в силе) — реальный баг, из-за
+                  // которого предыдущая попытка фикса визуально не работала, хотя
+                  // выглядела корректно в коде. Поэтому height у s.articleImage
+                  // (см. ниже) убран совсем — здесь всегда задаём конкретное
+                  // значение (aspectRatio ИЛИ временный height), а не пытаемся
+                  // «отменить» класс.
+                  imageRatio ? { aspectRatio: Math.min(Math.max(imageRatio, IMAGE_MIN_RATIO), IMAGE_MAX_RATIO) } : { height: 220 },
                 ]}
                 resizeMode="cover"
               />
@@ -252,7 +261,7 @@ const s = StyleSheet.create({
   recentChip: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 },
   recentChipText: { fontSize: 13, fontWeight: '600', color: colors.text },
   article: { backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 18, gap: 6 },
-  articleImage: { width: '100%', height: 220, borderRadius: 12, marginBottom: 10, backgroundColor: colors.surface2 },
+  articleImage: { width: '100%', borderRadius: 12, marginBottom: 10, backgroundColor: colors.surface2 },
   articleName: { fontSize: 20, fontWeight: '800', color: colors.text },
   articleUniverse: { fontSize: 13, fontWeight: '600', color: colors.accent, marginBottom: 8 },
   section: { marginTop: 14, gap: 10 },

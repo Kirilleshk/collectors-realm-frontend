@@ -18,11 +18,18 @@ export const noCalloutStyle = Platform.OS === 'web'
 // который Марк продолжил видеть после noCalloutProps/noCalloutStyle. Рисуем
 // арт карты как CSS-фон обычного View вместо <img> — у div такого меню нет
 // в принципе, поэтому это надёжнее point-patch'ей самого <Image>.
+// resizeMode/backgroundSize "contain", не "cover" — весь арт карт залит
+// квадратным (1:1, см. CLAUDE.md), а рамки карт везде НЕ квадратные (рука
+// 96×136, лупа 200×280, плитка коллекции ~150px высоты при гибкой ширине).
+// "cover" в непортретной рамке обрезал голову/ноги персонажа с самого
+// начала пайплайна арта — это не регрессия, а следствие несовпадения формы
+// арта и рамки. "contain" показывает персонажа целиком, ценой узких полос
+// фона рамки по краям вместо обрезки (жалоба Марка/Кирилла 06-07.08).
 export function CardImage({ uri, style }) {
   if (Platform.OS === 'web') {
-    return <View style={[style, { backgroundImage: `url("${uri}")`, backgroundSize: 'cover', backgroundPosition: 'center' }]} {...noCalloutProps} />
+    return <View style={[style, { backgroundImage: `url("${uri}")`, backgroundSize: 'contain', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }]} {...noCalloutProps} />
   }
-  return <Image source={{ uri }} style={style} resizeMode="cover" />
+  return <Image source={{ uri }} style={style} resizeMode="contain" />
 }
 
 // Палитра редкости — общая для экрана коллекции и боя. tier растёт с редкостью —
