@@ -14,7 +14,7 @@ const SELLER = {
   telegram: 'collector_realm_shop',
   whatsapp: '79001234567',
   max: 'collector_realm_shop',
-  name: "Collector's Realm"
+  name: "Markeltoys"
 }
 
 const STATUS_INFO = {

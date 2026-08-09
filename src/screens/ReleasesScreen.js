@@ -19,7 +19,7 @@ function FeedCard({ item }) {
           <Text style={{ fontSize: 18 }}>🗿</Text>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={s.channelName}>Collector's Realm</Text>
+          <Text style={s.channelName}>Markeltoys</Text>
           <Text style={s.date}>{dateStr} в {timeStr}</Text>
         </View>
       </View>

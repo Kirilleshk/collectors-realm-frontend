@@ -280,7 +280,7 @@ export default function LoginScreen() {
           <View style={s.logoWrap}>
             <Text style={s.logoIcon}>🗿</Text>
           </View>
-          <Text style={s.logo}>Collector's Realm</Text>
+          <Text style={s.logo}>Markeltoys</Text>
           <Text style={s.sub}>Сообщество коллекционеров</Text>
           <View style={s.logoLine} />
         </Animated.View>
@@ -571,7 +571,7 @@ export default function LoginScreen() {
         </Animated.View>
 
         <Animated.View style={[s.footer, { opacity: fadeAnim }]}>
-          <Text style={s.footerText}>Collector's Realm © 2024</Text>
+          <Text style={s.footerText}>Markeltoys © 2024</Text>
         </Animated.View>
 
       </ScrollView>
