@@ -25,11 +25,54 @@ export const noCalloutStyle = Platform.OS === 'web'
 // начала пайплайна арта — это не регрессия, а следствие несовпадения формы
 // арта и рамки. "contain" показывает персонажа целиком, ценой узких полос
 // фона рамки по краям вместо обрезки (жалоба Марка/Кирилла 06-07.08).
+//
+// Полосы изначально были плоским цветом рамки — по решению пользователя
+// (09.08) заменены на размытую+затемнённую подложку из той же картинки
+// (приём из Spotify/Apple Music), чтобы контейнер не выглядел "пустым"
+// по краям. Подложка отрисована в размере БОЛЬШЕ рамки (выходит за края)
+// и обрезается через overflow:hidden на обёртке — иначе у самого блюра
+// видна более светлая кромка на границе картинки.
+const BACKDROP_OVERFLOW = 14
+
 export function CardImage({ uri, style }) {
   if (Platform.OS === 'web') {
-    return <View style={[style, { backgroundImage: `url("${uri}")`, backgroundSize: 'contain', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }]} {...noCalloutProps} />
+    return (
+      <View style={[style, { overflow: 'hidden' }]} {...noCalloutProps}>
+        <View
+          style={{
+            position: 'absolute',
+            top: -BACKDROP_OVERFLOW, left: -BACKDROP_OVERFLOW, right: -BACKDROP_OVERFLOW, bottom: -BACKDROP_OVERFLOW,
+            backgroundImage: `url("${uri}")`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+            filter: 'blur(14px) brightness(0.5)',
+          }}
+        />
+        <View
+          style={{
+            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+            backgroundImage: `url("${uri}")`,
+            backgroundSize: 'contain',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+          }}
+        />
+      </View>
+    )
   }
-  return <Image source={{ uri }} style={style} resizeMode="contain" />
+  return (
+    <View style={[style, { overflow: 'hidden' }]}>
+      <Image
+        source={{ uri }}
+        style={{ position: 'absolute', top: -BACKDROP_OVERFLOW, left: -BACKDROP_OVERFLOW, right: -BACKDROP_OVERFLOW, bottom: -BACKDROP_OVERFLOW }}
+        resizeMode="cover"
+        blurRadius={Platform.OS === 'android' ? 8 : 16}
+      />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.45)' }]} />
+      <Image source={{ uri }} style={StyleSheet.absoluteFill} resizeMode="contain" />
+    </View>
+  )
 }
 
 // Палитра редкости — общая для экрана коллекции и боя. tier растёт с редкостью —
