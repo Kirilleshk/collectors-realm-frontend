@@ -42,6 +42,7 @@ export default function LibraryScreen({ navigation }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [article, setArticle] = useState(null)
+  const [disambiguation, setDisambiguation] = useState(null) // персонажи-тёзки — выбор вселенной
   const [recent, setRecent] = useState([])
   const [imageRatio, setImageRatio] = useState(null)
   // Автодополнение по мере ввода (Марк, 05.08: "Ба..." → Барт Симпсон,
@@ -93,10 +94,17 @@ export default function LibraryScreen({ navigation }) {
     setLoading(true)
     setError(null)
     setArticle(null)
+    setDisambiguation(null)
     try {
       const res = await library.getArticle(q)
-      setArticle(res.data)
-      loadRecent()
+      if (res.data?.disambiguation) {
+        // Персонажи-тёзки — под этим именем известно несколько разных
+        // героев, показываем выбор вместо статьи (Марк, 12.08, "Атрей")
+        setDisambiguation(res.data.disambiguation)
+      } else {
+        setArticle(res.data)
+        loadRecent()
+      }
     } catch (e) {
       setError(e?.response?.data?.error || 'Не удалось найти статью. Попробуйте ещё раз.')
     }
@@ -147,7 +155,7 @@ export default function LibraryScreen({ navigation }) {
       )}
 
       <ScrollView style={s.body} contentContainerStyle={{ padding: 16, paddingBottom: 24 + insets.bottom }} keyboardShouldPersistTaps="handled">
-        {!article && !loading && !error && (
+        {!article && !disambiguation && !loading && !error && (
           <View style={s.empty}>
             <Text style={s.emptyIcon}>📚</Text>
             <Text style={s.emptyTitle}>Энциклопедия гик-культуры</Text>
@@ -179,6 +187,19 @@ export default function LibraryScreen({ navigation }) {
           <View style={s.empty}>
             <Text style={s.emptyIcon}>⚠️</Text>
             <Text style={s.emptySub}>{error}</Text>
+          </View>
+        )}
+
+        {disambiguation && !loading && (
+          <View style={s.article}>
+            <Text style={s.articleName}>Под этим именем известно несколько персонажей</Text>
+            <Text style={[s.emptySub, { textAlign: 'left', marginBottom: 16 }]}>Выберите нужного:</Text>
+            {disambiguation.map((opt, i) => (
+              <TouchableOpacity key={i} style={s.disambigOption} onPress={() => onSearch(opt.query)}>
+                <Text style={s.disambigOptionText}>{opt.label}</Text>
+                <Text style={s.disambigOptionArrow}>›</Text>
+              </TouchableOpacity>
+            ))}
           </View>
         )}
 
@@ -264,6 +285,13 @@ const s = StyleSheet.create({
   articleImage: { width: '100%', borderRadius: 12, marginBottom: 10, backgroundColor: colors.surface2 },
   articleName: { fontSize: 20, fontWeight: '800', color: colors.text },
   articleUniverse: { fontSize: 13, fontWeight: '600', color: colors.accent, marginBottom: 8 },
+  disambigOption: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: colors.surface2, borderRadius: 12, borderWidth: 1, borderColor: colors.border,
+    paddingHorizontal: 16, paddingVertical: 14, marginBottom: 10,
+  },
+  disambigOptionText: { fontSize: 15, fontWeight: '600', color: colors.text, flex: 1 },
+  disambigOptionArrow: { fontSize: 18, color: colors.text2, marginLeft: 8 },
   section: { marginTop: 14, gap: 10 },
   sectionTitle: { fontSize: 16, fontWeight: '800', color: colors.accent, marginBottom: 2 },
   articleContent: { fontSize: 15, color: colors.text, lineHeight: 23 },
