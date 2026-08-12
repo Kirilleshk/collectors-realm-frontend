@@ -1,21 +1,50 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { View, Text, Modal, Pressable, ActivityIndicator, StyleSheet, Platform, Linking } from 'react-native'
 import * as Location from 'expo-location'
 import { colors } from '../theme'
 import { users as usersApi } from '../api'
 import { useAuth } from '../AuthContext'
 
+async function getSkipFlag(userId) {
+  const key = `locationPromptSkipped_${userId}`
+  if (Platform.OS === 'web') return localStorage.getItem(key)
+  const AsyncStorage = require('@react-native-async-storage/async-storage').default
+  return await AsyncStorage.getItem(key)
+}
+async function setSkipFlag(userId) {
+  const key = `locationPromptSkipped_${userId}`
+  if (Platform.OS === 'web') { localStorage.setItem(key, '1'); return }
+  const AsyncStorage = require('@react-native-async-storage/async-storage').default
+  await AsyncStorage.setItem(key, '1')
+}
+
 // Показывается когда у пользователя нет сохранённых координат (latitude/longitude
-// null — это и есть признак "не дал согласие", т.к. другого способа завершить
-// этот модал нет). Нельзя закрыть, не разрешив доступ к геолокации — обязательное
-// требование клиента: коллекционер должен быть виден на карте.
+// null) — коллекционер должен быть виден на карте, это важно для продукта.
+// НЕ жёсткая блокировка (было так до 12.08 — модалка не закрывалась без
+// разрешения геолокации вообще, `onRequestClose={() => {}}` без кнопки
+// пропуска): в некоторых браузерных контекстах (встроенный браузер Avito,
+// открытие по внешней ссылке) геолокация физически не срабатывает —
+// пользователь застревал перед входом навсегда. Марк сам словил это на
+// реальной ссылке 12.08. Теперь можно пропустить — координаты можно
+// добавить позже в профиле, показ модалки на этом устройстве больше не
+// повторяется (флаг в AsyncStorage/localStorage, per-аккаунт).
 export default function LocationRequiredModal() {
   const { user, updateUser } = useAuth()
   const [loading, setLoading] = useState(false)
   const [denied, setDenied] = useState(false)
+  const [skipped, setSkipped] = useState(null) // null = ещё не проверили флаг
 
   const isStaff = user?.roles?.some(r => ['ADMIN', 'MODERATOR', 'ANALYTICS'].includes(r))
-  if (!user || isStaff || (user.latitude != null && user.longitude != null)) return null
+  const needsLocation = !!user && !isStaff && (user.latitude == null || user.longitude == null)
+
+  useEffect(() => {
+    if (!needsLocation) { setSkipped(null); return }
+    let cancelled = false
+    getSkipFlag(user.id).then(v => { if (!cancelled) setSkipped(!!v) })
+    return () => { cancelled = true }
+  }, [needsLocation, user?.id])
+
+  if (!needsLocation || skipped === null || skipped === true) return null
 
   async function handleAllow() {
     setLoading(true)
@@ -42,23 +71,28 @@ export default function LocationRequiredModal() {
     setLoading(false)
   }
 
+  async function handleSkip() {
+    await setSkipFlag(user.id)
+    setSkipped(true)
+  }
+
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={() => {}}>
+    <Modal visible transparent animationType="fade" onRequestClose={handleSkip}>
       <View style={s.overlay}>
         <View style={s.card}>
           <Text style={s.icon}>📍</Text>
           <Text style={s.title}>Нужна геолокация</Text>
           <Text style={s.desc}>
             Чтобы коллекционеры поблизости могли находить друг друга на карте,
-            приложению нужен доступ к вашему местоположению. Это обязательный шаг.
+            приложению нужен доступ к вашему местоположению.
           </Text>
 
           {denied && (
             <View style={s.deniedBox}>
               <Text style={s.deniedText}>
                 {Platform.OS === 'web'
-                  ? 'Доступ не предоставлен. Разрешите геолокацию для этого сайта в настройках браузера и попробуйте снова.'
-                  : 'Доступ не предоставлен. Включите геолокацию в настройках телефона для этого приложения и попробуйте снова.'}
+                  ? 'Доступ не предоставлен. Разрешите геолокацию для этого сайта в настройках браузера и попробуйте снова, или пропустите — включить можно позже в профиле.'
+                  : 'Доступ не предоставлен. Включите геолокацию в настройках телефона, или пропустите — включить можно позже в профиле.'}
               </Text>
               {Platform.OS !== 'web' && (
                 <Pressable onPress={() => Linking.openSettings()} style={{ marginTop: 8 }}>
@@ -73,6 +107,9 @@ export default function LocationRequiredModal() {
               ? <ActivityIndicator color="#fff" />
               : <Text style={s.btnText}>{denied ? 'Попробовать снова' : 'Разрешить доступ'}</Text>
             }
+          </Pressable>
+          <Pressable style={({ pressed }) => [s.skipBtn, pressed && { opacity: 0.6 }]} onPress={handleSkip} disabled={loading}>
+            <Text style={s.skipBtnText}>Пропустить — включу позже в профиле</Text>
           </Pressable>
         </View>
       </View>
@@ -91,4 +128,6 @@ const s = StyleSheet.create({
   settingsLink: { color: colors.accent, fontSize: 13, fontWeight: '700', textAlign: 'center' },
   btn: { backgroundColor: colors.accent, borderRadius: 12, paddingVertical: 14, paddingHorizontal: 32, alignItems: 'center', width: '100%' },
   btnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  skipBtn: { marginTop: 12, paddingVertical: 8 },
+  skipBtnText: { color: colors.text2, fontSize: 13, fontWeight: '600', textDecorationLine: 'underline' },
 })
