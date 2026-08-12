@@ -10,6 +10,7 @@ import { HELP_ITEMS } from '../utils/WhatsNewModal'
 import { CHANGELOG, CURRENT_VERSION } from '../utils/changelog'
 import { portfolioCollections as collectionsApi, reviews as reviewsApi, support as supportApi } from '../api'
 import ScreenBackground from '../components/ScreenBackground'
+import BrandHeader from '../components/BrandHeader'
 
 let Updates = null
 try { Updates = require('expo-updates') } catch (e) {}
@@ -350,9 +351,10 @@ export default function ProfileScreen() {
   return (
     <ScreenBackground>
     <ScrollView style={s.wrap} showsVerticalScrollIndicator={false}>
+      <BrandHeader insets={insets} />
 
       {/* Переключатель вкладок профиля */}
-      <View style={[s.profileTabs, { paddingTop: insets.top }]}>
+      <View style={s.profileTabs}>
         <TouchableOpacity style={[s.profileTab, profileTab === 'profile' && s.profileTabActive]} onPress={() => setProfileTab('profile')}>
           <Text style={[s.profileTabText, profileTab === 'profile' && s.profileTabTextActive]}>👤 Профиль</Text>
         </TouchableOpacity>

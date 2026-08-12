@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { colors } from '../theme'
 import ScreenBackground from '../components/ScreenBackground'
+import BrandHeader from '../components/BrandHeader'
 import CollectionScreen from './CollectionScreen'
 import WishlistScreen from './WishlistScreen'
 
@@ -17,7 +18,8 @@ export default function MyItemsScreen() {
 
   return (
     <ScreenBackground style={s.wrap}>
-      <View style={[s.switcher, { paddingTop: insets.top + 8 }]}>
+      <BrandHeader insets={insets} />
+      <View style={[s.switcher, { paddingTop: 8 }]}>
         {TABS.map(t => (
           <Pressable
             key={t.key}

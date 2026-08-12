@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { products } from '../api'
 import { colors } from '../theme'
 import ScreenBackground from '../components/ScreenBackground'
+import BrandHeader from '../components/BrandHeader'
 
 // На узком мобильном экране — 2 колонки как раньше; на широком вебе больше
 // колонок, чтобы карточка не растягивалась на пол-окна (фикс "растянутых карточек").
@@ -135,7 +136,8 @@ export default function ShopScreen({ navigation }) {
   )
 
   return (
-    <ScreenBackground style={[s.wrap, { paddingTop: insets.top }]}>
+    <ScreenBackground style={s.wrap}>
+      <BrandHeader insets={insets} />
       <View style={s.topRow}>
         {/* Кнопка Анонсы */}
         <TouchableOpacity style={s.announceBanner} onPress={() => navigation.navigate('Releases')}>

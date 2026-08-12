@@ -11,6 +11,7 @@ import { pickAndUploadPhoto } from '../utils/uploadPhoto'
 import SmartInput from '../utils/SmartInput'
 import { track } from '../utils/analytics'
 import ScreenBackground from '../components/ScreenBackground'
+import BrandHeader from '../components/BrandHeader'
 import { CardArt, RARITY } from '../utils/cardArt'
 
 const CLOUD_NAME = 'dqutmb1rm'
@@ -413,8 +414,9 @@ export default function AdminScreen() {
 
   return (
     <ScreenBackground style={s.wrap}>
+      <BrandHeader insets={insets} />
       {/* Переключатель вкладок */}
-      <View style={[s.tabs, { paddingTop: insets.top }]}>
+      <View style={s.tabs}>
         {isStaff && (
           <TouchableOpacity style={[s.tabBtn, tab === 'products' && s.tabBtnActive]} onPress={() => setTab('products')}>
             <Text style={[s.tabText, tab === 'products' && s.tabTextActive]}>📦 Товары</Text>

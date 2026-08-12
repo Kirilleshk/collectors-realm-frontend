@@ -9,6 +9,7 @@ import { RARITY, rarityFrameStyle, RarityInnerRing, RarityCorners, cardIcon, Man
 import StarterPackModal from '../utils/StarterPackModal'
 import HowToPlayModal from '../utils/HowToPlayModal'
 import CardZoomModal from '../components/battle/CardZoomModal'
+import BrandHeader from '../components/BrandHeader'
 
 const SORT_OPTIONS = [
   { key: 'default', label: 'Как получены' },
@@ -104,12 +105,13 @@ export default function GameScreen() {
         <Image source={{ uri: themeArt }} style={s.backdrop} resizeMode="cover" blurRadius={Platform.OS === 'android' ? 12 : 30} pointerEvents="none" />
       )}
       <View pointerEvents="none" style={s.backdropOverlay} />
+      <BrandHeader insets={insets} />
       <FlatList
         data={sortedCards}
         keyExtractor={uc => uc.id}
         numColumns={2}
         columnWrapperStyle={{ gap: 12 }}
-        contentContainerStyle={[s.list, { paddingTop: 16 + insets.top, paddingBottom: 24 + insets.bottom }]}
+        contentContainerStyle={[s.list, { paddingTop: 16, paddingBottom: 24 + insets.bottom }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
         ListHeaderComponent={
           <View style={s.header}>

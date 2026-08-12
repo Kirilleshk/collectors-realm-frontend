@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuth } from '../AuthContext'
 import { colors } from '../theme'
 import ScreenBackground from '../components/ScreenBackground'
+import BrandHeader from '../components/BrandHeader'
 
 const API = 'https://collectors-realm-backend.onrender.com/api'
 
@@ -273,7 +274,7 @@ export default function MapScreen({ navigation }) {
   )
 
   const FilterBar = () => (
-    <View style={[s.filtersWrap, { paddingTop: insets.top + 8 }]}>
+    <View style={s.filtersWrap}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}>
         <TouchableOpacity style={[s.filterBtn, !filter && s.filterBtnActive]} onPress={() => setFilter(null)}>
           <Text style={[s.filterText, !filter && s.filterTextActive]}>Все ({users.length})</Text>
@@ -323,6 +324,7 @@ export default function MapScreen({ navigation }) {
 
   return (
     <ScreenBackground style={s.wrap}>
+      <BrandHeader insets={insets} />
       <FilterBar />
 
       {users.length === 0 ? (

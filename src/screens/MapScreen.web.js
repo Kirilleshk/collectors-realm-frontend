@@ -6,6 +6,7 @@ import * as Location from 'expo-location'
 import { useAuth } from '../AuthContext'
 import { colors } from '../theme'
 import ScreenBackground from '../components/ScreenBackground'
+import BrandHeader from '../components/BrandHeader'
 
 const API = 'https://collectors-realm-backend.onrender.com/api'
 
@@ -207,6 +208,7 @@ export default function MapScreen({ navigation }) {
 
   return (
     <ScreenBackground style={s.wrap}>
+      <BrandHeader />
       <FilterBar />
 
       {users.length === 0 ? (
