@@ -37,7 +37,7 @@ function getMapHTML(users, myLocation = null, radius = null) {
       lat: ${u.latitude}, lng: ${u.longitude},
       name: ${JSON.stringify(u.name)},
       city: ${JSON.stringify(u.city || '')},
-      bio: ${JSON.stringify(u.bio || '')},
+      bio: ${JSON.stringify(u.bio && u.bio.length > 160 ? u.bio.slice(0, 160).trimEnd() + '…' : (u.bio || ''))},
       role: ${JSON.stringify(r.label)},
       icon: ${JSON.stringify(r.icon)},
       color: ${JSON.stringify(r.color)},
@@ -351,6 +351,7 @@ export default function MapScreen({ navigation }) {
       <Modal visible={!!selected} transparent animationType="slide" onRequestClose={() => setSelected(null)}>
         <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setSelected(null)}>
           <View style={s.card}>
+          <ScrollView style={s.cardScroll} contentContainerStyle={{ gap: 12 }}>
             <View style={s.cardHeader}>
               {selected?.avatarUrl ? (
                 <Image source={{ uri: selected.avatarUrl }} style={s.avatar} />
@@ -379,7 +380,8 @@ export default function MapScreen({ navigation }) {
                 </View>
               </View>
             </View>
-            {selected?.bio ? <Text style={s.cardBio}>{selected.bio}</Text> : null}
+            {selected?.bio ? <Text style={s.cardBio} numberOfLines={6} ellipsizeMode="tail">{selected.bio}</Text> : null}
+          </ScrollView>
             <TouchableOpacity
               style={s.profileBtn}
               onPress={() => {
@@ -417,7 +419,8 @@ const s = StyleSheet.create({
   radiusClear: { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.surface2, justifyContent: 'center', alignItems: 'center' },
   radiusClearText: { fontSize: 11, color: colors.text2 },
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
-  card: { backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, gap: 12 },
+  card: { backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, gap: 12, maxHeight: '80%' },
+  cardScroll: { flexGrow: 0 },
   cardHeader: { flexDirection: 'row', gap: 14, alignItems: 'flex-start' },
   avatar: { width: 60, height: 60, borderRadius: 16 },
   avatarPlaceholder: { width: 60, height: 60, borderRadius: 16, backgroundColor: `${colors.blue}30`, justifyContent: 'center', alignItems: 'center' },

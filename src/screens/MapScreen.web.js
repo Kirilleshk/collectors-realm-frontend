@@ -17,6 +17,17 @@ const roleMap = {
   DIORAMA: { label: 'Мастер диорам', icon: '🏔', color: '#34C759' },
 }
 
+// Найдено 19.08 при живой проверке: анкета коллекционера (10.08) разрешила
+// bio до 3000 символов, а карточка пользователя на карте выводила его целиком
+// без обрезки — у аккаунта с длинным bio весь низ карточки превращался в
+// сплошную стену текста, кнопки "Открыть профиль"/"Закрыть" утекали за пределы
+// экрана без возможности прокрутки. Leaflet-попап (простой HTML/JSX, не
+// понимает RN numberOfLines) обрезаем вручную здесь же.
+function truncateBio(text, max = 160) {
+  if (!text) return text
+  return text.length > max ? text.slice(0, max).trimEnd() + '…' : text
+}
+
 // react-leaflet рендерит карту напрямую в DOM страницы (без iframe) — на вебе
 // вариант через <iframe srcDoc> у части пользователей рендерился сплошным
 // чёрным прямоугольником (тайлы грузились, но не композитились браузером),
@@ -257,7 +268,7 @@ export default function MapScreen({ navigation }) {
                     <br />
                     {r.label}{u.avgRating ? ` · ⭐ ${u.avgRating.toFixed(1)} (${u.reviewCount})` : ''}
                     {u.city ? <><br />📍 {u.city}</> : null}
-                    {u.bio ? <><br /><i>{u.bio}</i></> : null}
+                    {u.bio ? <><br /><i>{truncateBio(u.bio)}</i></> : null}
                   </Popup>
                 </Marker>
               )
@@ -270,6 +281,7 @@ export default function MapScreen({ navigation }) {
       <Modal visible={!!selected} transparent animationType="slide" onRequestClose={() => setSelected(null)}>
         <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setSelected(null)}>
           <View style={s.card}>
+          <ScrollView style={s.cardScroll} contentContainerStyle={{ gap: 12 }}>
             <View style={s.cardHeader}>
               {selected?.avatarUrl ? (
                 <Image source={{ uri: selected.avatarUrl }} style={s.avatar} />
@@ -298,7 +310,8 @@ export default function MapScreen({ navigation }) {
                 </View>
               </View>
             </View>
-            {selected?.bio ? <Text style={s.cardBio}>{selected.bio}</Text> : null}
+            {selected?.bio ? <Text style={s.cardBio} numberOfLines={6} ellipsizeMode="tail">{selected.bio}</Text> : null}
+          </ScrollView>
             <TouchableOpacity
               style={s.profileBtn}
               onPress={() => {
@@ -336,7 +349,8 @@ const s = StyleSheet.create({
   radiusClear: { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.surface2, justifyContent: 'center', alignItems: 'center' },
   radiusClearText: { fontSize: 11, color: colors.text2 },
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
-  card: { backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, gap: 12 },
+  card: { backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, gap: 12, maxHeight: '80%' },
+  cardScroll: { flexGrow: 0 },
   cardHeader: { flexDirection: 'row', gap: 14, alignItems: 'flex-start' },
   avatar: { width: 60, height: 60, borderRadius: 16 },
   avatarPlaceholder: { width: 60, height: 60, borderRadius: 16, backgroundColor: `${colors.blue}30`, justifyContent: 'center', alignItems: 'center' },
