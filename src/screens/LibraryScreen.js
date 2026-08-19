@@ -230,7 +230,9 @@ export default function LibraryScreen({ navigation }) {
               />
             ) : null}
             <Text style={s.articleName}>{article.characterName}</Text>
-            {article.universe ? <Text style={s.articleUniverse}>{article.universe}</Text> : null}
+            {article.universe && article.universe.trim().toLowerCase() !== 'null' ? (
+              <Text style={s.articleUniverse}>{article.universe}</Text>
+            ) : null}
             {parseArticleSections(article.content).map((section, i) => (
               <View key={i} style={s.section}>
                 {section.title ? <Text style={s.sectionTitle}>{section.title}</Text> : null}
