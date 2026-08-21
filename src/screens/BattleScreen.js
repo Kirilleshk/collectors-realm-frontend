@@ -147,7 +147,10 @@ export default function BattleScreen({ route, navigation }) {
       const res = await game.getActiveBattle()
       let data = res.data
       if (!data) {
-        const started = await game.startBattle()
+        // Лестница боссов (21.08.2026) — раньше route.params игнорировался
+        // (был только один босс вообще), теперь LevelSelectScreen передаёт
+        // конкретного bossId, с которым резюмировать/начать бой
+        const started = await game.startBattle(route.params?.bossId)
         data = started.data
       }
       applyData(data)
@@ -176,6 +179,15 @@ export default function BattleScreen({ route, navigation }) {
     setDisplayBoard({ playerBoard: dPlayer, bossBoard: dBoss })
 
     for (const ev of events) {
+      // Пассивка босса сработала (лестница боссов, 21.08.2026) — regen лечит
+      // видимую HP-полоску босса, поэтому получает попап там же, где обычный
+      // урон/лечение; mana_drain не привязан ни к одной HP-полоске, для него
+      // достаточно текстовой строки в логе (уже в battle.log с сервера)
+      if (ev.type === 'boss_passive') {
+        if (ev.passiveType === 'regen') popDamage('boss', ev.value, true)
+        await sleep(500)
+        continue
+      }
       if (ev.type === 'boss_play') {
         const card = cardsById.get(ev.cardId) ?? null
         dBoss = [...dBoss, { instanceId: ev.instanceId, cardId: ev.cardId, currentHealth: card?.health ?? 0, card }]
@@ -341,13 +353,17 @@ export default function BattleScreen({ route, navigation }) {
   }
 
   async function onNewBattle() {
+    // Реванш — тот же босс, что только что закончился (не сбрасывает
+    // прогресс лестницы на боссе #1); bossId читаем из ЕЩЁ живого battle
+    // (state), до его сброса ниже
+    const rematchBossId = battle?.bossId ?? route.params?.bossId
     setLoading(true)
     setBattle(null)
     setResolved(null)
     setDisplayBoard(null)
     setEffects({})
     try {
-      const res = await game.startBattle()
+      const res = await game.startBattle(rematchBossId)
       applyData(res.data)
     } catch (e) {
       Alert.alert('Ошибка', 'Не удалось начать новый бой.')
@@ -358,6 +374,11 @@ export default function BattleScreen({ route, navigation }) {
   if (loading || !battle || !resolved) return <View style={s.center}><ActivityIndicator color={colors.accent} size="large" /></View>
 
   const theme = battle.theme
+  // Лестница боссов (21.08.2026) — battle.boss отсутствует у боёв, начатых
+  // до этой фичи (bossId nullable), откатываемся на старые поля темы
+  const boss = battle.boss
+  const bossDisplayName = boss?.name ?? theme.bossName
+  const bossDisplayImage = boss?.imageUrl ?? theme.bossImageUrl
   const isOver = battle.status !== 'ACTIVE'
   const lastLog = Array.isArray(battle.log) ? battle.log[battle.log.length - 1] : null
   const board = displayBoard || resolved
@@ -409,8 +430,10 @@ export default function BattleScreen({ route, navigation }) {
 
   // Выделенный арт арены (сгенерирован под фон, не портрет) показываем чётче —
   // портрет босса как раньше сильно размываем, иначе крупный кроп лица выглядит странно
-  const arenaUrl = theme.arenaImageUrl || theme.bossImageUrl
-  const isDedicatedArena = !!theme.arenaImageUrl
+  // Лестница боссов (21.08.2026): предпочитаем арт КОНКРЕТНОГО босса (когда
+  // появится настоящий, не заглушка), с откатом на общий фон темы
+  const arenaUrl = boss?.arenaImageUrl || theme.arenaImageUrl || bossDisplayImage
+  const isDedicatedArena = !!(boss?.arenaImageUrl || theme.arenaImageUrl)
 
   return (
     <View style={s.wrap}>
@@ -449,10 +472,11 @@ export default function BattleScreen({ route, navigation }) {
       <View style={[s.pageFixed, { paddingTop: insets.top + 48, paddingBottom: insets.bottom }]}>
         <View ref={faceZoneRef} collapsable={false}>
           <BossBanner
-            bossName={theme.bossName}
-            imageUrl={theme.bossImageUrl}
+            bossName={bossDisplayName}
+            imageUrl={bossDisplayImage}
             hp={battle.bossHp}
             maxHp={battle.bossMaxHp}
+            passiveText={boss?.passiveText}
             popups={popups.filter(p => p.target === 'boss')}
             faceAttackable={faceAttackable}
             onPress={faceAttackable ? () => onAttack(null) : undefined}

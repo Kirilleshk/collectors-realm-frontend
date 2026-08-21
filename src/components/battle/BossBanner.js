@@ -18,7 +18,7 @@ function cardsWord(n) {
   return 'карт'
 }
 
-export default function BossBanner({ bossName, imageUrl, hp, maxHp, popups, faceAttackable, onPress, height, handCount, compact = false }) {
+export default function BossBanner({ bossName, imageUrl, hp, maxHp, passiveText, popups, faceAttackable, onPress, height, handCount, compact = false }) {
   const pulse = useRef(new Animated.Value(0)).current
   const portraitSize = Math.min(height - 24, 156)
 
@@ -76,6 +76,9 @@ export default function BossBanner({ bossName, imageUrl, hp, maxHp, popups, face
             {bossName}{faceAttackable ? ' — бить в лицо' : ''}
           </Text>
           <HpBar label="Босс" value={hp} max={maxHp} color={colors.accent} popups={popups} thick={!compact} />
+          {/* Пассивка босса (лестница боссов, 21.08.2026) — видна игроку, не
+              скрытая механика, по решению из скоупинга фичи */}
+          {!!passiveText && !compact && <Text style={s.passiveText} numberOfLines={2}>⚡ {passiveText}</Text>}
           {!!handCount && !compact && <Text style={s.handCount}>✋ {handCount} {cardsWord(handCount)} в руке</Text>}
         </View>
       </View>
@@ -94,4 +97,5 @@ const s = StyleSheet.create({
   name: { fontSize: 18, fontWeight: '800', color: colors.text, marginBottom: 10, letterSpacing: 0.3 },
   nameCompact: { fontSize: 13, marginBottom: 4 },
   handCount: { fontSize: 11, color: colors.text2, marginTop: 4 },
+  passiveText: { fontSize: 11, color: colors.gold, marginTop: 4, fontWeight: '600' },
 })

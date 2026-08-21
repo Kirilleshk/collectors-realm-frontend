@@ -22,7 +22,6 @@ export default function GameScreen() {
   const [userCards, setUserCards] = useState([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [startingBattle, setStartingBattle] = useState(false)
   const [claimingStarter, setClaimingStarter] = useState(false)
   const [claimError, setClaimError] = useState(null)
   const [starterGrant, setStarterGrant] = useState(null)
@@ -86,15 +85,11 @@ export default function GameScreen() {
     setClaimingStarter(false)
   }
 
-  async function onStartBattle() {
-    setStartingBattle(true)
-    try {
-      const res = await game.startBattle()
-      navigation.navigate('Battle', { battleId: res.data.battle.id })
-    } catch (e) {
-      Alert.alert('Ошибка', 'Не удалось начать бой. Попробуйте ещё раз.')
-    }
-    setStartingBattle(false)
+  // Лестница боссов (21.08.2026) — раньше сразу стартовал бой с единственным
+  // боссом темы, теперь сначала экран выбора уровня (там же видно, какие
+  // боссы уже открыты/пройдены)
+  function onStartBattle() {
+    navigation.navigate('LevelSelect')
   }
 
   if (loading) return <View style={[s.center, { paddingTop: insets.top }]}><ActivityIndicator color={colors.accent} size="large" /></View>
@@ -138,11 +133,8 @@ export default function GameScreen() {
             <Pressable
               style={({ pressed }) => [s.battleBtn, pressed && { opacity: 0.8 }]}
               onPress={onStartBattle}
-              disabled={startingBattle}
             >
-              {startingBattle
-                ? <ActivityIndicator color="#fff" size="small" />
-                : <Text style={s.battleBtnText}>⚔️ Бой с боссом</Text>}
+              <Text style={s.battleBtnText}>⚔️ Бой с боссом</Text>
             </Pressable>
           </View>
         }

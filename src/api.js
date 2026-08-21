@@ -115,10 +115,11 @@ export const support = {
 
 export const game = {
   getThemes:       () => api.get('/cards/themes'),
+  getBosses:       (themeId) => api.get('/cards/bosses', { params: themeId ? { themeId } : {} }),
   getMyCards:      () => api.get('/cards/my'),
   claimStarter:    () => api.post('/cards/starter'),
   getActiveBattle: () => api.get('/cards/battle/active'),
-  startBattle:     (themeId) => api.post('/cards/battle/start', { themeId }),
+  startBattle:     (bossId) => api.post('/cards/battle/start', { bossId }),
   playCard:        (battleId, cardId) => api.post(`/cards/battle/${battleId}/play`, { cardId }),
   attack:          (battleId, attackerInstanceId, targetInstanceId) => api.post(`/cards/battle/${battleId}/attack`, { attackerInstanceId, targetInstanceId }),
   endTurn:         (battleId) => api.post(`/cards/battle/${battleId}/end-turn`),

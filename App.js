@@ -27,6 +27,7 @@ import UserProfileScreen from './src/screens/UserProfileScreen'
 import MyItemsScreen from './src/screens/MyItemsScreen'
 import ReleasesScreen from './src/screens/ReleasesScreen'
 import GameScreen from './src/screens/GameScreen'
+import LevelSelectScreen from './src/screens/LevelSelectScreen'
 import BattleScreen from './src/screens/BattleScreen'
 import LibraryScreen from './src/screens/LibraryScreen'
 
@@ -77,6 +78,7 @@ function GameStack() {
       headerTitleStyle: { fontWeight: '700' },
     }}>
       <Stack.Screen name="GameMain" component={GameScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="LevelSelect" component={LevelSelectScreen} options={{ title: 'Выбор уровня' }} />
       <Stack.Screen name="Battle" component={BattleScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   )
