@@ -5,6 +5,22 @@
     <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover" />
     <title>Markeltoys</title>
+    <!-- "Добавить на экран Домой" на iPhone/Android: без этого ссылка на
+         приложение открывалась только как обычная вкладка браузера или
+         внутри чужого in-app-браузера (Telegram/WhatsApp) — оба варианта
+         на iOS Safari подвержены агрессивной очистке localStorage/сессии
+         через несколько дней без визита (жалоба Марка 21.08 — разлогинивает
+         "если не заходил день-два"). С этими тегами ссылку можно закрепить
+         как отдельную иконку — Safari даёт установленным так страницам
+         более стабильное хранилище, чем обычной вкладке или чужому
+         in-app-браузеру. -->
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/icon-512.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Markeltoys" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="theme-color" content="#E04E28" />
     <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
     <style id="expo-reset">
       /* These styles make the body full-height */

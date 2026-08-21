@@ -19,7 +19,7 @@ api.interceptors.request.use(async (config) => {
   return config
 })
 
-// Токен истекает через 7 дней (см. backend auth.service.ts). Без этого
+// Токен истекает через 90 дней (см. backend auth.service.ts). Без этого
 // перехватчика просроченный токен давал 401 на каждый запрос, а экраны
 // тихо проглатывали ошибку и показывали "пусто" вместо разлогина.
 let onUnauthorized = null
