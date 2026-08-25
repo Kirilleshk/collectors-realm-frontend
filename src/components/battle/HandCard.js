@@ -14,7 +14,15 @@ const CARD_HEIGHT = 136
 // описанием эффекта (не помещается на маленьком бейдже руки)
 // width/height — компактный размер в ландшафте, чтобы рука не отъедала
 // половину и без того тесной по высоте альбомной ориентации
-export default function HandCard({ entry, playable, onPress, onLongPress, width = CARD_WIDTH, height = CARD_HEIGHT }) {
+// nameLines — сколько строк отвести под имя карты. В компакт-режиме карта
+// всего 46px шириной — длинные имена ("Опустошитель", "Преторианец") там не
+// умещаются даже в 2 строки, а браузер вместо аккуратного "Опус…" обрубает
+// вторую строку посередине глифов (line-height меньше реальной высоты
+// строки при таком узком контейнере). На 1 строке text-overflow:ellipsis
+// работает надёжно в любых браузерах — используем его в компакте, где имя
+// всё равно нечитаемо мелкое и его величина не в приоритете (полное имя и
+// эффект видны по долгому нажатию, см. onLongPress/CardZoomModal).
+export default function HandCard({ entry, playable, onPress, onLongPress, width = CARD_WIDTH, height = CARD_HEIGHT, nameLines = 2 }) {
   const card = entry.card
   const r = RARITY[card.rarity] || RARITY.COMMON
   const [busy, setBusy] = useState(false)
@@ -66,7 +74,7 @@ export default function HandCard({ entry, playable, onPress, onLongPress, width 
 
         <View style={s.costBadge}><ManaBadge value={card.cost} size={20} /></View>
 
-        <Text style={s.cardName} numberOfLines={2}>{card.name}</Text>
+        <Text style={[s.cardName, nameLines === 1 && s.cardNameSingle]} numberOfLines={nameLines}>{card.name}</Text>
 
         <View style={s.medallionsRow}>
           <HealthBadge value={card.health} size={22} />
@@ -87,5 +95,8 @@ const s = StyleSheet.create({
   artFallbackIcon: { fontSize: 40 },
   costBadge: { position: 'absolute', top: 2, left: 2 },
   cardName: { position: 'absolute', left: 6, right: 6, bottom: 30, fontSize: 11, fontWeight: '800', color: '#fff', lineHeight: 13, textShadowColor: 'rgba(0,0,0,0.9)', textShadowRadius: 3, textShadowOffset: { width: 0, height: 1 } },
+  // Одна строка (компакт-режим) — своя чуть более низкая посадка и line-height
+  // с запасом, чтобы жирный шрифт не обрезался снизу даже на одной строке
+  cardNameSingle: { bottom: 28, lineHeight: 15 },
   medallionsRow: { position: 'absolute', left: 0, right: 0, bottom: 4, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 6 },
 })

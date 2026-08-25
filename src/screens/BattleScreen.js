@@ -628,6 +628,7 @@ export default function BattleScreen({ route, navigation }) {
                       onLongPress={card => setZoomCard({ card, currentHealth: null })}
                       width={compact ? 46 : 72}
                       height={compact ? 64 : 100}
+                      nameLines={compact ? 1 : 2}
                     />
                   )
                 }}
