@@ -263,12 +263,19 @@ export default function MapScreen({ navigation }) {
                   eventHandlers={{ click: () => setSelected(u) }}
                 >
                   <Popup>
-                    <b>{r.icon} {u.name}</b>
-                    {badgeLabel ? <span style={{ fontSize: 11, color: '#FF9700' }}> {badgeLabel}</span> : null}
-                    <br />
-                    {r.label}{u.avgRating ? ` · ⭐ ${u.avgRating.toFixed(1)} (${u.reviewCount})` : ''}
-                    {u.city ? <><br />📍 {u.city}</> : null}
-                    {u.bio ? <><br /><i>{truncateBio(u.bio)}</i></> : null}
+                    {/* maxWidth+overflowWrap — на случай длинного "слова" без пробелов
+                        (вставленная ссылка и т.п.) в имени/bio: truncateBio выше режет
+                        по числу символов, но сам по себе не гарантирует перенос строки,
+                        а у Leaflet-попапа нет RN numberOfLines — без этой обёртки такой
+                        текст рисуется одной сплошной строкой далеко за пределы карты. */}
+                    <div style={{ maxWidth: 220, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
+                      <b>{r.icon} {u.name}</b>
+                      {badgeLabel ? <span style={{ fontSize: 11, color: '#FF9700' }}> {badgeLabel}</span> : null}
+                      <br />
+                      {r.label}{u.avgRating ? ` · ⭐ ${u.avgRating.toFixed(1)} (${u.reviewCount})` : ''}
+                      {u.city ? <><br />📍 {u.city}</> : null}
+                      {u.bio ? <><br /><i>{truncateBio(u.bio)}</i></> : null}
+                    </div>
                   </Popup>
                 </Marker>
               )
