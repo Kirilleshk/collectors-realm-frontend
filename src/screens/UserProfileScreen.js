@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, Image, TouchableOpacity, Linking, Modal, TextInput, Alert } from 'react-native'
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, Image, TouchableOpacity, Linking, Modal, TextInput, Alert, useWindowDimensions } from 'react-native'
 import { colors } from '../theme'
-import { reviews as reviewsApi } from '../api'
+import { reviews as reviewsApi, portfolioCollections as collectionsApi } from '../api'
 import { useAuth } from '../AuthContext'
 import ScreenBackground from '../components/ScreenBackground'
 
@@ -34,6 +34,7 @@ function Stars({ rating, size = 16, onPress }) {
 export default function UserProfileScreen({ route, navigation }) {
   const { userId } = route.params
   const { user: me, token } = useAuth()
+  const { width } = useWindowDimensions()
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [reviewData, setReviewData] = useState({ reviews: [], avgRating: null, count: 0 })
@@ -41,6 +42,16 @@ export default function UserProfileScreen({ route, navigation }) {
   const [myRating, setMyRating] = useState(0)
   const [myComment, setMyComment] = useState('')
   const [savingReview, setSavingReview] = useState(false)
+  // Коллекции (Марк, 26.08.2026: "мастер по ремонту" должен мочь показывать
+  // разные свои работы отдельными наборами фото с описанием) — само CRUD
+  // уже было реализовано в ProfileScreen.js (владелец редактирует у себя),
+  // здесь только read-only просмотр чужих коллекций, тот же API
+  // (portfolio-collections), роль не проверяем — доступно для всех, у кого
+  // есть хотя бы одна коллекция (кастомизаторам/мастерам диорам тоже пригодится)
+  const [collections, setCollections] = useState([])
+  const [activeCollection, setActiveCollection] = useState(null)
+  const [collectionDetailVisible, setCollectionDetailVisible] = useState(false)
+  const collCardWidth = (width - 48) / 2
 
   const isMe = me?.id === userId
 
@@ -48,14 +59,16 @@ export default function UserProfileScreen({ route, navigation }) {
 
   async function load() {
     try {
-      const [userRes, revRes] = await Promise.all([
+      const [userRes, revRes, collRes] = await Promise.all([
         fetch(`${API}/users/${userId}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         }).then(r => r.json()),
         reviewsApi.getForUser(userId),
+        collectionsApi.getForUser(userId).catch(() => ({ data: [] })),
       ])
       setUser(userRes)
       setReviewData(revRes.data)
+      setCollections(collRes.data || [])
       const myRev = revRes.data.reviews?.find(r => r.fromUserId === me?.id)
       if (myRev) { setMyRating(myRev.rating); setMyComment(myRev.comment || '') }
     } catch (e) { console.error(e) }
@@ -156,6 +169,36 @@ export default function UserProfileScreen({ route, navigation }) {
         </View>
       ) : null}
 
+      {/* Коллекции — отдельные работы с фото+описанием (мастер по ремонту и
+          другие мастера показывают разные проекты отдельно, не одной кучей
+          портфолио) */}
+      {collections.length > 0 ? (
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>Работы ({collections.length})</Text>
+          <View style={s.collGrid}>
+            {collections.map(col => (
+              <TouchableOpacity
+                key={col.id}
+                style={[s.collCard, { width: collCardWidth }]}
+                onPress={() => { setActiveCollection(col); setCollectionDetailVisible(true) }}
+              >
+                {col.photos[0] ? (
+                  <Image source={{ uri: col.photos[0].url }} style={[s.collCover, { width: collCardWidth, height: collCardWidth }]} />
+                ) : (
+                  <View style={[s.collCover, { width: collCardWidth, height: collCardWidth, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.surface2 }]}>
+                    <Text style={{ fontSize: 32 }}>📷</Text>
+                  </View>
+                )}
+                <View style={s.collCardBody}>
+                  <Text style={s.collCardName} numberOfLines={1}>{col.name}</Text>
+                  <Text style={s.collCardCount}>{col.photos.length} фото</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      ) : null}
+
       {/* Отзывы */}
       <View style={s.section}>
         <View style={s.sectionHeader}>
@@ -233,6 +276,29 @@ export default function UserProfileScreen({ route, navigation }) {
           </View>
         </View>
       </Modal>
+      {/* Модал: детальный просмотр коллекции (read-only — гость не может
+          редактировать/удалять чужие фото, в отличие от ProfileScreen.js) */}
+      <Modal visible={collectionDetailVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setCollectionDetailVisible(false)}>
+        <View style={s.modal}>
+          <View style={s.modalHead}>
+            <Text style={s.modalTitle} numberOfLines={1}>{activeCollection?.name}</Text>
+            <TouchableOpacity onPress={() => setCollectionDetailVisible(false)}>
+              <Text style={{ fontSize: 20, color: colors.text2 }}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
+            {activeCollection?.description ? (
+              <Text style={{ color: colors.text2, fontSize: 14, marginBottom: 16, lineHeight: 20 }}>{activeCollection.description}</Text>
+            ) : null}
+            <View style={s.collPhotoGrid}>
+              {(activeCollection?.photos || []).map(photo => (
+                <Image key={photo.id} source={{ uri: photo.url }} style={s.collPhoto} />
+              ))}
+            </View>
+            <View style={{ height: 40 }} />
+          </ScrollView>
+        </View>
+      </Modal>
     </ScrollView>
     </ScreenBackground>
   )
@@ -263,6 +329,17 @@ const s = StyleSheet.create({
   leaveReviewText: { fontSize: 12, fontWeight: '600', color: colors.accent },
   bio: { fontSize: 15, color: colors.text, lineHeight: 22 },
   portfolioImg: { width: 120, height: 120, borderRadius: 12 },
+  collGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  collCard: { borderRadius: 14, overflow: 'hidden', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  collCover: { resizeMode: 'cover' },
+  collCardBody: { padding: 10, gap: 2 },
+  collCardName: { fontSize: 13, fontWeight: '700', color: colors.text },
+  collCardCount: { fontSize: 11, color: colors.text2 },
+  collPhotoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  collPhoto: { width: 90, height: 90, borderRadius: 10 },
+  modal: { flex: 1, backgroundColor: colors.bg },
+  modalHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface },
+  modalTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
   noReviewsText: { fontSize: 14, color: colors.text2, fontStyle: 'italic' },
   reviewCard: { backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1, borderColor: colors.border, padding: 14, marginBottom: 10 },
   reviewHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
