@@ -11,6 +11,9 @@ import ScreenBackground from '../components/ScreenBackground'
 const CLOUD_NAME = 'dqutmb1rm'
 const UPLOAD_PRESET = 'collectors_realm'
 const API = 'https://collectors-realm-backend.onrender.com/api'
+// Марк, 26.08.2026 (срочно): было 5, поднято до 10 — бэкенд не ограничивает
+// число фото в портфолио вообще (только фронтенд), см. также ProfileScreen.js
+const MAX_PORTFOLIO_PHOTOS = 10
 
 const ALL_ROLES = [
   { key: 'COLLECTOR', label: 'Коллекционер', icon: '🗿', color: '#4A90D9' },
@@ -208,7 +211,7 @@ export default function LoginScreen() {
   }
 
   async function pickPhoto() {
-    if (portfolioPhotos.length >= 5) return
+    if (portfolioPhotos.length >= MAX_PORTFOLIO_PHOTOS) return
     setUploadingPhoto(true)
     setError('')
     const url = await pickAndUploadPhoto()
@@ -621,7 +624,7 @@ export default function LoginScreen() {
                     </TouchableOpacity>
                   </View>
                 ))}
-                {portfolioPhotos.length < 5 && (
+                {portfolioPhotos.length < MAX_PORTFOLIO_PHOTOS && (
                   <TouchableOpacity style={s.photoAdd} onPress={pickPhoto} disabled={uploadingPhoto}>
                     {uploadingPhoto
                       ? <ActivityIndicator color={colors.accent} />

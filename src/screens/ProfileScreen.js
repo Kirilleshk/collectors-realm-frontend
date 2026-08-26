@@ -18,6 +18,9 @@ try { Updates = require('expo-updates') } catch (e) {}
 const CLOUD_NAME = 'dqutmb1rm'
 const UPLOAD_PRESET = 'collectors_realm'
 const API = 'https://collectors-realm-backend.onrender.com/api'
+// Марк, 26.08.2026 (срочно): было 5, поднято до 10 — бэкенд не ограничивает
+// число фото в портфолио вообще (только фронтенд), см. также LoginScreen.js
+const MAX_PORTFOLIO_PHOTOS = 10
 
 const roleMap = {
   COLLECTOR: { label: 'Коллекционер', color: colors.blue },
@@ -253,7 +256,7 @@ export default function ProfileScreen() {
   }
 
   async function pickPortfolioPhoto() {
-    if (portfolio.length >= 5) { Alert.alert('Максимум 5 фото в портфолио'); return }
+    if (portfolio.length >= MAX_PORTFOLIO_PHOTOS) { Alert.alert(`Максимум ${MAX_PORTFOLIO_PHOTOS} фото в портфолио`); return }
     setUploadingPortfolio(true)
     const url = await pickAndUploadPhoto()
     if (url) {
@@ -524,8 +527,8 @@ export default function ProfileScreen() {
       {/* Портфолио */}
       <View style={s.section}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <Text style={s.sectionTitle}>Моё портфолио ({portfolio.length}/5)</Text>
-          {portfolio.length < 5 && (
+          <Text style={s.sectionTitle}>Моё портфолио ({portfolio.length}/{MAX_PORTFOLIO_PHOTOS})</Text>
+          {portfolio.length < MAX_PORTFOLIO_PHOTOS && (
             <TouchableOpacity
               style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, backgroundColor: `${colors.blue}20`, borderWidth: 1, borderColor: `${colors.blue}40` }}
               onPress={pickPortfolioPhoto}
@@ -549,7 +552,7 @@ export default function ProfileScreen() {
               : <>
                   <Text style={{ fontSize: 36 }}>📸</Text>
                   <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text }}>Добавить фото коллекции</Text>
-                  <Text style={{ fontSize: 12, color: colors.text2, textAlign: 'center' }}>До 5 фото · видны всем в вашем профиле</Text>
+                  <Text style={{ fontSize: 12, color: colors.text2, textAlign: 'center' }}>До {MAX_PORTFOLIO_PHOTOS} фото · видны всем в вашем профиле</Text>
                 </>
             }
           </TouchableOpacity>
@@ -564,7 +567,7 @@ export default function ProfileScreen() {
                   </TouchableOpacity>
                 </View>
               ))}
-              {portfolio.length < 5 && (
+              {portfolio.length < MAX_PORTFOLIO_PHOTOS && (
                 <TouchableOpacity style={s.portfolioAdd} onPress={pickPortfolioPhoto} disabled={uploadingPortfolio}>
                   {uploadingPortfolio
                     ? <ActivityIndicator color={colors.accent} />
@@ -708,7 +711,7 @@ export default function ProfileScreen() {
               })}
             </View>
 
-            <Text style={s.label}>ФОТО ПОРТФОЛИО ({portfolio.length}/5)</Text>
+            <Text style={s.label}>ФОТО ПОРТФОЛИО ({portfolio.length}/{MAX_PORTFOLIO_PHOTOS})</Text>
             <Text style={{ fontSize: 12, color: colors.text2, marginBottom: 12, lineHeight: 17 }}>
               Эти фото видят другие пользователи в вашем профиле
             </Text>
@@ -724,7 +727,7 @@ export default function ProfileScreen() {
                   </TouchableOpacity>
                 </View>
               ))}
-              {portfolio.length < 5 && (
+              {portfolio.length < MAX_PORTFOLIO_PHOTOS && (
                 <TouchableOpacity
                   style={[s.portfolioAdd, { width: 90, height: 90 }]}
                   onPress={pickPortfolioPhoto}
