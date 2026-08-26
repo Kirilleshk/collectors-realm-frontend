@@ -58,6 +58,7 @@ export default function BattleScreen({ route, navigation }) {
   // столе для атаки, потому что она была наполовину скрыта под полосой "Вы".
   // Размер слота теперь считается от РЕАЛЬНОЙ высоты арены, а не от догадки.
   const [arenaHeight, setArenaHeight] = useState(0)
+  const [arenaWidth, setArenaWidth] = useState(0)
   // Рука карт — горизонтальный скролл без индикатора (showsHorizontalScrollIndicator
   // отключён по прошлой просьбе Марка). Когда карт в руке больше, чем влезает в
   // ширину экрана, лишние карты просто уходят за правый край без единой визуальной
@@ -405,10 +406,25 @@ export default function BattleScreen({ route, navigation }) {
   // arenaHeight-based ниже всё равно подстраховывает от обрезки на тесных
   // экранах — maxSlotSize здесь только "потолок" на просторных экранах.
   const maxSlotSize = compact ? 64 : (boardSlots > 3 ? 96 : 112)
+  // Найдено 26.08.2026 (жалоба Марка "уже почти месяц", подтверждено замером
+  // реального DOM на проде): формула ниже всегда делила высоту арены на 2
+  // (boss-ряд + ряд игрока), считая, что каждая сторона — ровно одна строка
+  // слотов. Но при boardSlots=5 ряд физически не помещается в одну строку по
+  // ШИРИНЕ на портретных экранах (переносится на 3+2, flexWrap) — тогда на
+  // каждую сторону реально нужно 2 подстроки высоты, а не 1 (итого 4, не 2).
+  // Раз arena.overflow='hidden', "лишние" подстроки (4-й и 5-й слот игрока)
+  // обрезались ПОЛНОСТЬЮ — измерено: 99px, весь слот целиком, а не просто
+  // край картинки. В ландшафте (compact) 5 слотов обычно физически
+  // ПОМЕЩАЮТСЯ в одну строку по ширине экрана — там перенос не нужен, слоты
+  // не должны мельчать зря. Считаем по факту (arenaWidth, onLayout), не
+  // угадываем — тот же принцип, что уже применён ниже к arenaHeight.
+  const GAP = 10
+  const slotsPerLine = arenaWidth > 0 ? Math.max(1, Math.floor((arenaWidth + GAP) / (maxSlotSize + GAP))) : boardSlots
+  const linesPerSide = Math.max(1, Math.ceil(boardSlots / slotsPerLine))
   const slotSize = arenaHeight > 0
     ? (compact
-        ? Math.max(24, Math.min(maxSlotSize, Math.floor(arenaHeight / 2) - 8))
-        : Math.max(40, Math.min(maxSlotSize, Math.floor((arenaHeight - 64) / 2) - 8)))
+        ? Math.max(24, Math.min(maxSlotSize, Math.floor(arenaHeight / (linesPerSide * 2)) - 8))
+        : Math.max(40, Math.min(maxSlotSize, Math.floor((arenaHeight - 64) / (linesPerSide * 2)) - 8)))
     : maxSlotSize
   const bossSlots = Array.from({ length: boardSlots }, (_, i) => board.bossBoard[i] || null)
   const playerSlots = Array.from({ length: boardSlots }, (_, i) => board.playerBoard[i] || null)
@@ -490,7 +506,7 @@ export default function BattleScreen({ route, navigation }) {
           colors={[`${colors.accent}22`, 'transparent', 'transparent']}
           locations={[0, 0.4, 1]}
           style={s.arena}
-          onLayout={e => setArenaHeight(e.nativeEvent.layout.height)}
+          onLayout={e => { setArenaHeight(e.nativeEvent.layout.height); setArenaWidth(e.nativeEvent.layout.width) }}
         >
           <View style={s.boardRow}>
             {bossSlots.map((entry, i) => {
