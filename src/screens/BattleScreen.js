@@ -413,8 +413,10 @@ export default function BattleScreen({ route, navigation }) {
   // получиться разное число строк — размер слотов разный, значит и то,
   // сколько их влезает в строку по ширине, тоже разное.
   const GAP = 10
+  const ROW_HORIZONTAL_PADDING = 12 // boardRow.paddingHorizontal:6 с обеих сторон — вычитаем из ширины, иначе perLine немного завышен
   function linesFor(maxSize) {
-    const perLine = arenaWidth > 0 ? Math.max(1, Math.floor((arenaWidth + GAP) / (maxSize + GAP))) : boardSlots
+    const usableWidth = arenaWidth > 0 ? arenaWidth - ROW_HORIZONTAL_PADDING : 0
+    const perLine = usableWidth > 0 ? Math.max(1, Math.floor((usableWidth + GAP) / (maxSize + GAP))) : boardSlots
     return Math.max(1, Math.ceil(boardSlots / perLine))
   }
   const bossLines = linesFor(maxBossSlotSize)
@@ -739,11 +741,21 @@ const s = StyleSheet.create({
   dragOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 50 },
   dragLine: { position: 'absolute', height: 3, borderRadius: 1.5, backgroundColor: colors.gold },
   dragTip: { position: 'absolute', width: 10, height: 10, borderRadius: 5, backgroundColor: colors.gold },
-  boardRow: { flexDirection: 'row', justifyContent: 'center', gap: 10, paddingVertical: 4, flexWrap: 'wrap' },
+  // paddingHorizontal:6 — запас по краям под кнопки лупы/активации карты
+  // игрока (см. zoomBtn/activateBtn ниже, найдено 27.08.2026 при повторной
+  // проверке): без него кнопка САМОЙ ЛЕВОЙ карты в ряду вылезала на 7-8px за
+  // левый край экрана (реальный тап туда невозможен — это край вьюпорта, а
+  // не просто overflow контейнера).
+  boardRow: { flexDirection: 'row', justifyContent: 'center', gap: 10, paddingVertical: 4, paddingHorizontal: 6, flexWrap: 'wrap' },
   playerSlotWrap: { position: 'relative' },
-  activateBtn: { position: 'absolute', top: -8, right: -8, width: 24, height: 24, borderRadius: 12, backgroundColor: colors.surface2, borderWidth: 1.5, borderColor: colors.gold, alignItems: 'center', justifyContent: 'center', zIndex: 5 },
+  // right/left:-4, не -8 (найдено 27.08.2026 повторной проверкой) — при
+  // зазоре между картами 10px и старом вылете 8px в каждую сторону кнопка
+  // активации ОДНОЙ карты и кнопка лупы СОСЕДНЕЙ карты пересекались на 6px
+  // (перекрывающийся тап уходил не той карте). При -4 сумма вылетов двух
+  // соседних кнопок (4+4=8px) меньше зазора (10px) — не пересекаются.
+  activateBtn: { position: 'absolute', top: -8, right: -4, width: 24, height: 24, borderRadius: 12, backgroundColor: colors.surface2, borderWidth: 1.5, borderColor: colors.gold, alignItems: 'center', justifyContent: 'center', zIndex: 5 },
   activateBtnText: { fontSize: 12 },
-  zoomBtn: { position: 'absolute', top: -8, left: -8, width: 24, height: 24, borderRadius: 12, backgroundColor: colors.surface2, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', zIndex: 5 },
+  zoomBtn: { position: 'absolute', top: -8, left: -4, width: 24, height: 24, borderRadius: 12, backgroundColor: colors.surface2, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', zIndex: 5 },
   deckRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 24, paddingVertical: 2 },
   playerBar: { paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.border },
   playerBarCompact: { paddingVertical: 3 },
