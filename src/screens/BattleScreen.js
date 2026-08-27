@@ -10,7 +10,6 @@ import { auraAttackBonus, hasActivatableAbility } from '../utils/cardArt'
 import HpBar from '../components/battle/HpBar'
 import BossBanner from '../components/battle/BossBanner'
 import BoardSlot from '../components/battle/BoardSlot'
-import DeckPile from '../components/battle/DeckPile'
 import HandCard from '../components/battle/HandCard'
 import LogEntry from '../components/battle/LogEntry'
 import CardZoomModal from '../components/battle/CardZoomModal'
@@ -399,33 +398,43 @@ export default function BattleScreen({ route, navigation }) {
   // ряды существ получали основную часть места, а не 14px обрезанный кусок.
   // На compact в арене только 2 ряда (boss+player), на обычных экранах — 3
   // (+ colodeRow, 60px пилы + 4px паддинг).
-  // Стол — главный визуальный акцент боя (по прямой просьбе Марка 01.08:
-  // "размер карт в руке уменьши, размер карт на столе увеличь, чтобы все
-  // изображения на столе были хорошо видны") — раньше карта в руке (96×136)
-  // была КРУПНЕЕ слота стола (72-88px), выглядело перевёрнуто. Формула
-  // arenaHeight-based ниже всё равно подстраховывает от обрезки на тесных
-  // экранах — maxSlotSize здесь только "потолок" на просторных экранах.
-  const maxSlotSize = compact ? 64 : (boardSlots > 3 ? 96 : 112)
+  // Стол — главный визуальный акцент боя (по прямой просьбе Марка 01.08 и
+  // повторно 27.08: "должны быть крупные карты пользователя... пусть будут
+  // небольшие карты в таком же формате останутся карты у босса" — босс не
+  // самое интересное на столе, важно то, чем реально играет пользователь).
+  // Поэтому у босса и игрока теперь РАЗНЫЕ потолки размера — не общий slotSize.
+  const maxBossSlotSize = compact ? 48 : 64
+  const maxPlayerSlotSize = compact ? 84 : 130
   // Найдено 26.08.2026 (жалоба Марка "уже почти месяц", подтверждено замером
-  // реального DOM на проде): формула ниже всегда делила высоту арены на 2
-  // (boss-ряд + ряд игрока), считая, что каждая сторона — ровно одна строка
-  // слотов. Но при boardSlots=5 ряд физически не помещается в одну строку по
-  // ШИРИНЕ на портретных экранах (переносится на 3+2, flexWrap) — тогда на
-  // каждую сторону реально нужно 2 подстроки высоты, а не 1 (итого 4, не 2).
-  // Раз arena.overflow='hidden', "лишние" подстроки (4-й и 5-й слот игрока)
-  // обрезались ПОЛНОСТЬЮ — измерено: 99px, весь слот целиком, а не просто
-  // край картинки. В ландшафте (compact) 5 слотов обычно физически
-  // ПОМЕЩАЮТСЯ в одну строку по ширине экрана — там перенос не нужен, слоты
-  // не должны мельчать зря. Считаем по факту (arenaWidth, onLayout), не
-  // угадываем — тот же принцип, что уже применён ниже к arenaHeight.
+  // реального DOM на проде): при boardSlots=5 ряд физически не помещается в
+  // одну строку по ШИРИНЕ на портретных экранах — переносится (flexWrap).
+  // Считаем по факту (arenaWidth, onLayout), не угадываем — тот же принцип,
+  // что применён ниже к arenaHeight. У боссовского и игрового рядов может
+  // получиться разное число строк — размер слотов разный, значит и то,
+  // сколько их влезает в строку по ширине, тоже разное.
   const GAP = 10
-  const slotsPerLine = arenaWidth > 0 ? Math.max(1, Math.floor((arenaWidth + GAP) / (maxSlotSize + GAP))) : boardSlots
-  const linesPerSide = Math.max(1, Math.ceil(boardSlots / slotsPerLine))
-  const slotSize = arenaHeight > 0
-    ? (compact
-        ? Math.max(24, Math.min(maxSlotSize, Math.floor(arenaHeight / (linesPerSide * 2)) - 8))
-        : Math.max(40, Math.min(maxSlotSize, Math.floor((arenaHeight - 64) / (linesPerSide * 2)) - 8)))
-    : maxSlotSize
+  function linesFor(maxSize) {
+    const perLine = arenaWidth > 0 ? Math.max(1, Math.floor((arenaWidth + GAP) / (maxSize + GAP))) : boardSlots
+    return Math.max(1, Math.ceil(boardSlots / perLine))
+  }
+  const bossLines = linesFor(maxBossSlotSize)
+  const playerLines = linesFor(maxPlayerSlotSize)
+  // Боссу — всегда его маленький потолок размера (он и так компактный, под
+  // высоту подстраивать незачем). Игроку — весь ОСТАТОК высоты арены после
+  // ряда босса, чтобы карты игрока реально расширялись в освободившееся
+  // место, а не оставляли его пустым (жалоба 27.08: "смотри сколько места
+  // свободного" — раньше формула считала МИНИМАЛЬНО достаточный размер по
+  // жёсткому потолку в 96px и останавливалась, хотя высоты хватало на
+  // гораздо крупнее — реально пустовавшее место возле игрового ряда).
+  const bossSlotSize = maxBossSlotSize
+  const bossRowHeight = bossLines * bossSlotSize + (bossLines - 1) * GAP
+  // Немного места на естественные зазоры между рядами (justifyContent:'space-evenly') —
+  // в compact (ландшафт) арене и так критически мало высоты, резервировать
+  // там 24px как в портрете — значит без нужды отбирать их у карт игрока
+  const ARENA_GAP_BUDGET = compact ? 8 : 24
+  const playerSlotSize = arenaHeight > 0
+    ? Math.max(40, Math.min(maxPlayerSlotSize, Math.floor((arenaHeight - ARENA_GAP_BUDGET - bossRowHeight) / playerLines) - GAP))
+    : maxPlayerSlotSize
   const bossSlots = Array.from({ length: boardSlots }, (_, i) => board.bossBoard[i] || null)
   const playerSlots = Array.from({ length: boardSlots }, (_, i) => board.playerBoard[i] || null)
   const boardFull = resolved.playerBoard.length >= boardSlots
@@ -496,7 +505,7 @@ export default function BattleScreen({ route, navigation }) {
             popups={popups.filter(p => p.target === 'boss')}
             faceAttackable={faceAttackable}
             onPress={faceAttackable ? () => onAttack(null) : undefined}
-            height={compact ? 56 : 168}
+            height={compact ? 56 : 116}
             handCount={deckCounts.bossHand}
             compact={compact}
           />
@@ -524,7 +533,7 @@ export default function BattleScreen({ route, navigation }) {
                 >
                   <BoardSlot
                     entry={entry}
-                    size={slotSize}
+                    size={bossSlotSize}
                     effect={entry ? effects[entry.instanceId] : null}
                     popups={entry ? popups.filter(p => p.target === entry.instanceId) : []}
                     selectable={isTargetable}
@@ -536,17 +545,6 @@ export default function BattleScreen({ route, navigation }) {
               )
             })}
           </View>
-
-          {/* На компактной высоте (телефон-ландшафт) ряд колоды/сброса убран
-              отсюда целиком — счётчики перенесены в статус-бар ниже. Ряды
-              существ (единственное, чем реально нужно управлять пальцем)
-              получают взамен всю освободившуюся высоту арены. */}
-          {!compact && (
-            <View style={s.deckRow}>
-              <DeckPile count={deckCounts.playerDiscard} label="Сброс" icon="🗑️" color={colors.text2} />
-              <DeckPile count={deckCounts.playerDeck} label="Колода" icon="🂠" color={colors.blue} backImageUrl={theme.backImageUrl} />
-            </View>
-          )}
 
           <View style={s.boardRow}>
             {playerSlots.map((entry, i) => {
@@ -563,7 +561,7 @@ export default function BattleScreen({ route, navigation }) {
               const slot = (
                 <BoardSlot
                   entry={entry}
-                  size={slotSize}
+                  size={playerSlotSize}
                   effect={entry ? effects[entry.instanceId] : null}
                   popups={entry ? popups.filter(p => p.target === entry.instanceId) : []}
                   selectable={canSelect}
@@ -577,12 +575,23 @@ export default function BattleScreen({ route, navigation }) {
               // конфликтует с перехватом указателя на вебе. Показываем, только пока
               // способность ещё не активна — активная невидимость не нуждается в кнопке.
               const canActivate = !isOver && !acting && !!entry && entry.currentHealth > 0 && hasActivatableAbility(entry.card) && !entry.stealthCharge
+              // Явная кнопка лупы (26.08.2026, жалоба Марка "нельзя увеличить карту") —
+              // ровно когда onLongPress ВЫШЕ отключён (canSelect=true, картой можно
+              // ходить/атаковать — то есть почти всё время на своём ходу), кроме
+              // долгого нажатия других способов увеличить карту не было вообще.
+              // Та же схема, что и activateBtn: сиблинг GestureDetector'а, не ребёнок.
+              const showZoomBtn = canSelect && !!entry
               return (
                 <View key={`player-${i}`} collapsable={false} style={s.playerSlotWrap} ref={el => { if (entry && el) playerSlotWrapRefs.current[entry.instanceId] = el }}>
                   {canSelect ? <GestureDetector gesture={makeAttackDrag(entry)}>{slot}</GestureDetector> : slot}
                   {canActivate && (
                     <Pressable style={s.activateBtn} onPress={() => onActivateAbility(entry.instanceId)}>
                       <Text style={s.activateBtnText}>👁️</Text>
+                    </Pressable>
+                  )}
+                  {showZoomBtn && (
+                    <Pressable style={s.zoomBtn} onPress={() => setZoomCard({ card: entry.card, currentHealth: entry.currentHealth })}>
+                      <Text style={s.activateBtnText}>🔍</Text>
                     </Pressable>
                   )}
                 </View>
@@ -596,12 +605,11 @@ export default function BattleScreen({ route, navigation }) {
           <View style={s.statsRow}>
             <View style={s.statBadge}><Text style={s.statBadgeText}>💧 {battle.mana}/{MANA_CAP}</Text></View>
             <View style={s.statBadge}><Text style={s.statBadgeText}>🔄 Ход {battle.turn}</Text></View>
-            {compact && (
-              <>
-                <View style={s.statBadge}><Text style={s.statBadgeText}>🂠 {deckCounts.playerDeck}</Text></View>
-                <View style={s.statBadge}><Text style={s.statBadgeText}>🗑️ {deckCounts.playerDiscard}</Text></View>
-              </>
-            )}
+            {/* Колода/сброс — раньше отдельным рядом в арене только на compact,
+                теперь всегда здесь (26.08.2026: арене нужна вся высота под
+                карты, счётчики — не то, чем управляют пальцем каждый ход) */}
+            <View style={s.statBadge}><Text style={s.statBadgeText}>🂠 {deckCounts.playerDeck}</Text></View>
+            <View style={s.statBadge}><Text style={s.statBadgeText}>🗑️ {deckCounts.playerDiscard}</Text></View>
             <Pressable style={s.statBadge} onPress={() => setLogVisible(true)}>
               <Text style={s.statBadgeText}>📜 Лог</Text>
             </Pressable>
@@ -735,6 +743,7 @@ const s = StyleSheet.create({
   playerSlotWrap: { position: 'relative' },
   activateBtn: { position: 'absolute', top: -8, right: -8, width: 24, height: 24, borderRadius: 12, backgroundColor: colors.surface2, borderWidth: 1.5, borderColor: colors.gold, alignItems: 'center', justifyContent: 'center', zIndex: 5 },
   activateBtnText: { fontSize: 12 },
+  zoomBtn: { position: 'absolute', top: -8, left: -8, width: 24, height: 24, borderRadius: 12, backgroundColor: colors.surface2, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', zIndex: 5 },
   deckRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 24, paddingVertical: 2 },
   playerBar: { paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.border },
   playerBarCompact: { paddingVertical: 3 },
