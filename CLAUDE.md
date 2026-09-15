@@ -13,22 +13,31 @@
 ## Запуск проекта
 
 ```powershell
-cd C:\Users\ksele\collectors-realm
+cd E:\MyProgect\collectors-realm
 npx expo start --web --clear
 ```
 
 ## Технический стек
 
-- **Фронтенд:** React Native + Expo SDK 54
-- **Бэкенд:** Node.js + TypeScript + Prisma + PostgreSQL (GitHub → Render.com, auto-deploy)
+- **Фронтенд:** React Native + Expo SDK 54, хостится на **Cloudflare Workers**
+  (`holy-grass-59e8.ksele52.workers.dev`) — деплой **ручной**:
+  `npm run deploy` (= `expo export --platform web` + `wrangler deploy`).
+  Пуш в GitHub сам по себе прод НЕ обновляет.
+- **Бэкенд:** Node.js + TypeScript + Prisma + PostgreSQL (GitHub → Render.com,
+  **автодеплой** при пуше в main).
 - **БД:** PostgreSQL на **Supabase** (eu-west-1 Ireland, Free план, бессрочно)
 - **Фото:** Cloudinary (unsigned upload)
 - **Навигация:** React Navigation (Stack + Bottom Tabs)
+- **Карточная игра** (вкладка «Игра») — своя мини-подсистема поверх того же
+  стека: `react-native-gesture-handler` (drag-to-attack на столе боя),
+  `react-native-svg` (карта-путь уровней), `expo-screen-orientation`
+  (landscape-lock только в бою).
 
 ## Важные константы
 
 ```javascript
 API           = 'https://collectors-realm-backend.onrender.com/api'
+FRONTEND_URL  = 'https://holy-grass-59e8.ksele52.workers.dev'
 CLOUD_NAME    = 'dqutmb1rm'
 UPLOAD_PRESET = 'collectors_realm'   // unsigned
 PROJECT_ID    = 'ee592544-47bd-4d06-8f93-0070a93efe36'
@@ -39,9 +48,8 @@ SERVICE_ID    = 'srv-d7hlnhfaqgkc739da4p0'  // Render сервис
 ## Тестовые аккаунты
 
 ```
-Обычный      : kirill@test.com  / password123   (роль COLLECTOR)
-Админ (тест) : admin@test.com   / admin123        (26.07.2026: логин вернул "Пользователь не найден" в проде — похоже, не заведён/не существует в текущей БД Supabase)
-Админ (реал) : ksele52@gmail.com / см. приватную память Claude (НЕ в этом файле — репозиторий публичный на GitHub)
+Обычный : kirill@test.com  / password123   (роль COLLECTOR — им же прогоняются все живые проверки боя/наград)
+Админ   : ksele52@gmail.com / см. приватную память Claude (НЕ в этом файле — репозиторий публичный на GitHub)
 ```
 
 Доступ к вкладке «Админ»: `user?.roles?.includes('ADMIN'|'ANALYTICS'|'MODERATOR')` (`App.js`) — проверка по роли из JWT, не по email. (Уточнено 25.08.2026 — раньше здесь была устаревшая запись про проверку по подстроке email, в актуальном коде её уже нет.) Бэкенд отдельно проверяет ту же роль для стафф-эндпоинтов (`/api/cards/admin/*` и т.п.).
@@ -50,33 +58,51 @@ SERVICE_ID    = 'srv-d7hlnhfaqgkc739da4p0'  // Render сервис
 
 ```
 collectors-realm/
-├── App.js                   ← Навигация (ShopStack, MapStack, MainTabs)
+├── App.js                   ← Навигация (см. «Навигация» ниже)
 ├── app.json                 ← Конфиг Expo + EAS
 ├── eas.json                 ← Конфиг сборки Android/iOS
+├── wrangler.jsonc           ← Конфиг Cloudflare Workers (деплой фронтенда)
 └── src/
-    ├── api.js               ← axios + auth/products/wishlist/users
+    ├── api.js               ← axios + auth/products/wishlist/users/cards/library/...
     ├── AuthContext.js       ← user, token, login, register, logout, updateUser
     ├── notifications.js     ← Expo Push Notifications
     ├── theme.js             ← bg, surface, surface2, text, text2, accent, border, blue, purple, green
-    └── screens/
-        ├── LoginScreen.js          ← Вход + регистрация (4 роли-карточки)
-        ├── ShopScreen.js           ← Магазин: фото, поиск, фильтры
-        ├── ProductDetailScreen.js  ← Карточка товара, галерея, Telegram/WhatsApp/Max
-        ├── AdminScreen.js          ← CRUD товаров, смена статуса
-        ├── ProfileScreen.js        ← Профиль: аватар, роли, геолокация, портфолио
-        ├── UserProfileScreen.js    ← Публичный профиль пользователя
-        ├── MapScreen.js            ← Leaflet (iframe веб / WebView мобайл), фильтры ролей
-        ├── WishlistScreen.js       ← Вишлист с приоритетами
-        ├── ChatScreen.js           ← Чат с продавцом
-        ├── NotificationsScreen.js  ← Уведомления
-        ├── CollectionScreen.js     ← Моя коллекция
-        └── ReleasesScreen.js       ← Анонсы релизов
+    ├── screens/
+    │   ├── LoginScreen.js          ← Вход + регистрация (анкета коллекционера, мин. 3 фото)
+    │   ├── ShopScreen.js           ← Магазин: фото, поиск, фильтры, аукцион
+    │   ├── ProductDetailScreen.js  ← Карточка товара, галерея, ставки, Telegram/WhatsApp/Max
+    │   ├── AdminScreen.js          ← вкладки Товары/Люди/Чат/Игра (ADMIN+MODERATOR),
+    │   │                              Релизы (только ADMIN), Статистика (+ ANALYTICS)
+    │   ├── ProfileScreen.js        ← Профиль: аватар, роли, геолокация, портфолио-коллекции
+    │   ├── UserProfileScreen.js    ← Публичный профиль (портфолио read-only)
+    │   ├── MapScreen.js / .web.js  ← Leaflet (react-leaflet веб / WebView мобайл), радиус 5/20км
+    │   ├── MyItemsScreen.js        ← вкладка «Моё» — переключатель Коллекция/Вишлист
+    │   ├── CollectionScreen.js     ← Моя коллекция
+    │   ├── WishlistScreen.js       ← Вишлист с приоритетами
+    │   ├── LibraryScreen.js        ← Библиотека знаний гик-культуры (Groq + Wikipedia)
+    │   ├── ChatScreen.js           ← Чат с продавцом (единый тред с саппортом)
+    │   ├── NotificationsScreen.js  ← Уведомления
+    │   ├── ReleasesScreen.js       ← Анонсы релизов
+    │   ├── GameScreen.js           ← Коллекция карт темы + вход в бой
+    │   ├── LevelSelectScreen.js    ← Карта-путь лестницы боссов
+    │   └── BattleScreen.js         ← Экран боя (стол, рука, атака drag-to-target)
+    ├── components/
+    │   ├── BrandHeader.js          ← Плашка бренда на всех вкладках
+    │   ├── ScreenBackground.js     ← Общий атмосферный градиент-фон экранов
+    │   └── battle/                 ← BoardSlot, HandCard, BossBanner, CardZoomModal,
+    │                                  DamagePopup, DeckPile, HpBar, LogEntry
     └── utils/
         ├── uploadPhoto.js          ← Загрузка фото (web + mobile)
         ├── SmartInput.js           ← TextInput с автоскроллом на web
         ├── analytics.js            ← track() — отправка событий аналитики
         ├── WhatsNewModal.js        ← Модал "Что нового" при обновлении
-        └── changelog.js            ← История версий (ОБНОВЛЯТЬ ПРИ КАЖДОМ РЕЛИЗЕ)
+        ├── changelog.js            ← История версий (ОБНОВЛЯТЬ ПРИ КАЖДОМ РЕЛИЗЕ)
+        ├── OnboardingTour.js       ← Тур по вкладкам (один раз за аккаунт)
+        ├── LocationRequiredModal.js← Запрос геолокации при входе (со skip)
+        ├── HowToPlayModal.js       ← «Как играть» в карточной игре
+        ├── cardArt.js              ← RARITY, CardImage, бейджи маны/атаки/HP
+        ├── StarterPackModal.js     ← Стартовый набор карт (10 шт)
+        └── RewardModal.js          ← Награда за победу над боссом
 ```
 
 ## Навигация (App.js)
@@ -85,10 +111,11 @@ collectors-realm/
 RootNav
 ├── Login (не авторизован)
 └── Main → MainTabs
-    ├── Магазин → ShopStack (ShopList → ProductDetail → Chat / Notifications / UserProfile)
-    ├── Карта  → MapStack (MapMain → UserProfileMap)
-    ├── Вишлист
-    ├── Админ
+    ├── Магазин → ShopStack (ShopList → ProductDetail / Chat / Notifications / UserProfile / Releases / Library)
+    ├── Карта   → MapStack (MapMain → UserProfileMap)
+    ├── Моё     → MyItemsScreen (Коллекция / Вишлист, переключатель внутри)
+    ├── Игра    → GameStack (GameMain → LevelSelect → Battle) — вкладка скрывается флагом SHOW_GAME
+    ├── Админ   → только если роль ADMIN/ANALYTICS/MODERATOR (условный таб)
     └── Профиль
 ```
 
@@ -101,9 +128,10 @@ CUSTOMIZER    → Кастомизатор      🎨  фиолетовый
 DIORAMA       → Мастер диорам     🏔  зелёный
 ADMIN         → полная админка (ksele52@gmail.com)
 ANALYTICS     → только статистика (для клиента-заказчика)
-MODERATOR     → ограниченная админка для Марка: вкладки «Люди» (блокировка),
-                «Чат» (поддержка + удаление сообщений), «Статистика».
-                Без доступа к «Товары»/«Релизы» (зона Кирилла)
+MODERATOR     → ограниченная админка для Марка: «Товары», «Люди» (блокировка),
+                «Чат» (поддержка + удаление сообщений), «Игра», «Статистика».
+                Без доступа только к «Релизы» (зона Кирилла, проверено в
+                AdminScreen.js — `isAdmin`-only таб, остальные `isStaff`)
 ```
 
 ## Статусы товаров
@@ -118,65 +146,68 @@ NEGOTIABLE → Торг уместен  фиолетовый #AF52DE
 
 ## API эндпоинты
 
-### Авторизация
-```
-POST /api/auth/login     { email, password } → { token, user }
-POST /api/auth/register  { name, email, password, roles[] } → { token, user }
-```
+Route-файлы в `collectors-realm-backend/src/routes/` (актуальный список
+эндпоинтов внутри каждого — точнее смотреть сам файл, здесь только карта,
+куда идти):
 
-### Товары
 ```
-GET    /api/products
-GET    /api/products/:id
-POST   /api/products           { ...fields, imageUrls[] }
-PUT    /api/products/:id
-PATCH  /api/products/:id/status  { status }
-DELETE /api/products/:id
-```
-
-### Пользователи
-```
-GET  /api/users           все пользователи (карта)
-GET  /api/users/me        мой профиль (include portfolioPhotos)
-GET  /api/users/:id       публичный профиль
-PUT  /api/users/me        { name, city, bio, roles, latitude, longitude, avatarUrl }
-POST /api/users/me/avatar
-POST /api/users/me/fcm-token
-```
-
-### Вишлист
-```
-GET    /api/wishlist
-POST   /api/wishlist        { name, priority, comment }
-PUT    /api/wishlist/:id
-DELETE /api/wishlist/:id
+auth.routes.ts        send-code/verify-code, register, login,
+                       forgot-password/reset-password
+users.routes.ts        GET / (карта), /me, /:id; PUT /me; POST /me/avatar,
+                       /me/fcm-token; PATCH /:id/badge, /:id/block (staff)
+products.routes.ts     CRUD, PATCH /:id/status, /:id/sold, GET/POST /:id/bids
+                       (аукцион)
+wishlist.routes.ts     CRUD (name, priority, comment, originalName,
+                       characterRu, manufacturer, releaseDate)
+collection.routes.ts   CRUD личной коллекции (CollectionItem)
+portfolio-collections  CRUD «работ» мастера (фото+описание), /me и /user/:id
+reviews.routes.ts      GET/POST/DELETE /:userId — отзывы между коллекционерами
+releases.routes.ts     GET / — анонсы релизов
+notifications.routes   GET /, PATCH /:id/read, /read-all, POST /trigger-report
+support.routes.ts      чат «связь с администрацией» ↔ SupportMessage,
+                       /conversations и /:userId/reply — для staff
+analytics.routes.ts    POST / (событие), GET /summary (staff)
+news.routes.ts         GET / — витрина новостей
+markBot.routes.ts      GET/PATCH /notes, POST /send, POST /webhook — Telegram-
+                       бот задач Марка (см. «Важные заметки» ниже)
+library.routes.ts      GET /article (Groq+Wikipedia, кеш), /suggest, /recent,
+                       /admin-coverage, POST /batch-generate (staff)
+cards.routes.ts        карточная игра — themes, bosses, battle/start,
+                       /:id/play, /:id/attack, /:id/activate, /:id/end-turn,
+                       admin/all, admin/stats (staff)
 ```
 
 ## Схема БД (Prisma)
 
+Много моделей в `collectors-realm-backend/prisma/schema.prisma` — точные поля
+смотреть там (число моделей будет расти, не фиксирую здесь), здесь только
+ключевые enum'ы и группы моделей:
+
 ```prisma
-enum UserRole      { COLLECTOR, MASTER_REPAIR, CUSTOMIZER, DIORAMA, ADMIN, ANALYTICS }
+enum UserRole      { COLLECTOR, MASTER_REPAIR, CUSTOMIZER, DIORAMA, ADMIN, ANALYTICS, MODERATOR }
 enum Condition     { NEW, USED }
 enum ProductStatus { AVAILABLE, SOLD, PREORDER, RESERVED, NEGOTIABLE }
 enum Priority      { HIGH, MEDIUM, LOW }
-
-model User {
-  id, email, phone, passwordHash, name, city
-  latitude, longitude, roles[], collectorGrade
-  bio, avatarUrl, fcmToken
-  wishlist WishlistItem[]
-  portfolioPhotos PortfolioPhoto[]
-}
-model Product {
-  id, name, description, price, condition
-  status ProductStatus @default(AVAILABLE)
-  manufacturer, franchise, character
-  images ProductImage[]
-}
-model ProductImage   { id, url, productId, order }
-model WishlistItem   { id, userId, name, priority, comment }
-model PortfolioPhoto { id, url, userId, order }
+enum CardRarity    { COMMON, EPIC, SILVER, GOLD }
+enum CardFaction   { ALIEN, PREDATOR }
 ```
+
+Группы моделей:
+- **Маркетплейс:** `User` (роли[], геолокация, анкета коллекционера —
+  age/collectorTypes/collectingSinceYears/favoriteFranchise/favoriteCharacter,
+  isBlocked, onboardingSeen), `Product` (+ аукцион isAuction/startPrice/
+  priceStep/auctionEndTime), `ProductImage`, `Bid`, `WishlistItem`,
+  `CollectionItem`, `Review`, `Notification`, `Release`, `ReleaseReminder`
+- **Профиль/портфолио:** `PortfolioPhoto`, `PortfolioCollection` +
+  `PortfolioCollectionPhoto` (работы мастера с описанием)
+- **Карточная игра** («Игра», см. отдельный раздел ниже про арт): `CardTheme`,
+  `Boss` (лестница внутри темы, `order` + пассивка regen/mana_drain/enrage),
+  `UserBossProgress`, `Card`, `UserCard`, `Battle` (JSON-колонки для стола/
+  руки/колоды — вся боевая механика живёт в `cards.routes.ts`)
+- **Библиотека знаний:** `LibraryArticle` (кеш по slug), `LibrarySearchLog`
+- **Саппорт/задачи:** `SupportMessage` (чат с администрацией),
+  `MarkNote` (заметки Telegram-бота Марка) + `MarkNoteType`/`MarkNoteStatus`
+- **Служебное:** `AnalyticsEvent`
 
 ## Загрузка фото (Cloudinary)
 
@@ -200,48 +231,39 @@ const d = await r.json()
 ## Важные заметки
 
 1. **Бэкенд на GitHub** — изменения через GitHub, Render деплоит автоматически при push в main.
-2. **Миграции БД** — создавать в `prisma/migrations/` на GitHub, файл `migration.sql`.
-3. **Статусы PREORDER/RESERVED/NEGOTIABLE** — добавлены в schema.prisma, могут не применились в БД — нужна SQL миграция.
-4. **Карта** — Leaflet через iframe (веб) и WebView (мобайл). Маркеры кликабельны → карточка пользователя.
-5. **Push-уведомления** — не работают в Expo Go, нужен development build.
+2. **Миграции БД** — часто без файлов миграции: стартап-скрипты в
+   `src/startup/*.ts` (подключены в `index.ts`) сами приводят БД в нужное
+   состояние при каждом старте сервера — предпочтительный способ в этом
+   проекте вместо ручных SQL-шагов в Supabase (легко забыть выполнить).
+3. **Карта** — react-leaflet (веб, `MapScreen.web.js`) и WebView+Leaflet
+   (мобайл, `MapScreen.js`). Маркеры кликабельны → карточка пользователя,
+   кнопки радиуса 5/20км.
+4. **Push-уведомления** — не работают в Expo Go, нужен development build.
+5. **Telegram-бот задач Марка** (`@collectors_realm_tasks_bot`) — Марк пишет
+   туда текстом/голосом, бэкенд сохраняет в `MarkNote` (расшифровка голоса
+   через Groq Whisper). Проверять при «что у нас по задачам» —
+   `GET /api/mark-bot/notes` с заголовком `x-bot-secret` (значение — в
+   `.env`/Render env, не в этом файле). Закрывать статус `DONE` только
+   после реальной проверки на проде, не раньше.
 
 ## Известные проблемы
 
-- Render Free: первый запрос 50+ сек (засыпает)
-- react-native-webview 13.16.1 вместо 13.15.0 — не критично
-- ✅ Веб-версия: карточки магазина растянуты — исправлено 01.07.2026,
-  сетка колонок теперь зависит от ширины экрана (`ShopScreen.js`)
+- Render Free: первый запрос после простоя — 50+ сек (сервис засыпает)
 
-## Задачи клиента (приоритет по порядку)
+## Открытые задачи
 
-1. ✅ **Клавиатура загораживает экран** — KeyboardAvoidingView во всех экранах с вводом
-2. ✅ **Кнопки телефона пересекаются** — SafeAreaView + useSafeAreaInsets в tabBarStyle
-3. ✅ **Статус товара не меняется на Android** — исправлен products.routes.ts + SQL миграция enum
-4. ✅ **Обязательное фото при регистрации** — двухшаговая регистрация, мин. 1 фото
-5. ✅ **Расширить вишлист** — поля: originalName, characterRu, manufacturer, releaseDate
-6. ✅ **Коллекционеры поблизости** — кнопки 5км/20км в MapScreen, Haversine, кружок радиуса
-7. ✅ **Аукцион** — таймер, ставки, бейдж АУКЦИОН, бэкенд endpoints
-8. ⏳ **Вход через ВКонтакте** — нужен VK App ID с dev.vk.com
+Статичный список задач клиента здесь регулярно устаревал (пункты
+числились «не начато»/«заблокировано» уже давно после того, как были
+сделаны) — источник правды по задачам Марка теперь только
+`GET /api/mark-bot/notes` (см. «Важные заметки» выше), а не этот файл.
+Из старого списка Кирилла остаётся не закрытым только один пункт:
 
-## Задачи клиента Марка (по памяти Claude)
+- ⏳ **Вход через ВКонтакте** — нужен VK App ID с dev.vk.com
 
-1-3. ✅ Внешние ссылки убраны, канал сменён на markeltoys, кнопка TG у Админа убрана
-4. ✅ Внутренний чат «Связь с администрацией» (профиль ↔ AdminScreen → вкладка «Чат»)
-5. ✅ Расширенная статистика — фронтенд готов (новые за неделю, среднее время,
-   популярные разделы); бэкенд требует мерджа `backend-analytics-extra.ts`
-6. ✅ Второй админ-аккаунт (роль `MODERATOR`) — блокировка, удаление сообщений,
-   кнопка связи у заблокированных. Требует: миграции `MODERATOR` в enum UserRole,
-   применения `backend-set-mark-role.sql` (сменить роль аккаунта Марка с ADMIN на MODERATOR)
-7. ⏳ Карточная игра «Карты Средиземья» — геймификация, отдельная большая фича
-8. 🔄 Библиотека знаний гик-культуры — MVP готов (24.07), формат статьи
-   доработан под образец Марка 01.08 (подзаголовки, картинка персонажа из
-   ru.wikipedia, курируемый список ~240 персонажей). Заблокировано дальнейшее
-   масштабирование дневным лимитом токенов Groq — нужно решение пользователя
-   (отдельный ключ / подождать / снизить длину статьи)
-
-**Чат «Связаться с продавцом»** теперь реальный (раньше был локальный мок):
-переиспользует `SupportMessage` с привязкой к товару (`productId`/`productName`),
-все обращения попадают в единый тред пользователя с админом/модератором.
+Чат «Связаться с продавцом» (`ChatScreen.js`) переиспользует
+`SupportMessage` с привязкой к товару (`productId`/`productName`) — все
+обращения пользователя, включая эти, попадают в один тред с
+администрацией/модератором.
 
 ## Итоги сессий
 
@@ -282,6 +304,11 @@ no text, no watermark`.
 выполнить в Supabase SQL Editor, если ещё не выполнен). Более нет карт без арта
 в теме «Чужой против Хищника».
 
+**Лестница боссов** (`Boss`, 21.08.2026, см. HANDOFF.md) — 4 босса внутри
+темы с растущим HP и уникальной пассивкой. Боссы #2-4 пока используют
+арт-заглушку (портрет «Королевы чужих») — ждут своего уникального арта
+от Марка/Кирилла (заметка бота `cmtbsvea2...`, 27.08).
+
 **Пайплайн загрузки:** файл из `art-cards/<имя-транслит>.png` → unsigned upload
 на Cloudinary (`api.cloudinary.com/v1_1/dqutmb1rm/image/upload`, preset
 `collectors_realm`) → SQL `prisma/set-card-images-<дата>.sql` с
@@ -291,15 +318,17 @@ Supabase SQL Editor. Папка `art-cards/` в `.gitignore` — исходни�
 
 ## Ключевые зависимости
 
-```json
-"expo": "~54.0.33",
-"react-native": "0.76.7",
-"@react-navigation/native": "^6.x",
-"expo-image-picker": "~55.0.14",
-"expo-location": "~18.0.10",
-"expo-notifications": "~0.32.16",
-"react-native-webview": "13.16.1",
-"react-native-maps": "^1.x",
-"react-leaflet": "^4.x",
-"axios": "^1.x"
-```
+Точные версии — в `package.json` (они регулярно уходят вперёд, дублировать
+здесь бессмысленно). Библиотеки, о которых стоит помнить, потому что их
+использование не всегда очевидно:
+
+- **react-native-gesture-handler** — вся механика атаки в бою (drag
+  существо → цель) построена на `Gesture.Pan()`, не на `onPress`
+  (см. `BattleScreen.js`, `makeAttackDrag`).
+- **react-native-svg** — карта-путь лестницы боссов (`LevelSelectScreen.js`).
+- **expo-screen-orientation** — landscape-lock включается ТОЛЬКО в
+  `BattleScreen.js`, остальные экраны — свободный поворот.
+- **react-native-webview** vs **react-leaflet** — карта рендерится по-разному
+  на мобайле и вебе (см. `MapScreen.js` / `.web.js`).
+- Нет отдельного стейт-менеджера — только React Context (`AuthContext.js`)
+  и локальный `useState` на экранах.
