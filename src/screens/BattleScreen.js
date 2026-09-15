@@ -13,6 +13,7 @@ import BoardSlot from '../components/battle/BoardSlot'
 import HandCard from '../components/battle/HandCard'
 import LogEntry from '../components/battle/LogEntry'
 import CardZoomModal from '../components/battle/CardZoomModal'
+import RewardModal from '../utils/RewardModal'
 
 const MANA_CAP = 10
 const EMPTY_DECK_COUNTS = { playerDeck: 0, playerDiscard: 0, bossDeck: 0, bossHand: 0, bossDiscard: 0 }
@@ -25,6 +26,10 @@ export default function BattleScreen({ route, navigation }) {
   const [battle, setBattle] = useState(null)
   const [resolved, setResolved] = useState(null)
   const [deckCounts, setDeckCounts] = useState(EMPTY_DECK_COUNTS)
+  // Награда за победу (27.08.2026) — карты, выданные ЭТИМ ответом сервера
+  // (пусто/не выставлено на любой другой момент, кроме убивающего удара по
+  // боссу) — показываем отдельной модалкой поверх обычного баннера победы
+  const [rewardCards, setRewardCards] = useState(null)
   const [loading, setLoading] = useState(true)
   const [acting, setActing] = useState(false)
   const [popups, setPopups] = useState([])
@@ -138,6 +143,7 @@ export default function BattleScreen({ route, navigation }) {
     setResolved(data.resolved)
     setDeckCounts(data.deckCounts)
     setSelectedAttacker(null)
+    if (data.rewardCards && data.rewardCards.length > 0) setRewardCards(data.rewardCards)
   }
 
   async function load() {
@@ -724,6 +730,8 @@ export default function BattleScreen({ route, navigation }) {
           </Pressable>
         </Pressable>
       </Modal>
+
+      <RewardModal cards={rewardCards} onClose={() => setRewardCards(null)} />
     </View>
   )
 }
