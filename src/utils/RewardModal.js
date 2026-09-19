@@ -25,12 +25,19 @@ export default function RewardModal({ cards, onClose }) {
             {cards.length === 1 ? 'Вам добавлена карта в коллекцию' : `Вам добавлено ${cards.length} карт в коллекцию`}
           </Text>
           <View style={s.list}>
-            {cards.map((card, i) => (
-              <View key={`${card.id}-${i}`} style={[s.row, { borderColor: RARITY[card.rarity].color }]}>
-                <Text style={[s.rowRarity, { color: RARITY[card.rarity].color }]}>{RARITY[card.rarity].label}</Text>
-                <Text style={s.rowName} numberOfLines={1}>{card.name}</Text>
-              </View>
-            ))}
+            {cards.map((card, i) => {
+              // Фоллбэк на COMMON при неизвестной редкости — как везде в
+              // cardArt.js, иначе экран победы падает при обращении к
+              // RARITY[card.rarity].color вместо мягкой деградации
+              // (найдено 19.09.2026)
+              const r = RARITY[card.rarity] || RARITY.COMMON
+              return (
+                <View key={`${card.id}-${i}`} style={[s.row, { borderColor: r.color }]}>
+                  <Text style={[s.rowRarity, { color: r.color }]}>{r.label}</Text>
+                  <Text style={s.rowName} numberOfLines={1}>{card.name}</Text>
+                </View>
+              )
+            })}
           </View>
           <Pressable style={({ pressed }) => [s.btn, pressed && { opacity: 0.8 }]} onPress={onClose}>
             <Text style={s.btnText}>Отлично!</Text>

@@ -191,7 +191,7 @@ export default function MapScreen({ navigation }) {
       })
       const data = await res.json()
       const list = Array.isArray(data)
-        ? data.filter(u => u.latitude && u.longitude).map(u =>
+        ? data.filter(u => typeof u.latitude === 'number' && typeof u.longitude === 'number').map(u =>
             me && u.id === me.id && me.avatarUrl && !u.avatarUrl
               ? { ...u, avatarUrl: me.avatarUrl }
               : u

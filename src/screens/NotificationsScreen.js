@@ -43,8 +43,13 @@ export default function NotificationsScreen({ navigation }) {
 
   async function handleTap(item) {
     if (!item.read) {
-      await notifApi.markRead(item.id).catch(() => {})
-      setItems(prev => prev.map(n => n.id === item.id ? { ...n, read: true } : n))
+      try {
+        await notifApi.markRead(item.id)
+        setItems(prev => prev.map(n => n.id === item.id ? { ...n, read: true } : n))
+      } catch (e) {
+        // Сеть/сервер подвели (напр. холодный старт Render) — не показываем
+        // прочитанным то, что реально не сохранилось на сервере
+      }
     }
     const data = item.data
     if (data?.productId) {
@@ -53,8 +58,12 @@ export default function NotificationsScreen({ navigation }) {
   }
 
   async function markAllRead() {
-    await notifApi.markAllRead().catch(() => {})
-    setItems(prev => prev.map(n => ({ ...n, read: true })))
+    try {
+      await notifApi.markAllRead()
+      setItems(prev => prev.map(n => ({ ...n, read: true })))
+    } catch (e) {
+      // см. комментарий в handleTap — не помечаем локально при сбое запроса
+    }
   }
 
   const unread = items.filter(n => !n.read).length

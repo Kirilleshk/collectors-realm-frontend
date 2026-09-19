@@ -39,7 +39,7 @@ function getTimeLeft(endTime) {
 export default function ProductDetailScreen({ route, navigation }) {
   const { id } = route.params
   const { user, token } = useAuth()
-  const isAdmin = user?.roles?.includes('ADMIN')
+  const isStaff = user?.roles?.some(r => r === 'ADMIN' || r === 'MODERATOR')
   const [item, setItem] = useState(null)
   const [loading, setLoading] = useState(true)
   const [addingToWishlist, setAddingToWishlist] = useState(false)
@@ -108,7 +108,7 @@ export default function ProductDetailScreen({ route, navigation }) {
     if (url) {
       const newImages = [...(item.images || []), { url, order: (item.images || []).length }]
       try {
-        await fetch(`https://collectors-realm-backend.onrender.com/api/products/${id}`, {
+        const res = await fetch(`https://collectors-realm-backend.onrender.com/api/products/${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({
@@ -116,6 +116,7 @@ export default function ProductDetailScreen({ route, navigation }) {
             imageUrls: newImages.map(i => i.url),
           }),
         })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
         setItem(prev => ({ ...prev, images: newImages }))
       } catch (e) { Alert.alert('Ошибка', 'Не удалось сохранить фото') }
     }
@@ -212,7 +213,7 @@ export default function ProductDetailScreen({ route, navigation }) {
             </Text>
           </View>
         )}
-        {isAdmin && (
+        {isStaff && (
           <TouchableOpacity style={s.photoBtn} onPress={handlePickPhoto} disabled={uploading}>
             {uploading
               ? <ActivityIndicator color="white" size="small" />
@@ -356,7 +357,7 @@ export default function ProductDetailScreen({ route, navigation }) {
                   style={s.bidTextInput}
                   value={bidAmount}
                   onChangeText={setBidAmount}
-                  placeholder={`Мин. ${((auctionBids[0]?.amount || 0) + (item.priceStep || 0) || item.startPrice || 0).toLocaleString('ru')} ₽`}
+                  placeholder={`Мин. ${(auctionBids[0]?.amount > 0 ? auctionBids[0].amount + (item.priceStep || 0) : (item.startPrice || 0)).toLocaleString('ru')} ₽`}
                   placeholderTextColor={colors.text2}
                   keyboardType="numeric"
                 />

@@ -368,6 +368,11 @@ export default function BattleScreen({ route, navigation }) {
     setResolved(null)
     setDisplayBoard(null)
     setEffects({})
+    // applyData не сбрасывает rewardCards сам (пустой массив от свежего боя
+    // не перетирает прошлое значение, см. applyData) — без явного сброса тут
+    // награда за предыдущего босса могла остаться на экране нового боя
+    // (найдено 19.09.2026)
+    setRewardCards(null)
     try {
       const res = await game.startBattle(rematchBossId)
       applyData(res.data)

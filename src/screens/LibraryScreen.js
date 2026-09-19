@@ -51,6 +51,12 @@ export default function LibraryScreen({ navigation }) {
   const [suggestions, setSuggestions] = useState([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const suggestTimer = useRef(null)
+  // Счётчики запросов — если ответ на устаревший запрос (поиск/автодополнение)
+  // приходит позже более нового, его результат больше не должен перетирать
+  // экран (найдено 19.09.2026: дебаунс отменяет только таймер, а не уже
+  // улетевший в сеть запрос — два запроса могут ответить не по порядку)
+  const searchReqId = useRef(0)
+  const suggestReqId = useRef(0)
 
   useEffect(() => { loadRecent() }, [])
 
@@ -59,8 +65,10 @@ export default function LibraryScreen({ navigation }) {
     const q = query.trim()
     if (q.length < 2) { setSuggestions([]); return }
     suggestTimer.current = setTimeout(async () => {
+      const reqId = ++suggestReqId.current
       try {
         const res = await library.getSuggestions(q)
+        if (reqId !== suggestReqId.current) return // пришёл ответ на устаревший запрос
         setSuggestions(Array.isArray(res.data) ? res.data : [])
         setShowSuggestions(true)
       } catch (e) { /* автодополнение не критично, тихо пропускаем */ }
@@ -95,8 +103,10 @@ export default function LibraryScreen({ navigation }) {
     setError(null)
     setArticle(null)
     setDisambiguation(null)
+    const reqId = ++searchReqId.current
     try {
       const res = await library.getArticle(q)
+      if (reqId !== searchReqId.current) return // более новый поиск уже запущен, этот ответ устарел
       if (res.data?.disambiguation) {
         // Персонажи-тёзки — под этим именем известно несколько разных
         // героев, показываем выбор вместо статьи (Марк, 12.08, "Атрей")
@@ -106,9 +116,10 @@ export default function LibraryScreen({ navigation }) {
         loadRecent()
       }
     } catch (e) {
+      if (reqId !== searchReqId.current) return
       setError(e?.response?.data?.error || 'Не удалось найти статью. Попробуйте ещё раз.')
     }
-    setLoading(false)
+    if (reqId === searchReqId.current) setLoading(false)
   }
 
   return (

@@ -205,11 +205,18 @@ export function hasActivatableAbility(card) {
   return card?.effectType === 'stealth' || card?.effectType === 'stealth_buff'
 }
 
-export function auraAttackBonus(board) {
+// recipientFaction — фракция карты-получателя. Зеркалит фикс от 10.07.2026
+// на бэкенде (cards.routes.ts): аура "усиливает всех Чужих"/"всех Хищников"
+// не должна задевать карты другой фракции. До 19.09.2026 этот параметр
+// принимался вызывающим кодом (BattleScreen.js), но здесь тихо игнорировался —
+// отображаемая сила удара при смешанной колоде была завышена и не совпадала
+// с реальным уроном, который считает бэкенд.
+export function auraAttackBonus(board, recipientFaction) {
   let bonus = 0
   for (const c of board || []) {
     if (!c || c.currentHealth <= 0 || !c.card) continue
     if (['buff_allies', 'acid_blood_buff', 'stealth_buff'].includes(c.card.effectType)) {
+      if (c.card.faction && recipientFaction && c.card.faction !== recipientFaction) continue
       bonus += c.card.effectValue ?? 1
     }
   }

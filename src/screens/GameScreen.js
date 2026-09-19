@@ -50,6 +50,14 @@ export default function GameScreen() {
     return arr
   }, [userCards, sortBy])
 
+  // FlatList numColumns=2 + card {flex:1}: при нечётном числе карт последняя
+  // растягивалась на всю строку (единственный flex:1 элемент в неполном ряду)
+  // вместо выравнивания по левой колонке — добавляем невидимый "распорок"
+  // вторым элементом ряда (найдено 19.09.2026)
+  const gridData = useMemo(() => (
+    sortedCards.length % 2 === 1 ? [...sortedCards, { id: '__spacer__', __spacer: true }] : sortedCards
+  ), [sortedCards])
+
   async function load() {
     try {
       const res = await game.getMyCards()
@@ -102,7 +110,7 @@ export default function GameScreen() {
       <View pointerEvents="none" style={s.backdropOverlay} />
       <BrandHeader insets={insets} />
       <FlatList
-        data={sortedCards}
+        data={gridData}
         keyExtractor={uc => uc.id}
         numColumns={2}
         columnWrapperStyle={{ gap: 12 }}
@@ -156,6 +164,7 @@ export default function GameScreen() {
           </View>
         }
         renderItem={({ item }) => {
+          if (item.__spacer) return <View style={{ flex: 1, marginBottom: 12 }} />
           const card = item.card
           const r = RARITY[card.rarity] || RARITY.COMMON
           const frame = rarityFrameStyle(card.rarity)

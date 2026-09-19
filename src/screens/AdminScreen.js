@@ -6,7 +6,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuth } from '../AuthContext'
 import { colors } from '../theme'
-import { notifications as notifApi, releases as releasesApi, support as supportApi, users, game } from '../api'
+import { notifications as notifApi, releases as releasesApi, support as supportApi, users, game, products as productsApi } from '../api'
 import { pickAndUploadPhoto } from '../utils/uploadPhoto'
 import SmartInput from '../utils/SmartInput'
 import { track } from '../utils/analytics'
@@ -226,9 +226,12 @@ export default function AdminScreen() {
   async function loadUsers() {
     setUsersLoading(true)
     try {
-      const res = await fetch(`${API}/users`, { headers: { Authorization: `Bearer ${token}` } })
-      const data = await res.json()
-      setAllUsers(Array.isArray(data) ? data : [])
+      // users.getAll() (axios, api.js) вместо сырого fetch — иначе запрос
+      // не проходит через перехватчик, который разлогинивает при
+      // просроченном токене (без него истёкший токен молча давал пустой
+      // экран вместо возврата на логин, найдено 19.09.2026)
+      const res = await users.getAll()
+      setAllUsers(Array.isArray(res.data) ? res.data : [])
     } catch (e) {}
     setUsersLoading(false)
   }
@@ -267,11 +270,7 @@ export default function AdminScreen() {
 
   async function handleSetBadge(userId, badge) {
     try {
-      await fetch(`${API}/users/${userId}/badge`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ badge }),
-      })
+      await users.setBadge(userId, badge)
       loadUsers()
     } catch (e) { Alert.alert('Ошибка', 'Не удалось изменить бейдж') }
   }
@@ -279,10 +278,15 @@ export default function AdminScreen() {
   async function load() {
     setLoading(true)
     try {
-      const res = await fetch(`${API}/products`, { headers: { Authorization: `Bearer ${token}` } })
-      const data = await res.json()
+      const res = await productsApi.getAll()
+      const data = res.data
       setItems(Array.isArray(data) ? data : (data.products || []))
-    } catch (e) {}
+    } catch (e) {
+      // Раньше ошибка (403/500/цепочка Render cold-start) молча превращалась
+      // в "Товаров нет" — неотличимо от реально пустого каталога, админ мог
+      // подумать, что каталог стёрся (найдено 19.09.2026)
+      Alert.alert('Ошибка', 'Не удалось загрузить товары')
+    }
     setLoading(false)
   }
 
@@ -302,7 +306,13 @@ export default function AdminScreen() {
       isAuction: item.isAuction || false,
       startPrice: String(item.startPrice || ''),
       priceStep: String(item.priceStep || ''),
-      auctionDays: '1',
+      // null (не '1'!) — значит «срок не трогали», сохраняем текущий
+      // auctionEndTime как есть. Раньше здесь стояло '1', из-за чего кнопка
+      // «1 день» ложно подсвечивалась активной у любого аукциона независимо
+      // от реального остатка, а нажатие именно на неё ничего не сохраняло —
+      // код не мог отличить «админ явно выбрал 1 день» от «не трогал вообще»
+      // (найдено 19.09.2026)
+      auctionDays: null,
     })
     setPhotos(item.images?.map(i => i.url) || [])
     setModal(true)
@@ -336,11 +346,11 @@ export default function AdminScreen() {
         startPrice: form.isAuction ? Number(form.startPrice) || 0 : null,
         priceStep: form.isAuction ? Number(form.priceStep) || 0 : null,
         auctionEndTime: form.isAuction ? (
-          editItem?.auctionEndTime && form.auctionDays === '1'
+          editItem?.auctionEndTime && !form.auctionDays
             ? editItem.auctionEndTime
             : (() => {
                 const d = new Date()
-                d.setDate(d.getDate() + parseInt(form.auctionDays))
+                d.setDate(d.getDate() + parseInt(form.auctionDays || '1'))
                 return d.toISOString()
               })()
         ) : null,
@@ -398,8 +408,17 @@ export default function AdminScreen() {
     Alert.alert('Удалить?', 'Нельзя отменить', [
       { text: 'Отмена', style: 'cancel' },
       { text: 'Удалить', style: 'destructive', onPress: async () => {
-        await fetch(`${API}/products/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
-        load()
+        try {
+          const res = await fetch(`${API}/products/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
+          const data = await res.json().catch(() => ({}))
+          if (!res.ok) {
+            Alert.alert('Ошибка', data.error || `Код ${res.status}`)
+            return
+          }
+          load()
+        } catch (e) {
+          Alert.alert('Ошибка сети', e.message)
+        }
       }}
     ])
   }
@@ -620,15 +639,24 @@ export default function AdminScreen() {
             {/* Активность по дням */}
             <View style={s.analyticsBlock}>
               <Text style={s.analyticsTitle}>Активность (7 дней)</Text>
-              {analyticsSummary.dailyStats?.map(d => (
-                <View key={d.date} style={s.analyticsRow}>
-                  <Text style={{ color: colors.text2 }}>{d.date}</Text>
-                  <View style={{ flex: 1, marginHorizontal: 10 }}>
-                    <View style={{ height: 8, borderRadius: 4, backgroundColor: colors.accent, width: `${Math.min(100, (d.count / (analyticsSummary.dailyStats[0]?.count || 1)) * 100)}%` }} />
+              {/* Нормализуем по МАКСИМУМУ за окно, не по dailyStats[0] — это
+                  просто самый свежий день (бэкенд сортирует по дате DESC), а
+                  не обязательно самый активный. Раньше неполный текущий день
+                  (мало событий) мог занизить эталон и показать все остальные
+                  дни, включая реальный пик, тем же полным 100%-баром
+                  (найдено 19.09.2026) */}
+              {(() => {
+                const maxCount = Math.max(1, ...(analyticsSummary.dailyStats || []).map(d => d.count))
+                return analyticsSummary.dailyStats?.map(d => (
+                  <View key={d.date} style={s.analyticsRow}>
+                    <Text style={{ color: colors.text2 }}>{d.date}</Text>
+                    <View style={{ flex: 1, marginHorizontal: 10 }}>
+                      <View style={{ height: 8, borderRadius: 4, backgroundColor: colors.accent, width: `${Math.min(100, (d.count / maxCount) * 100)}%` }} />
+                    </View>
+                    <Text style={{ color: colors.accent, fontWeight: '700' }}>{d.count}</Text>
                   </View>
-                  <Text style={{ color: colors.accent, fontWeight: '700' }}>{d.count}</Text>
-                </View>
-              ))}
+                ))
+              })()}
             </View>
           </ScrollView>
         )
