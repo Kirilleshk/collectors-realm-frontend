@@ -1,21 +1,21 @@
 import React, { useState, useEffect } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView, Modal, Image, Alert } from 'react-native'
+import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native'
 import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet'
 import L from 'leaflet'
-import * as Location from 'expo-location'
 import { useAuth } from '../AuthContext'
 import { colors } from '../theme'
 import ScreenBackground from '../components/ScreenBackground'
 import BrandHeader from '../components/BrandHeader'
+import MapFilterBar from '../components/map/MapFilterBar'
+import MapUserCardModal from '../components/map/MapUserCardModal'
+import { mapStyles as s } from '../components/map/mapStyles'
+import { roleMap, useMapUsers, useNearbyLocation, filterMapUsers } from '../utils/mapShared'
 
-const API = 'https://collectors-realm-backend.onrender.com/api'
-
-const roleMap = {
-  COLLECTOR: { label: 'Коллекционер', icon: '🗿', color: '#4A90D9' },
-  MASTER_REPAIR: { label: 'Мастер по ремонту', icon: '🔧', color: '#E04E28' },
-  CUSTOMIZER: { label: 'Кастомизатор', icon: '🎨', color: '#AF52DE' },
-  DIORAMA: { label: 'Мастер диорам', icon: '🏔', color: '#34C759' },
-}
+// Веб-карта — react-leaflet, прямой DOM-рендер (не iframe, см. комментарий
+// у ensureLeafletCss). Общая логика (загрузка/фильтр пользователей, «Поблизости»,
+// панель фильтров, карточка пользователя, стили) — в mapShared.js и
+// src/components/map/, чтобы не дублировать с мобильной MapScreen.js
+// (см. чистку техдолга 19.09.2026).
 
 // Найдено 19.08 при живой проверке: анкета коллекционера (10.08) разрешила
 // bio до 3000 символов, а карточка пользователя на карте выводила его целиком
@@ -57,87 +57,19 @@ function buildMeIcon() {
   })
 }
 
-function haversine(lat1, lon1, lat2, lon2) {
-  const R = 6371
-  const dLat = (lat2 - lat1) * Math.PI / 180
-  const dLon = (lon2 - lon1) * Math.PI / 180
-  const a = Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-}
-
 export default function MapScreen({ navigation }) {
   const { token, user: me } = useAuth()
-  const [users, setUsers] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [slowLoad, setSlowLoad] = useState(false)
-  const [error, setError] = useState(null)
+  const { users, loading, slowLoad, error, loadUsers } = useMapUsers(token, me)
+  const { nearbyRadius, myLocation, gettingLocation, toggleNearby, clearNearby } = useNearbyLocation()
   const [filter, setFilter] = useState(null)
   const [selected, setSelected] = useState(null)
-  const [nearbyRadius, setNearbyRadius] = useState(null)
-  const [myLocation, setMyLocation] = useState(null)
-  const [gettingLocation, setGettingLocation] = useState(false)
 
   useEffect(() => {
     ensureLeafletCss()
     loadUsers()
   }, [])
 
-  async function loadUsers() {
-    setError(null)
-    setLoading(true)
-    const slowTimer = setTimeout(() => setSlowLoad(true), 8000)
-    try {
-      const res = await fetch(`${API}/users`, {
-        headers: { Authorization: `Bearer ${token}` },
-        signal: AbortSignal.timeout ? AbortSignal.timeout(65000) : undefined,
-      })
-      const data = await res.json()
-      const list = Array.isArray(data)
-        ? data.filter(u => typeof u.latitude === 'number' && typeof u.longitude === 'number').map(u =>
-            me && u.id === me.id && me.avatarUrl && !u.avatarUrl
-              ? { ...u, avatarUrl: me.avatarUrl }
-              : u
-          )
-        : []
-      setUsers(list)
-    } catch (e) {
-      setError('Не удалось загрузить карту')
-    }
-    clearTimeout(slowTimer)
-    setSlowLoad(false)
-    setLoading(false)
-  }
-
-  async function toggleNearby(radius) {
-    if (nearbyRadius === radius) {
-      setNearbyRadius(null)
-      setMyLocation(null)
-      return
-    }
-    setGettingLocation(true)
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync()
-      if (status !== 'granted') {
-        Alert.alert('Нужно разрешение', 'Разрешите доступ к геолокации в настройках')
-        setGettingLocation(false)
-        return
-      }
-      const loc = await Location.getCurrentPositionAsync({})
-      setMyLocation({ latitude: loc.coords.latitude, longitude: loc.coords.longitude })
-      setNearbyRadius(radius)
-    } catch (e) {
-      Alert.alert('Ошибка геолокации', e.message)
-    }
-    setGettingLocation(false)
-  }
-
-  const filtered = users
-    .filter(u => !filter || u.roles?.includes(filter))
-    .filter(u => {
-      if (!nearbyRadius || !myLocation) return true
-      return haversine(myLocation.latitude, myLocation.longitude, u.latitude, u.longitude) <= nearbyRadius
-    })
+  const filtered = filterMapUsers(users, filter, nearbyRadius, myLocation)
 
   if (loading) return (
     <View style={s.center}>
@@ -169,58 +101,19 @@ export default function MapScreen({ navigation }) {
   const centerLng = myLocation ? myLocation.longitude : 37.6173
   const zoom = myLocation && nearbyRadius ? (nearbyRadius <= 5 ? 13 : 11) : 5
 
-  const FilterBar = () => (
-    <View style={s.filtersWrap}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}>
-        <TouchableOpacity style={[s.filterBtn, !filter && s.filterBtnActive]} onPress={() => setFilter(null)}>
-          <Text style={[s.filterText, !filter && s.filterTextActive]}>Все ({users.length})</Text>
-        </TouchableOpacity>
-        {Object.entries(roleMap).map(([key, r]) => {
-          const count = users.filter(u => u.roles?.includes(key)).length
-          const active = filter === key
-          return (
-            <TouchableOpacity key={key} style={[s.filterBtn, active && { backgroundColor: `${r.color}20`, borderColor: r.color }]} onPress={() => setFilter(active ? null : key)}>
-              <Text style={{ fontSize: 14 }}>{r.icon}</Text>
-              <Text style={[s.filterText, active && { color: r.color }]}>{r.label} ({count})</Text>
-            </TouchableOpacity>
-          )
-        })}
-      </ScrollView>
-
-      <View style={s.nearbyRow}>
-        <Text style={s.nearbyLabel}>
-          {gettingLocation ? '📡 Определяем...' : '📍 Поблизости:'}
-        </Text>
-        {gettingLocation ? (
-          <ActivityIndicator color={colors.accent} size="small" />
-        ) : (
-          <>
-            {[5, 20].map(r => (
-              <TouchableOpacity
-                key={r}
-                style={[s.radiusBtn, nearbyRadius === r && s.radiusBtnActive]}
-                onPress={() => toggleNearby(r)}
-              >
-                <Text style={[s.radiusText, nearbyRadius === r && s.radiusTextActive]}>
-                  {r} км {nearbyRadius === r ? `(${filtered.length})` : ''}
-                </Text>
-              </TouchableOpacity>
-            ))}
-            {nearbyRadius && (
-              <TouchableOpacity style={s.radiusClear} onPress={() => { setNearbyRadius(null); setMyLocation(null) }}>
-                <Text style={s.radiusClearText}>✕</Text>
-              </TouchableOpacity>
-            )}
-          </>
-        )}
-      </View>
-    </View>
-  )
-
   return (
     <ScreenBackground style={s.wrap}>
       <BrandHeader />
-      <FilterBar />
+      <MapFilterBar
+        users={users}
+        filter={filter}
+        setFilter={setFilter}
+        nearbyRadius={nearbyRadius}
+        gettingLocation={gettingLocation}
+        toggleNearby={toggleNearby}
+        clearNearby={clearNearby}
+        filteredCount={filtered.length}
+      />
 
       {users.length === 0 ? (
         <View style={s.center}>
@@ -284,91 +177,12 @@ export default function MapScreen({ navigation }) {
         </View>
       )}
 
-      {/* Карточка пользователя */}
-      <Modal visible={!!selected} transparent animationType="slide" onRequestClose={() => setSelected(null)}>
-        <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setSelected(null)}>
-          <View style={s.card}>
-          <ScrollView style={s.cardScroll} contentContainerStyle={{ gap: 12 }}>
-            <View style={s.cardHeader}>
-              {selected?.avatarUrl ? (
-                <Image source={{ uri: selected.avatarUrl }} style={s.avatar} />
-              ) : (
-                <View style={s.avatarPlaceholder}>
-                  <Text style={s.avatarText}>{(selected?.name || '?')[0].toUpperCase()}</Text>
-                </View>
-              )}
-              <View style={{ flex: 1 }}>
-                <Text style={s.cardName}>{selected?.name}</Text>
-                {selected?.city ? <Text style={s.cardCity}>📍 {selected.city}</Text> : null}
-                {myLocation && selected?.latitude ? (
-                  <Text style={s.cardDist}>
-                    📏 {haversine(myLocation.latitude, myLocation.longitude, selected.latitude, selected.longitude).toFixed(1)} км от вас
-                  </Text>
-                ) : null}
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
-                  {(selected?.roles || []).map(r => {
-                    const role = roleMap[r]
-                    return role ? (
-                      <View key={r} style={[s.roleBadge, { backgroundColor: `${role.color}20`, borderColor: `${role.color}50` }]}>
-                        <Text style={{ fontSize: 11, color: role.color, fontWeight: '700' }}>{role.icon} {role.label}</Text>
-                      </View>
-                    ) : null
-                  })}
-                </View>
-              </View>
-            </View>
-            {selected?.bio ? <Text style={s.cardBio} numberOfLines={6} ellipsizeMode="tail">{selected.bio}</Text> : null}
-          </ScrollView>
-            <TouchableOpacity
-              style={s.profileBtn}
-              onPress={() => {
-                setSelected(null)
-                navigation.navigate('UserProfileMap', { userId: selected.id })
-              }}
-            >
-              <Text style={s.profileBtnText}>👤 Открыть профиль</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={s.closeBtn} onPress={() => setSelected(null)}>
-              <Text style={s.closeBtnText}>Закрыть</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+      <MapUserCardModal
+        selected={selected}
+        onClose={() => setSelected(null)}
+        myLocation={myLocation}
+        onOpenProfile={(u) => { setSelected(null); navigation.navigate('UserProfileMap', { userId: u.id }) }}
+      />
     </ScreenBackground>
   )
 }
-
-const s = StyleSheet.create({
-  wrap: { flex: 1 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.bg, gap: 12 },
-  filtersWrap: { borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface },
-  filters: { paddingVertical: 10 },
-  filterBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-  filterBtnActive: { backgroundColor: `${colors.accent}20`, borderColor: colors.accent },
-  filterText: { fontSize: 13, color: colors.text2, fontWeight: '500' },
-  filterTextActive: { color: colors.accent },
-  nearbyRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, borderTopWidth: 1, borderTopColor: colors.border },
-  nearbyLabel: { fontSize: 12, color: colors.text2, fontWeight: '600' },
-  radiusBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface2 },
-  radiusBtnActive: { borderColor: colors.accent, backgroundColor: `${colors.accent}20` },
-  radiusText: { fontSize: 12, color: colors.text2, fontWeight: '600' },
-  radiusTextActive: { color: colors.accent },
-  radiusClear: { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.surface2, justifyContent: 'center', alignItems: 'center' },
-  radiusClearText: { fontSize: 11, color: colors.text2 },
-  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
-  card: { backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, gap: 12, maxHeight: '80%' },
-  cardScroll: { flexGrow: 0 },
-  cardHeader: { flexDirection: 'row', gap: 14, alignItems: 'flex-start' },
-  avatar: { width: 60, height: 60, borderRadius: 16 },
-  avatarPlaceholder: { width: 60, height: 60, borderRadius: 16, backgroundColor: `${colors.blue}30`, justifyContent: 'center', alignItems: 'center' },
-  avatarText: { fontSize: 24, fontWeight: '800', color: colors.blue },
-  cardName: { fontSize: 18, fontWeight: '800', color: colors.text },
-  cardCity: { fontSize: 13, color: colors.text2, marginTop: 2 },
-  cardDist: { fontSize: 12, color: colors.accent, fontWeight: '600', marginTop: 2 },
-  roleBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, borderWidth: 1 },
-  cardBio: { fontSize: 14, color: colors.text2, lineHeight: 20 },
-  profileBtn: { backgroundColor: colors.accent, borderRadius: 12, padding: 14, alignItems: 'center' },
-  profileBtnText: { color: 'white', fontWeight: '700', fontSize: 15 },
-  closeBtn: { backgroundColor: colors.surface2, borderRadius: 12, padding: 14, alignItems: 'center' },
-  closeBtnText: { color: colors.text2, fontWeight: '600', fontSize: 15 },
-})
