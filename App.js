@@ -12,7 +12,6 @@ import { colors, getTabBarStyle } from './src/theme'
 import * as Notifications from 'expo-notifications'
 import OnboardingTour from './src/utils/OnboardingTour'
 import LocationRequiredModal from './src/utils/LocationRequiredModal'
-import NotReadyModal from './src/utils/NotReadyModal'
 import { setAnalyticsUser, track } from './src/utils/analytics'
 
 import LoginScreen from './src/screens/LoginScreen'
@@ -26,10 +25,7 @@ import MapScreen from './src/screens/MapScreen'
 import UserProfileScreen from './src/screens/UserProfileScreen'
 import MyItemsScreen from './src/screens/MyItemsScreen'
 import ReleasesScreen from './src/screens/ReleasesScreen'
-import GameScreen from './src/screens/GameScreen'
-import LevelSelectScreen from './src/screens/LevelSelectScreen'
-import BattleScreen from './src/screens/BattleScreen'
-import LibraryScreen from './src/screens/LibraryScreen'
+import NotReadyScreen from './src/screens/NotReadyScreen'
 
 // Флаг видимости карточной игры — поставить false, чтобы мгновенно скрыть вкладку
 const SHOW_GAME = true
@@ -54,7 +50,18 @@ function ShopStack() {
       <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: 'Уведомления' }} />
       <Stack.Screen name="UserProfile" component={UserProfileScreen} options={{ title: 'Профиль' }} />
       <Stack.Screen name="Releases" component={ReleasesScreen} options={{ title: 'Анонсы' }} />
-      <Stack.Screen name="Library" component={LibraryScreen} options={{ headerShown: false }} />
+      {/* Библиотека знаний приостановлена (решение Марка 20.09.2026) — вместо
+          реального LibraryScreen зарегистрирована заглушка "в разработке"
+          прямо на уровне роута (не перехват клика), см. NotReadyScreen.js */}
+      <Stack.Screen
+        name="Library"
+        component={NotReadyScreen}
+        options={{ title: 'Библиотека знаний' }}
+        initialParams={{
+          title: 'Библиотека знаний в разработке',
+          text: 'Этот раздел пока не доделан — мы приостановили работу над ним, чтобы сосредоточиться на основном маркетплейсе. Скоро вернёмся к нему!',
+        }}
+      />
     </Stack.Navigator>
   )
 }
@@ -72,16 +79,22 @@ function MapStack() {
   )
 }
 
+// Карточная игра приостановлена (решение Марка 20.09.2026) — вместо реальных
+// GameScreen/LevelSelectScreen/BattleScreen зарегистрирована одна заглушка
+// "в разработке" прямо на уровне роута, так что попасть внутрь нельзя никаким
+// путём (сами экраны остаются в src/screens/, просто временно не подключены).
 function GameStack() {
   return (
-    <Stack.Navigator screenOptions={{
-      headerStyle: { backgroundColor: colors.surface },
-      headerTintColor: colors.text,
-      headerTitleStyle: { fontWeight: '700' },
-    }}>
-      <Stack.Screen name="GameMain" component={GameScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="LevelSelect" component={LevelSelectScreen} options={{ title: 'Выбор уровня' }} />
-      <Stack.Screen name="Battle" component={BattleScreen} options={{ headerShown: false }} />
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen
+        name="GameMain"
+        component={NotReadyScreen}
+        initialParams={{
+          standalone: true,
+          title: 'Карточная игра в разработке',
+          text: 'Этот раздел пока не доделан — мы приостановили работу над ним, чтобы сосредоточиться на основном маркетплейсе. Скоро вернёмся к нему!',
+        }}
+      />
     </Stack.Navigator>
   )
 }
@@ -90,11 +103,7 @@ function MainTabs() {
   const insets = useSafeAreaInsets()
   const { user } = useAuth()
   const isAdmin = user?.roles?.includes('ADMIN') || user?.roles?.includes('ANALYTICS') || user?.roles?.includes('MODERATOR')
-  // Раздел "Игра" приостановлен (решение Марка 20.09.2026) — вместо перехода
-  // показываем заглушку "в разработке", сам таб не скрываем.
-  const [gameNotReady, setGameNotReady] = useState(false)
   return (
-    <>
     <Tab.Navigator screenOptions={({ route }) => ({
       tabBarIcon: ({ focused }) => (
         route.name === 'Моё'
@@ -112,27 +121,10 @@ function MainTabs() {
       <Tab.Screen name="Магазин" component={ShopStack} options={{ headerShown: false }} listeners={{ focus: () => track('screen_view', { screen: 'Shop' }) }} />
       <Tab.Screen name="Карта" component={MapStack} options={{ headerShown: false }} listeners={{ focus: () => track('screen_view', { screen: 'Map' }) }} />
       <Tab.Screen name="Моё" component={MyItemsScreen} options={{ headerShown: false }} listeners={{ focus: () => track('screen_view', { screen: 'MyItems' }) }} />
-      {SHOW_GAME && (
-        <Tab.Screen
-          name="Игра"
-          component={GameStack}
-          options={{ headerShown: false }}
-          listeners={{
-            focus: () => track('screen_view', { screen: 'Game' }),
-            tabPress: e => { e.preventDefault(); setGameNotReady(true) },
-          }}
-        />
-      )}
+      {SHOW_GAME && <Tab.Screen name="Игра" component={GameStack} options={{ headerShown: false }} listeners={{ focus: () => track('screen_view', { screen: 'Game' }) }} />}
       {isAdmin && <Tab.Screen name="Админ" component={AdminScreen} options={{ headerShown: false }} />}
       <Tab.Screen name="Профиль" component={ProfileScreen} options={{ headerShown: false }} listeners={{ focus: () => track('screen_view', { screen: 'Profile' }) }} />
     </Tab.Navigator>
-    <NotReadyModal
-      visible={gameNotReady}
-      onClose={() => setGameNotReady(false)}
-      title="Карточная игра в разработке"
-      text="Этот раздел пока не доделан — мы приостановили работу над ним, чтобы сосредоточиться на основном маркетплейсе. Скоро вернёмся к нему!"
-    />
-    </>
   )
 }
 

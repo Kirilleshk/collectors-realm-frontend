@@ -87,7 +87,7 @@ export default function OnboardingTour({ navigationRef, showGame, isAdmin, onFin
               </Pressable>
             )}
             <Pressable style={({ pressed }) => [s.nextBtn, pressed && { opacity: 0.85 }]} onPress={e => { e.stopPropagation?.(); goNext() }}>
-              <Text style={s.nextText}>{isLast ? 'Начать игру!' : 'Далее'}</Text>
+              <Text style={s.nextText}>{isLast ? 'Начать!' : 'Далее'}</Text>
             </Pressable>
           </View>
         </View>
