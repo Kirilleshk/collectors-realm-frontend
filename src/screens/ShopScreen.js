@@ -5,6 +5,7 @@ import { products } from '../api'
 import { colors } from '../theme'
 import ScreenBackground from '../components/ScreenBackground'
 import BrandHeader from '../components/BrandHeader'
+import NotReadyModal from '../utils/NotReadyModal'
 
 // На узком мобильном экране — 2 колонки как раньше; на широком вебе больше
 // колонок, чтобы карточка не растягивалась на пол-окна (фикс "растянутых карточек").
@@ -39,6 +40,7 @@ export default function ShopScreen({ navigation }) {
   const numColumns = getNumColumns(width)
   const cardWidth = (width - 12 * (numColumns + 1)) / numColumns
 
+  const [libraryNotReady, setLibraryNotReady] = useState(false)
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [slowLoad, setSlowLoad] = useState(false)
@@ -144,8 +146,10 @@ export default function ShopScreen({ navigation }) {
           <Text style={s.announceBannerText}>📅 Анонсы новых фигурок →</Text>
         </TouchableOpacity>
 
-        {/* Кнопка Библиотека знаний — открытая книжка с контуром, не в кружке */}
-        <TouchableOpacity style={s.libraryIconBtn} onPress={() => navigation.navigate('Library')}>
+        {/* Кнопка Библиотека знаний — открытая книжка с контуром, не в кружке.
+            Раздел приостановлен (решение Марка 20.09.2026) — вместо перехода
+            показываем заглушку "в разработке". */}
+        <TouchableOpacity style={s.libraryIconBtn} onPress={() => setLibraryNotReady(true)}>
           <Text style={s.libraryIcon}>📖</Text>
           <Text style={s.libraryIconLabel}>Библиотека</Text>
         </TouchableOpacity>
@@ -268,6 +272,12 @@ export default function ShopScreen({ navigation }) {
             </TouchableOpacity>
           )
         }}
+      />
+      <NotReadyModal
+        visible={libraryNotReady}
+        onClose={() => setLibraryNotReady(false)}
+        title="Библиотека знаний в разработке"
+        text="Этот раздел пока не доделан — мы приостановили работу над ним, чтобы сосредоточиться на основном маркетплейсе. Скоро вернёмся к нему!"
       />
     </ScreenBackground>
   )

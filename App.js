@@ -10,9 +10,9 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { AuthProvider, useAuth } from './src/AuthContext'
 import { colors, getTabBarStyle } from './src/theme'
 import * as Notifications from 'expo-notifications'
-import WhatsNewModal from './src/utils/WhatsNewModal'
 import OnboardingTour from './src/utils/OnboardingTour'
 import LocationRequiredModal from './src/utils/LocationRequiredModal'
+import NotReadyModal from './src/utils/NotReadyModal'
 import { setAnalyticsUser, track } from './src/utils/analytics'
 
 import LoginScreen from './src/screens/LoginScreen'
@@ -90,7 +90,11 @@ function MainTabs() {
   const insets = useSafeAreaInsets()
   const { user } = useAuth()
   const isAdmin = user?.roles?.includes('ADMIN') || user?.roles?.includes('ANALYTICS') || user?.roles?.includes('MODERATOR')
+  // Раздел "Игра" приостановлен (решение Марка 20.09.2026) — вместо перехода
+  // показываем заглушку "в разработке", сам таб не скрываем.
+  const [gameNotReady, setGameNotReady] = useState(false)
   return (
+    <>
     <Tab.Navigator screenOptions={({ route }) => ({
       tabBarIcon: ({ focused }) => (
         route.name === 'Моё'
@@ -108,10 +112,27 @@ function MainTabs() {
       <Tab.Screen name="Магазин" component={ShopStack} options={{ headerShown: false }} listeners={{ focus: () => track('screen_view', { screen: 'Shop' }) }} />
       <Tab.Screen name="Карта" component={MapStack} options={{ headerShown: false }} listeners={{ focus: () => track('screen_view', { screen: 'Map' }) }} />
       <Tab.Screen name="Моё" component={MyItemsScreen} options={{ headerShown: false }} listeners={{ focus: () => track('screen_view', { screen: 'MyItems' }) }} />
-      {SHOW_GAME && <Tab.Screen name="Игра" component={GameStack} options={{ headerShown: false }} listeners={{ focus: () => track('screen_view', { screen: 'Game' }) }} />}
+      {SHOW_GAME && (
+        <Tab.Screen
+          name="Игра"
+          component={GameStack}
+          options={{ headerShown: false }}
+          listeners={{
+            focus: () => track('screen_view', { screen: 'Game' }),
+            tabPress: e => { e.preventDefault(); setGameNotReady(true) },
+          }}
+        />
+      )}
       {isAdmin && <Tab.Screen name="Админ" component={AdminScreen} options={{ headerShown: false }} />}
       <Tab.Screen name="Профиль" component={ProfileScreen} options={{ headerShown: false }} listeners={{ focus: () => track('screen_view', { screen: 'Profile' }) }} />
     </Tab.Navigator>
+    <NotReadyModal
+      visible={gameNotReady}
+      onClose={() => setGameNotReady(false)}
+      title="Карточная игра в разработке"
+      text="Этот раздел пока не доделан — мы приостановили работу над ним, чтобы сосредоточиться на основном маркетплейсе. Скоро вернёмся к нему!"
+    />
+    </>
   )
 }
 
@@ -119,7 +140,6 @@ const navigationRef = React.createRef()
 
 function RootNav() {
   const { user, loading } = useAuth()
-  const [tourDone, setTourDone] = useState(false)
   const isAdmin = user?.roles?.includes('ADMIN') || user?.roles?.includes('ANALYTICS') || user?.roles?.includes('MODERATOR')
   const hasLocation = user?.latitude != null && user?.longitude != null
 
@@ -166,10 +186,8 @@ function RootNav() {
           navigationRef={navigationRef}
           showGame={SHOW_GAME}
           isAdmin={isAdmin}
-          onFinish={() => setTourDone(true)}
         />
       )}
-      {user && hasLocation && tourDone && <WhatsNewModal />}
     </NavigationContainer>
   )
 }

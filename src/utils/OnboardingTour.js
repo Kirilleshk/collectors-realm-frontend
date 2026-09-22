@@ -14,13 +14,17 @@ const ALL_STEPS = [
   { tab: 'Карта', icon: '🗺', title: 'Карта коллекционеров', desc: 'Коллекционеры, мастера по ремонту, кастомизаторы и мастера диорам рядом с вами. Нажмите на маркер — откроется профиль.' },
   { tab: 'Моё', icon: '🗿', title: 'Коллекция и вишлист', desc: 'Каталог ваших фигурок и список того, что хотите найти. Указывайте приоритет, производителя и год выпуска.' },
   { tab: 'Профиль', icon: '👤', title: 'Профиль', desc: 'Город, роли, фото портфолио, связь с администрацией и раздел «Помощь» со всеми функциями приложения.' },
-  { tab: 'Игра', icon: '🎮', title: 'Карточная игра', desc: 'Нажмите «🎁 Получить стартовый набор», чтобы получить 10 карт, а затем «⚔️ Бой с боссом» — карты выходят на стол и бьются друг с другом, цель — снять все жизни босса.' },
 ]
+// Шаг про «Игра» убран из тура 22.09.2026 — раздел приостановлен (решение
+// Марка 20.09.2026) и теперь встречает заглушкой "в разработке" вместо
+// самого экрана, так что вести туда новых пользователей туром не нужно.
+// Сам таб остаётся в TABS ниже — он всё ещё виден в панели, просто ведёт
+// на заглушку, и должен учитываться в расчёте ширины/позиции стрелки.
 
 // navigationRef — общий ref из App.js, showGame/isAdmin — те же флаги,
 // что определяют состав вкладок в MainTabs (нужны для подсветки нужной)
 export default function OnboardingTour({ navigationRef, showGame, isAdmin, onFinish }) {
-  const STEPS = showGame ? ALL_STEPS : ALL_STEPS.filter(st => st.tab !== 'Игра')
+  const STEPS = ALL_STEPS
   const TABS = ['Магазин', 'Карта', 'Моё', ...(showGame ? ['Игра'] : []), ...(isAdmin ? ['Админ'] : []), 'Профиль']
 
   const insets = useSafeAreaInsets()
@@ -42,9 +46,6 @@ export default function OnboardingTour({ navigationRef, showGame, isAdmin, onFin
   function finish() {
     usersApi.update({ onboardingSeen: true }).catch(() => {})
     updateUser({ onboardingSeen: true })
-    // Переход на «Игра» откладываем до самого конца — иначе на этом шаге
-    // GameScreen смонтируется и поверх тура всплывёт StarterPackModal
-    if (current.tab === 'Игра') navigationRef.current?.navigate('Игра')
     onFinish?.()
     setStep(-1)
   }
@@ -52,7 +53,7 @@ export default function OnboardingTour({ navigationRef, showGame, isAdmin, onFin
   function goNext() {
     if (step >= STEPS.length - 1) { finish(); return }
     const next = STEPS[step + 1]
-    if (next.tab !== 'Игра') navigationRef.current?.navigate(next.tab)
+    navigationRef.current?.navigate(next.tab)
     setStep(step + 1)
   }
 
