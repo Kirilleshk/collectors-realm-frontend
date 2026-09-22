@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { View, Text, Modal, Pressable, StyleSheet, useWindowDimensions } from 'react-native'
+import { View, Text, Image, Modal, Pressable, StyleSheet, useWindowDimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { colors } from '../theme'
 import { useAuth } from '../AuthContext'
@@ -70,7 +70,9 @@ export default function OnboardingTour({ navigationRef, showGame, isAdmin, onFin
         <Text style={[s.arrow, { left: arrowLeft, bottom: tabBarHeight - 6 }]}>▼</Text>
         <View style={[s.card, { bottom: tabBarHeight + 26 }]}>
           <View style={s.cardHeader}>
-            <Text style={s.cardIcon}>{current.icon}</Text>
+            {current.tab === 'Моё'
+              ? <Image source={require('../../assets/logo-mark.png')} style={s.cardLogo} resizeMode="contain" />
+              : <Text style={s.cardIcon}>{current.icon}</Text>}
             <Text style={s.cardTitle}>{current.title}</Text>
           </View>
           <Text style={s.cardDesc}>{current.desc}</Text>
@@ -100,6 +102,7 @@ const s = StyleSheet.create({
   card: { position: 'absolute', left: 16, right: 16, backgroundColor: colors.surface, borderRadius: 16, padding: 18, borderWidth: 1, borderColor: colors.border },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
   cardIcon: { fontSize: 28 },
+  cardLogo: { width: 28, height: 28 },
   cardTitle: { fontSize: 17, fontWeight: '900', color: colors.text },
   cardDesc: { fontSize: 13, color: colors.text2, lineHeight: 19 },
   dots: { flexDirection: 'row', gap: 6, justifyContent: 'center', marginVertical: 14 },

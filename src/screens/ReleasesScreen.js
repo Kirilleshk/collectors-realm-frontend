@@ -16,7 +16,7 @@ function FeedCard({ item }) {
     <View style={s.card}>
       <View style={s.cardHeader}>
         <View style={s.avatar}>
-          <Text style={{ fontSize: 18 }}>🗿</Text>
+          <Image source={require('../../assets/logo-mark.png')} style={{ width: 24, height: 24 }} resizeMode="contain" />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={s.channelName}>Markeltoys</Text>

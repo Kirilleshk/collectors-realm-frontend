@@ -360,7 +360,7 @@ export default function LoginScreen() {
         {/* Логотип */}
         <Animated.View style={[s.header, { opacity: fadeAnim, transform: [{ scale: logoScale }] }]}>
           <View style={s.logoWrap}>
-            <Text style={s.logoIcon}>🗿</Text>
+            <Image source={require('../../assets/logo-mark.png')} style={s.logoIcon} resizeMode="contain" />
           </View>
           <Text style={s.logo}>Markeltoys</Text>
           <Text style={s.sub}>Сообщество коллекционеров</Text>
@@ -780,7 +780,7 @@ const s = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center', marginBottom: 16,
     shadowColor: colors.accent, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12,
   },
-  logoIcon: { fontSize: 40 },
+  logoIcon: { width: 52, height: 52 },
   logo: { fontSize: 26, fontWeight: '900', color: colors.text, letterSpacing: 0.5, marginBottom: 6 },
   sub: { fontSize: 12, color: colors.accent, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 20 },
   logoLine: { width: 40, height: 2, backgroundColor: colors.accent, borderRadius: 1 },

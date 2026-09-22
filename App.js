@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { View, Text, ActivityIndicator, Platform } from 'react-native'
+import { View, Text, Image, ActivityIndicator, Platform } from 'react-native'
 import { NavigationContainer } from '@react-navigation/native'
 import * as NavigationBar from 'expo-navigation-bar'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
@@ -37,7 +37,9 @@ const SHOW_GAME = true
 const Tab = createBottomTabNavigator()
 const Stack = createNativeStackNavigator()
 
-const tabIcons = { Магазин: '🛍', Карта: '🗺', Моё: '🗿', Игра: '🎮', Админ: '⚙️', Профиль: '👤' }
+// «Моё» раньше показывал плейсхолдер-эмодзи 🗿 — теперь настоящий логотип
+// (assets/logo-mark.png), рендерится отдельно от остальных вкладок в tabBarIcon ниже.
+const tabIcons = { Магазин: '🛍', Карта: '🗺', Игра: '🎮', Админ: '⚙️', Профиль: '👤' }
 
 function ShopStack() {
   return (
@@ -91,7 +93,9 @@ function MainTabs() {
   return (
     <Tab.Navigator screenOptions={({ route }) => ({
       tabBarIcon: ({ focused }) => (
-        <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.5 }}>{tabIcons[route.name]}</Text>
+        route.name === 'Моё'
+          ? <Image source={require('./assets/logo-mark.png')} style={{ width: 22, height: 22, opacity: focused ? 1 : 0.5 }} resizeMode="contain" />
+          : <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.5 }}>{tabIcons[route.name]}</Text>
       ),
       tabBarStyle: getTabBarStyle(insets),
       tabBarActiveTintColor: colors.accent,
