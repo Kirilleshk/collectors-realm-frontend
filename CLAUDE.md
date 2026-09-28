@@ -20,7 +20,9 @@ npx expo start --web --clear
 ## Технический стек
 
 - **Фронтенд:** React Native + Expo SDK 54, хостится на **Cloudflare Workers**
-  (`holy-grass-59e8.ksele52.workers.dev`) — деплой **ручной**:
+  (**`markeltoys.ru`** + `www.` — свой домен с 28.09.2026, привязан в
+  `wrangler.jsonc`; старый `holy-grass-59e8.ksele52.workers.dev` оставлен
+  запасным, но в РФ заблокирован) — деплой **ручной**:
   `npm run deploy` (= `expo export --platform web` + `wrangler deploy`).
   Пуш в GitHub сам по себе прод НЕ обновляет.
 - **Бэкенд:** Node.js + TypeScript + Prisma + PostgreSQL (GitHub → Render.com,
@@ -37,7 +39,7 @@ npx expo start --web --clear
 
 ```javascript
 API           = 'https://collectors-realm-backend.onrender.com/api'
-FRONTEND_URL  = 'https://holy-grass-59e8.ksele52.workers.dev'
+FRONTEND_URL  = 'https://markeltoys.ru'   // запасной: holy-grass-59e8.ksele52.workers.dev (в РФ только с VPN)
 CLOUD_NAME    = 'dqutmb1rm'
 UPLOAD_PRESET = 'collectors_realm'   // unsigned
 PROJECT_ID    = 'ee592544-47bd-4d06-8f93-0070a93efe36'

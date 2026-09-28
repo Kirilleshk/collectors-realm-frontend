@@ -9,5 +9,15 @@
     // знают про клиентский роутинг React Navigation. Отдаёт index.html (200)
     // на любой несуществующий путь — стандартный SPA-фоллбэк.
     "not_found_handling": "single-page-application"
-  }
+  },
+  // Свой домен (28.09.2026): *.workers.dev заблокирован Роскомнадзором в РФ —
+  // без VPN приложение не открывалось. Домен куплен Марком в nic.ru, NS
+  // переведены на Cloudflare. workers_dev включён явно — при заданных routes
+  // wrangler может его выключить, а старые ссылки должны работать как запасной
+  // адрес (у кого VPN / уже сохранена ссылка).
+  "workers_dev": true,
+  "routes": [
+    { "pattern": "markeltoys.ru", "custom_domain": true },
+    { "pattern": "www.markeltoys.ru", "custom_domain": true }
+  ]
 }
