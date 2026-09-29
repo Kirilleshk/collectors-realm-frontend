@@ -306,6 +306,16 @@ export default function AdminScreen() {
     )
   }
 
+  // Без подтверждения (Alert.alert с кнопками на вебе не показывается) —
+  // действие безобидное и отменяется повторным нажатием
+  async function handleToggleStatsExclude(u) {
+    const exclude = !u.excludeFromStats
+    try {
+      await users.setStatsExcluded(u.id, exclude)
+      setAllUsers(prev => prev.map(p => p.id === u.id ? { ...p, excludeFromStats: exclude } : p))
+    } catch (e) { Alert.alert('Ошибка', 'Не удалось изменить') }
+  }
+
   async function handleSetBadge(userId, badge) {
     try {
       await users.setBadge(userId, badge)
@@ -578,8 +588,15 @@ export default function AdminScreen() {
                   {u.badge && <Text style={{ fontSize: 11, color: '#FF9700', marginTop: 2 }}>
                     {u.badge === 'SHOP' ? '🏪 Магазин' : '✅ Блогер'}
                   </Text>}
+                  {u.excludeFromStats && <Text style={{ fontSize: 11, color: colors.text2, marginTop: 2 }}>👻 Не учитывается в статистике</Text>}
                 </View>
                 <View style={{ flexDirection: 'row', gap: 6 }}>
+                  <TouchableOpacity
+                    onPress={() => handleToggleStatsExclude(u)}
+                    style={[s.badgeBtn, u.excludeFromStats && { borderColor: colors.text2, backgroundColor: `${colors.text2}30` }]}
+                  >
+                    <Text style={{ fontSize: 14, opacity: u.excludeFromStats ? 1 : 0.5 }}>👻</Text>
+                  </TouchableOpacity>
                   {BADGE_OPTIONS.map(opt => (
                     <TouchableOpacity
                       key={String(opt.value)}

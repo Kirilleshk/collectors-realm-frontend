@@ -46,6 +46,7 @@ export const users = {
   setBadge: (id, badge) => api.patch(`/users/${id}/badge`, { badge }),
   block: (id, reason) => api.patch(`/users/${id}/block`, { isBlocked: true, blockedReason: reason || null }),
   unblock: (id) => api.patch(`/users/${id}/block`, { isBlocked: false, blockedReason: null }),
+  setStatsExcluded: (id, exclude) => api.patch(`/users/${id}/stats-exclude`, { exclude }),
 }
 
 export const products = {
