@@ -6,6 +6,7 @@ const ANON_KEY = 'analytics_anon_id'
 const SOURCE_KEY = 'analytics_source'
 
 let _userId = null
+let _token = null
 let _ctx = null
 
 // Вызывается из AuthContext СИНХРОННО в момент входа/регистрации/выхода.
@@ -13,8 +14,11 @@ let _ctx = null
 // track('login')/track('register'), поэтому эти события писались без
 // пользователя (или на предыдущий аккаунт), а после выхода все действия
 // продолжали приписываться вышедшему.
-export function setAnalyticsUser(id) {
+// Токен нужен серверу, чтобы определить пользователя (userId из тела запроса
+// он больше не принимает на веру — его мог подставить кто угодно).
+export function setAnalyticsUser(id, token) {
   _userId = id || null
+  _token = (id && token) || null
 }
 
 function randomId() {
@@ -68,11 +72,15 @@ export async function track(event, params = {}) {
   // Пользователя фиксируем в момент вызова, до await: иначе событие,
   // вызванное прямо перед выходом из аккаунта, ушло бы уже без него
   const userId = _userId
+  const token = _token
   try {
     const { anonId, source } = await getContext()
     await fetch(API, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify({
         event,
         params,

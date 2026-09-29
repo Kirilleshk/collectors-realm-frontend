@@ -43,7 +43,7 @@ export function AuthProvider({ children }) {
       const u = await AsyncStorage.getItem('user')
       if (t && u) {
         const parsed = JSON.parse(u)
-        setAnalyticsUser(parsed.id)
+        setAnalyticsUser(parsed.id, t)
         setToken(t)
         setUser(parsed)
         if (Platform.OS !== 'web') {
@@ -59,7 +59,7 @@ export function AuthProvider({ children }) {
     const { token: t, user: u } = res.data
     await AsyncStorage.setItem('token', t)
     await AsyncStorage.setItem('user', JSON.stringify(u))
-    setAnalyticsUser(u.id)
+    setAnalyticsUser(u.id, t)
     setToken(t)
     setUser(u)
     if (Platform.OS !== 'web') {
@@ -73,7 +73,7 @@ export function AuthProvider({ children }) {
     const { token: t, user: u } = res.data
     await AsyncStorage.setItem('token', t)
     await AsyncStorage.setItem('user', JSON.stringify(u))
-    setAnalyticsUser(u.id)
+    setAnalyticsUser(u.id, t)
     setToken(t)
     setUser(u)
     if (Platform.OS !== 'web') {
