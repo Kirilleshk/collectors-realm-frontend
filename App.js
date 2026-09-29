@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { View, Text, Image, ActivityIndicator, Platform } from 'react-native'
 import { NavigationContainer } from '@react-navigation/native'
 import * as NavigationBar from 'expo-navigation-bar'
@@ -12,7 +12,7 @@ import { colors, getTabBarStyle } from './src/theme'
 import * as Notifications from 'expo-notifications'
 import OnboardingTour from './src/utils/OnboardingTour'
 import LocationRequiredModal from './src/utils/LocationRequiredModal'
-import { setAnalyticsUser, track } from './src/utils/analytics'
+import { track } from './src/utils/analytics'
 
 import LoginScreen from './src/screens/LoginScreen'
 import ShopScreen from './src/screens/ShopScreen'
@@ -118,26 +118,53 @@ function MainTabs() {
       headerTintColor: colors.text,
       headerTitleStyle: { fontWeight: '700' },
     })}>
-      <Tab.Screen name="Магазин" component={ShopStack} options={{ headerShown: false }} listeners={{ focus: () => track('screen_view', { screen: 'Shop' }) }} />
-      <Tab.Screen name="Карта" component={MapStack} options={{ headerShown: false }} listeners={{ focus: () => track('screen_view', { screen: 'Map' }) }} />
-      <Tab.Screen name="Моё" component={MyItemsScreen} options={{ headerShown: false }} listeners={{ focus: () => track('screen_view', { screen: 'MyItems' }) }} />
-      {SHOW_GAME && <Tab.Screen name="Игра" component={GameStack} options={{ headerShown: false }} listeners={{ focus: () => track('screen_view', { screen: 'Game' }) }} />}
+      <Tab.Screen name="Магазин" component={ShopStack} options={{ headerShown: false }} />
+      <Tab.Screen name="Карта" component={MapStack} options={{ headerShown: false }} />
+      <Tab.Screen name="Моё" component={MyItemsScreen} options={{ headerShown: false }} />
+      {SHOW_GAME && <Tab.Screen name="Игра" component={GameStack} options={{ headerShown: false }} />}
       {isAdmin && <Tab.Screen name="Админ" component={AdminScreen} options={{ headerShown: false }} />}
-      <Tab.Screen name="Профиль" component={ProfileScreen} options={{ headerShown: false }} listeners={{ focus: () => track('screen_view', { screen: 'Profile' }) }} />
+      <Tab.Screen name="Профиль" component={ProfileScreen} options={{ headerShown: false }} />
     </Tab.Navigator>
   )
 }
 
 const navigationRef = React.createRef()
 
+// Имя роута → ключ раздела в статистике. Ключи вкладок (Shop/Map/MyItems/
+// Game/Profile) совпадают с тем, что писалось раньше из tab-listener'ов, —
+// история не рвётся. Роуты не из списка пишутся как есть (ProductDetail,
+// Chat, Notifications, Releases, Library, Login...).
+const SCREEN_KEYS = {
+  ShopList: 'Shop', MapMain: 'Map', 'Моё': 'MyItems', GameMain: 'Game',
+  'Профиль': 'Profile', 'Админ': 'Admin', UserProfileMap: 'UserProfile',
+}
+
 function RootNav() {
   const { user, loading } = useAuth()
   const isAdmin = user?.roles?.includes('ADMIN') || user?.roles?.includes('ANALYTICS') || user?.roles?.includes('MODERATOR')
   const hasLocation = user?.latitude != null && user?.longitude != null
+  const lastScreenRef = useRef(null)
+  const openTrackedRef = useRef(false)
 
+  // Раз за запуск, после восстановления сессии (чтобы событие ушло уже с
+  // пользователем, если он залогинен) — считает всех, кто открыл сайт,
+  // включая тех, кто ушёл с экрана входа, не зарегистрировавшись
   useEffect(() => {
-    if (user?.id) setAnalyticsUser(user.id)
-  }, [user?.id])
+    if (!loading && !openTrackedRef.current) {
+      openTrackedRef.current = true
+      track('app_open')
+    }
+  }, [loading])
+
+  // Просмотр раздела — на любой переход, по самому глубокому активному роуту.
+  // Раньше считались только 4 вкладки: карточка товара, чат, чужие профили,
+  // уведомления, анонсы и экран входа в статистику не попадали вовсе.
+  function trackScreen() {
+    const name = navigationRef.current?.getCurrentRoute()?.name
+    if (!name || name === lastScreenRef.current) return
+    lastScreenRef.current = name
+    track('screen_view', { screen: SCREEN_KEYS[name] || name })
+  }
 
   useEffect(() => {
     if (Platform.OS === 'android') {
@@ -164,7 +191,7 @@ function RootNav() {
     </View>
   )
   return (
-    <NavigationContainer ref={navigationRef}>
+    <NavigationContainer ref={navigationRef} onReady={trackScreen} onStateChange={trackScreen}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {user ? (
           <Stack.Screen name="Main" component={MainTabs} />

@@ -33,6 +33,45 @@ const STATUS_LABELS = {
   NEGOTIABLE: { label: 'Торг уместен', color: '#AF52DE' },
 }
 
+// Русские названия для вкладки «Статистика» (ключи — как их пишет
+// src/utils/analytics.js / App.js; Collection/Wishlist — из старых данных)
+const SCREEN_LABELS = {
+  Login: 'Экран входа / регистрации',
+  Shop: 'Магазин',
+  ProductDetail: 'Карточка товара',
+  Chat: 'Чат с продавцом',
+  Notifications: 'Уведомления',
+  UserProfile: 'Чужой профиль',
+  Releases: 'Анонсы релизов',
+  Library: 'Библиотека знаний',
+  Map: 'Карта',
+  MyItems: 'Моё (коллекция / вишлист)',
+  Collection: 'Коллекция',
+  Wishlist: 'Вишлист',
+  Game: 'Игра',
+  Profile: 'Мой профиль',
+  Admin: 'Админка',
+}
+
+const EVENT_LABELS = {
+  login: 'Вход в аккаунт',
+  register: 'Регистрация',
+  add_to_wishlist: 'Добавили товар в вишлист',
+  add_to_collection: 'Добавили товар в коллекцию',
+  contact_seller: 'Нажали «Написать продавцу» (Telegram / WhatsApp)',
+  bid_placed: 'Ставка на аукционе',
+}
+
+const CONTENT_LABELS = [
+  ['productsOnSale', 'Товаров в магазине (не проданных)'],
+  ['collectionItems', 'Фигурок в коллекциях пользователей'],
+  ['wishlistItems', 'Позиций в вишлистах'],
+  ['sellerMessages', 'Сообщений продавцу в чате'],
+  ['supportMessages', 'Сообщений в поддержку'],
+  ['bids', 'Ставок на аукционах'],
+  ['reviews', 'Отзывов'],
+]
+
 export default function AdminScreen() {
   const insets = useSafeAreaInsets()
   const { user, token } = useAuth()
@@ -565,100 +604,169 @@ export default function AdminScreen() {
         )
       ) : null}
 
-      {/* Вкладка аналитики */}
+      {/* Вкладка аналитики (переделана 29.09.2026 по запросу Марка: раньше
+          показывала клики вместо людей, английские названия событий и не
+          давала понять, сколько людей пришло/зарегистрировалось за день) */}
       {tab === 'analytics' && (
         analyticsLoading ? <View style={s.center}><ActivityIndicator color={colors.accent} size="large" /></View> :
-        !analyticsSummary ? <View style={s.center}><Text style={{ color: colors.text2 }}>Нет данных</Text></View> : (
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 16 }}>
-            {/* Общая сводка */}
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              <View style={[s.statCard, { flex: 1 }]}>
-                <Text style={s.statNum}>{analyticsSummary.totalEvents}</Text>
-                <Text style={s.statLabel}>Событий</Text>
-              </View>
-              <View style={[s.statCard, { flex: 1 }]}>
-                <Text style={s.statNum}>{analyticsSummary.totalUsers}</Text>
-                <Text style={s.statLabel}>Пользователей</Text>
-              </View>
-              {analyticsSummary.newUsersThisWeek != null && (
-                <View style={[s.statCard, { flex: 1 }]}>
-                  <Text style={s.statNum}>+{analyticsSummary.newUsersThisWeek}</Text>
-                  <Text style={s.statLabel}>Новых за неделю</Text>
-                </View>
-              )}
-            </View>
+        !analyticsSummary?.periods ? <View style={s.center}><Text style={{ color: colors.text2 }}>Нет данных</Text></View> : (() => {
+          const a = analyticsSummary
+          const pct = (x, total) => total ? ` (${Math.round((x / total) * 100)}%)` : ''
+          const fmtDay = iso => { const [, m, d] = iso.split('-'); return `${d}.${m}` }
+          const fmtDate = v => v ? new Date(v).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'
+          const maxVisitors = Math.max(1, ...a.daily.map(d => d.visitors))
+          const PERIODS = [['today', 'Сегодня'], ['yesterday', 'Вчера'], ['week', '7 дней'], ['month', '30 дней']]
+          const METRICS = [
+            ['visitors', '👀 Зашли на сайт'],
+            ['users', '🔑 Из них в аккаунте'],
+            ['registrations', '🆕 Регистрации'],
+          ]
+          return (
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 16 }}>
+              <Text style={{ color: colors.text2, fontSize: 12 }}>
+                Дни — по {a.timezone}. Админы, модераторы и тестовые аккаунты не учитываются.
+                «Зашли на сайт» — разные люди (устройства), включая тех, кто не вошёл в аккаунт;
+                гостей без входа считаем с 29.09.2026.
+              </Text>
 
-            {analyticsSummary.avgSessionMinutes != null && (
+              {/* Главное: люди и регистрации за периоды */}
               <View style={s.analyticsBlock}>
-                <Text style={s.analyticsTitle}>Среднее время в приложении</Text>
+                <Text style={s.analyticsTitle}>Сколько людей</Text>
                 <View style={s.analyticsRow}>
-                  <Text style={{ color: colors.text }}>За сессию в день</Text>
-                  <Text style={{ color: colors.accent, fontWeight: '700' }}>{analyticsSummary.avgSessionMinutes} мин</Text>
+                  <Text style={{ flex: 1.6 }} />
+                  {PERIODS.map(([, label]) => (
+                    <Text key={label} style={{ flex: 1, color: colors.text2, fontSize: 12, textAlign: 'center' }}>{label}</Text>
+                  ))}
                 </View>
-              </View>
-            )}
-
-            {/* Платформы */}
-            <View style={s.analyticsBlock}>
-              <Text style={s.analyticsTitle}>По платформам</Text>
-              {analyticsSummary.platformStats?.map(p => (
-                <View key={p.platform} style={s.analyticsRow}>
-                  <Text style={{ color: colors.text }}>{p.platform === 'web' ? '🌐 Web' : p.platform === 'android' ? '🤖 Android' : p.platform === 'ios' ? '🍎 iOS' : p.platform}</Text>
-                  <Text style={{ color: colors.accent, fontWeight: '700' }}>{p.count}</Text>
-                </View>
-              ))}
-            </View>
-
-            {/* Топ событий */}
-            <View style={s.analyticsBlock}>
-              <Text style={s.analyticsTitle}>Топ действий</Text>
-              {analyticsSummary.eventCounts?.map((e, i) => (
-                <View key={e.event} style={s.analyticsRow}>
-                  <Text style={{ color: colors.text2, width: 20 }}>{i + 1}.</Text>
-                  <Text style={{ color: colors.text, flex: 1 }}>{e.event}</Text>
-                  <Text style={{ color: colors.accent, fontWeight: '700' }}>{e.count}</Text>
-                </View>
-              ))}
-            </View>
-
-            {/* Популярные разделы */}
-            {analyticsSummary.screenStats?.length > 0 && (
-              <View style={s.analyticsBlock}>
-                <Text style={s.analyticsTitle}>Популярные разделы</Text>
-                {analyticsSummary.screenStats.map((sc, i) => (
-                  <View key={sc.screen} style={s.analyticsRow}>
-                    <Text style={{ color: colors.text2, width: 20 }}>{i + 1}.</Text>
-                    <Text style={{ color: colors.text, flex: 1 }}>{sc.screen}</Text>
-                    <Text style={{ color: colors.accent, fontWeight: '700' }}>{sc.count}</Text>
+                {METRICS.map(([key, label]) => (
+                  <View key={key} style={s.analyticsRow}>
+                    <Text style={{ flex: 1.6, color: colors.text, fontSize: 13 }}>{label}</Text>
+                    {PERIODS.map(([p]) => (
+                      <Text key={p} style={{ flex: 1, color: colors.accent, fontWeight: '700', textAlign: 'center' }}>
+                        {a.periods[p]?.[key] ?? 0}
+                      </Text>
+                    ))}
                   </View>
                 ))}
               </View>
-            )}
 
-            {/* Активность по дням */}
-            <View style={s.analyticsBlock}>
-              <Text style={s.analyticsTitle}>Активность (7 дней)</Text>
-              {/* Нормализуем по МАКСИМУМУ за окно, не по dailyStats[0] — это
-                  просто самый свежий день (бэкенд сортирует по дате DESC), а
-                  не обязательно самый активный. Раньше неполный текущий день
-                  (мало событий) мог занизить эталон и показать все остальные
-                  дни, включая реальный пик, тем же полным 100%-баром
-                  (найдено 19.09.2026) */}
-              {(() => {
-                const maxCount = Math.max(1, ...(analyticsSummary.dailyStats || []).map(d => d.count))
-                return analyticsSummary.dailyStats?.map(d => (
-                  <View key={d.date} style={s.analyticsRow}>
-                    <Text style={{ color: colors.text2 }}>{d.date}</Text>
-                    <View style={{ flex: 1, marginHorizontal: 10 }}>
-                      <View style={{ height: 8, borderRadius: 4, backgroundColor: colors.accent, width: `${Math.min(100, (d.count / maxCount) * 100)}%` }} />
-                    </View>
-                    <Text style={{ color: colors.accent, fontWeight: '700' }}>{d.count}</Text>
+              {/* Воронка — где люди отваливаются */}
+              <View style={s.analyticsBlock}>
+                <Text style={s.analyticsTitle}>Что делают после регистрации (за всё время)</Text>
+                <View style={s.analyticsRow}>
+                  <Text style={{ color: colors.text, flex: 1 }}>Зарегистрировались</Text>
+                  <Text style={{ color: colors.accent, fontWeight: '700' }}>{a.funnel.registered}</Text>
+                </View>
+                <View style={s.analyticsRow}>
+                  <Text style={{ color: colors.text, flex: 1 }}>Сделали хоть что-то (коллекция, вишлист, сообщение, ставка, отзыв, работа в портфолио)</Text>
+                  <Text style={{ color: colors.accent, fontWeight: '700' }}>{a.funnel.didSomething}{pct(a.funnel.didSomething, a.funnel.registered)}</Text>
+                </View>
+                <View style={s.analyticsRow}>
+                  <Text style={{ color: colors.text, flex: 1 }}>Возвращались в другой день</Text>
+                  <Text style={{ color: colors.accent, fontWeight: '700' }}>{a.funnel.returned}{pct(a.funnel.returned, a.funnel.registered)}</Text>
+                </View>
+              </View>
+
+              {/* Откуда пришли */}
+              <View style={s.analyticsBlock}>
+                <Text style={s.analyticsTitle}>Откуда пришли (30 дней)</Text>
+                <Text style={{ color: colors.text2, fontSize: 12 }}>
+                  Чтобы видеть канал, давайте ссылку с меткой: markeltoys.ru/?from=tg, ?from=avito, ?from=vk и т.п. — метка запоминается при первом заходе.
+                </Text>
+                {a.sources.length === 0 ? (
+                  <Text style={{ color: colors.text2 }}>Пока никого</Text>
+                ) : a.sources.map(src => (
+                  <View key={src.source || '-'} style={s.analyticsRow}>
+                    <Text style={{ color: colors.text, flex: 1 }}>{src.source || 'Без метки (прямой заход)'}</Text>
+                    <Text style={{ color: colors.text2, fontSize: 12 }}>зашли </Text>
+                    <Text style={{ color: colors.accent, fontWeight: '700' }}>{src.visitors}</Text>
+                    <Text style={{ color: colors.text2, fontSize: 12 }}>  рег. </Text>
+                    <Text style={{ color: colors.accent, fontWeight: '700' }}>{src.registrations}</Text>
                   </View>
-                ))
-              })()}
-            </View>
-          </ScrollView>
-        )
+                ))}
+              </View>
+
+              {/* По дням */}
+              <View style={s.analyticsBlock}>
+                <Text style={s.analyticsTitle}>По дням (30 дней)</Text>
+                <Text style={{ color: colors.text2, fontSize: 12 }}>Полоса — сколько людей зашло; 🆕 — регистрации</Text>
+                {a.daily.map(d => (
+                  <View key={d.date} style={s.analyticsRow}>
+                    <Text style={{ color: colors.text2, width: 44, fontSize: 12 }}>{fmtDay(d.date)}</Text>
+                    <View style={{ flex: 1 }}>
+                      {d.visitors > 0 && (
+                        <View style={{ height: 8, borderRadius: 4, backgroundColor: colors.accent, width: `${Math.max(4, (d.visitors / maxVisitors) * 100)}%` }} />
+                      )}
+                    </View>
+                    <Text style={{ color: d.visitors ? colors.accent : colors.text2, fontWeight: '700', width: 28, textAlign: 'right' }}>{d.visitors}</Text>
+                    <Text style={{ color: d.registrations ? colors.green : colors.text2, width: 44, textAlign: 'right', fontSize: 12 }}>
+                      {d.registrations ? `🆕 ${d.registrations}` : ''}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* Разделы */}
+              <View style={s.analyticsBlock}>
+                <Text style={s.analyticsTitle}>Куда заходят (30 дней)</Text>
+                {a.sections.length === 0 ? (
+                  <Text style={{ color: colors.text2 }}>Пока никого</Text>
+                ) : a.sections.map(sc => (
+                  <View key={sc.screen} style={s.analyticsRow}>
+                    <Text style={{ color: colors.text, flex: 1 }}>{SCREEN_LABELS[sc.screen] || sc.screen}</Text>
+                    <Text style={{ color: colors.accent, fontWeight: '700' }}>{sc.people} чел.</Text>
+                    <Text style={{ color: colors.text2, fontSize: 12, width: 70, textAlign: 'right' }}>{sc.views} раз</Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* Действия */}
+              <View style={s.analyticsBlock}>
+                <Text style={s.analyticsTitle}>Действия (30 дней)</Text>
+                {a.actions.length === 0 ? (
+                  <Text style={{ color: colors.text2 }}>Пока ничего</Text>
+                ) : a.actions.map(ac => (
+                  <View key={ac.event} style={s.analyticsRow}>
+                    <Text style={{ color: colors.text, flex: 1 }}>{EVENT_LABELS[ac.event] || ac.event}</Text>
+                    <Text style={{ color: colors.accent, fontWeight: '700' }}>{ac.count}</Text>
+                    <Text style={{ color: colors.text2, fontSize: 12, width: 70, textAlign: 'right' }}>{ac.people} чел.</Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* Наполнение */}
+              <View style={s.analyticsBlock}>
+                <Text style={s.analyticsTitle}>Что есть в приложении (за всё время)</Text>
+                {CONTENT_LABELS.map(([key, label]) => (
+                  <View key={key} style={s.analyticsRow}>
+                    <Text style={{ color: colors.text, flex: 1 }}>{label}</Text>
+                    <Text style={{ color: colors.accent, fontWeight: '700' }}>{a.content[key] ?? 0}</Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* Последние регистрации */}
+              <View style={s.analyticsBlock}>
+                <Text style={s.analyticsTitle}>Последние регистрации</Text>
+                {a.recentUsers.length === 0 ? (
+                  <Text style={{ color: colors.text2 }}>Пока никого</Text>
+                ) : a.recentUsers.map(u => (
+                  <View key={u.id} style={{ gap: 2 }}>
+                    <View style={s.analyticsRow}>
+                      <Text style={{ color: colors.text, flex: 1, fontWeight: '600' }}>{u.name}</Text>
+                      <Text style={{ color: u.didSomething ? colors.green : colors.text2, fontSize: 12 }}>
+                        {u.didSomething ? '✅ что-то делал' : '💤 ничего не делал'}
+                      </Text>
+                    </View>
+                    <Text style={{ color: colors.text2, fontSize: 12 }}>
+                      Рег. {fmtDate(u.createdAt)} · последний заход {fmtDate(u.lastSeen)}{u.source ? ` · источник: ${u.source}` : ''}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
+          )
+        })()
       )}
 
       {/* Вкладка «Игра» — обзор карт + статистика по боям */}

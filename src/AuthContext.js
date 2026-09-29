@@ -4,6 +4,7 @@ import { Platform } from 'react-native'
 import { auth, setUnauthorizedHandler } from './api'
 import { registerForPushNotifications } from './notifications'
 import * as Notifications from 'expo-notifications'
+import { setAnalyticsUser } from './utils/analytics'
 
 const AuthContext = createContext()
 
@@ -41,8 +42,10 @@ export function AuthProvider({ children }) {
       const t = await AsyncStorage.getItem('token')
       const u = await AsyncStorage.getItem('user')
       if (t && u) {
+        const parsed = JSON.parse(u)
+        setAnalyticsUser(parsed.id)
         setToken(t)
-        setUser(JSON.parse(u))
+        setUser(parsed)
         if (Platform.OS !== 'web') {
           registerForPushNotifications(t).catch(console.error)
         }
@@ -56,6 +59,7 @@ export function AuthProvider({ children }) {
     const { token: t, user: u } = res.data
     await AsyncStorage.setItem('token', t)
     await AsyncStorage.setItem('user', JSON.stringify(u))
+    setAnalyticsUser(u.id)
     setToken(t)
     setUser(u)
     if (Platform.OS !== 'web') {
@@ -69,6 +73,7 @@ export function AuthProvider({ children }) {
     const { token: t, user: u } = res.data
     await AsyncStorage.setItem('token', t)
     await AsyncStorage.setItem('user', JSON.stringify(u))
+    setAnalyticsUser(u.id)
     setToken(t)
     setUser(u)
     if (Platform.OS !== 'web') {
@@ -78,6 +83,7 @@ export function AuthProvider({ children }) {
   }
 
   async function logout() {
+    setAnalyticsUser(null)
     await AsyncStorage.removeItem('token')
     await AsyncStorage.removeItem('user')
     setToken(null)
