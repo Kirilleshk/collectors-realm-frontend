@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { View, Text, Image, ActivityIndicator, Platform } from 'react-native'
+import { View, Text, Image, ActivityIndicator, Platform, AppState } from 'react-native'
 import { NavigationContainer } from '@react-navigation/native'
 import * as NavigationBar from 'expo-navigation-bar'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
@@ -156,14 +156,30 @@ function RootNav() {
     }
   }, [loading])
 
+  // Возврат в уже открытое приложение/вкладку (из фона, на другой день):
+  // app_open шлётся раз за запуск, а переходов может и не быть — без этого
+  // такой день не попадал ни в «Зашли», ни в «Возвращались». Не чаще раза в
+  // 30 минут, чтобы переключения между приложениями не плодили события.
+  useEffect(() => {
+    let lastResume = Date.now()
+    const sub = AppState.addEventListener('change', state => {
+      if (state !== 'active' || Date.now() - lastResume < 30 * 60 * 1000) return
+      lastResume = Date.now()
+      track('app_resume')
+    })
+    return () => sub.remove()
+  }, [])
+
   // Просмотр раздела — на любой переход, по самому глубокому активному роуту.
   // Раньше считались только 4 вкладки: карточка товара, чат, чужие профили,
   // уведомления, анонсы и экран входа в статистику не попадали вовсе.
+  // Сравниваем по key роута, а не по имени: переход с товара A на товар B —
+  // тот же ProductDetail, но другой экран и новый просмотр.
   function trackScreen() {
-    const name = navigationRef.current?.getCurrentRoute()?.name
-    if (!name || name === lastScreenRef.current) return
-    lastScreenRef.current = name
-    track('screen_view', { screen: SCREEN_KEYS[name] || name })
+    const route = navigationRef.current?.getCurrentRoute()
+    if (!route || route.key === lastScreenRef.current) return
+    lastScreenRef.current = route.key
+    track('screen_view', { screen: SCREEN_KEYS[route.name] || route.name })
   }
 
   useEffect(() => {

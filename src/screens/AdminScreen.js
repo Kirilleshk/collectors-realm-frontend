@@ -313,7 +313,12 @@ export default function AdminScreen() {
     try {
       await users.setStatsExcluded(u.id, exclude)
       setAllUsers(prev => prev.map(p => p.id === u.id ? { ...p, excludeFromStats: exclude } : p))
-    } catch (e) { Alert.alert('Ошибка', 'Не удалось изменить') }
+    } catch (e) {
+      // Alert.alert в вебе — пустая заглушка, ошибку бы никто не увидел
+      const msg = 'Не удалось изменить — попробуйте ещё раз через минуту'
+      if (Platform.OS === 'web') window.alert(msg)
+      else Alert.alert('Ошибка', msg)
+    }
   }
 
   async function handleSetBadge(userId, badge) {
@@ -627,7 +632,14 @@ export default function AdminScreen() {
       {tab === 'analytics' && (
         analyticsLoading ? <View style={s.center}><ActivityIndicator color={colors.accent} size="large" /></View> :
         !analyticsSummary?.periods ? <View style={s.center}><Text style={{ color: colors.text2 }}>Нет данных</Text></View> : (() => {
-          const a = analyticsSummary
+          // Значения по умолчанию: если сервер не пришлёт какое-то поле
+          // (например, во время выкатки новой версии), вкладка покажет пустой
+          // блок, а не упадёт целиком
+          const a = {
+            daily: [], sources: [], sections: [], actions: [], recentUsers: [], content: {},
+            ...analyticsSummary,
+            funnel: { registered: 0, didSomething: 0, returned: 0, ...analyticsSummary.funnel },
+          }
           const pct = (x, total) => total ? ` (${Math.round((x / total) * 100)}%)` : ''
           const fmtDay = iso => { const [, m, d] = iso.split('-'); return `${d}.${m}` }
           const fmtDate = v => v ? new Date(v).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'
@@ -641,7 +653,7 @@ export default function AdminScreen() {
           return (
             <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 16 }}>
               <Text style={{ color: colors.text2, fontSize: 12 }}>
-                Дни — по {a.timezone}. Админы, модераторы и тестовые аккаунты не учитываются.
+                Дни считаются по московскому времени. Не учитываются: админы, модераторы, аккаунт магазина и аккаунты, отмеченные 👻 во вкладке «Люди».
                 «Зашли на сайт» — разные люди (устройства), включая тех, кто не вошёл в аккаунт;
                 гостей без входа считаем с 29.09.2026.
               </Text>

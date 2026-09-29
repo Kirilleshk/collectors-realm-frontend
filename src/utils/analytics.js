@@ -42,9 +42,14 @@ function detectSource() {
   return null
 }
 
+// Отметка «первый заход был без метки» — чтобы более поздний переход по
+// ссылке (из Telegram, поиска) не переписал источник задним числом
+const DIRECT = '-'
+
 // id устройства и источник первого захода — один раз за запуск, дальше из кэша.
-// Источник запоминается навсегда при первом заходе с меткой ("первое касание"),
-// чтобы регистрация через пару дней всё равно засчиталась нужному каналу.
+// Источник фиксируется навсегда при ПЕРВОМ заходе устройства ("первое
+// касание"), включая «прямой заход», — чтобы регистрация через пару дней
+// всё равно засчиталась тому каналу, откуда человек пришёл впервые.
 function getContext() {
   if (!_ctx) {
     _ctx = (async () => {
@@ -52,17 +57,20 @@ function getContext() {
       let source = null
       try {
         anonId = await AsyncStorage.getItem(ANON_KEY)
-        if (!anonId) {
+        const isNewDevice = !anonId
+        if (isNewDevice) {
           anonId = randomId()
           await AsyncStorage.setItem(ANON_KEY, anonId)
         }
         source = await AsyncStorage.getItem(SOURCE_KEY)
         if (!source) {
-          source = detectSource()
-          if (source) await AsyncStorage.setItem(SOURCE_KEY, source)
+          // Устройство уже заходило раньше без метки — значит, первым был
+          // прямой заход, даже если сейчас пришло по ссылке
+          source = (isNewDevice && detectSource()) || DIRECT
+          await AsyncStorage.setItem(SOURCE_KEY, source)
         }
       } catch {}
-      return { anonId, source }
+      return { anonId, source: source === DIRECT ? null : source }
     })()
   }
   return _ctx
@@ -85,6 +93,9 @@ export async function track(event, params = {}) {
         event,
         params,
         platform: Platform.OS,
+        // TODO: убрать после 01.10.2026 — сервер с 29.09 берёт пользователя
+        // только из токена; поле оставлено как мост, пока на Render могла
+        // крутиться старая версия бэкенда, читавшая userId из тела
         userId,
         anonId,
         source,
