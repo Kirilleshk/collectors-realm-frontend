@@ -44,7 +44,14 @@ function parse(text, fromMarker) {
     if (!date) throw new Error(`Заголовок без даты ГГГГ-ММ-ДД: ${h}`)
     const time = (h.match(/^### \S+ (\d{2}:\d{2})/) || [])[1] || ''
     const n = (h.match(/^### \S+ \((\d+)\)/) || [])[1] || '1'
-    return { date, key: `${date}|${time}|${n.padStart(3, '0')}`, text: ls.join('\n') }
+    // Сортировка и ротация — по КОНЦУ сессии: многодневная сессия, идущая
+    // до сих пор, должна быть сверху и не уезжать в архив по дате начала.
+    // «ГГГГ-ММ-ДД ЧЧ:ММ – ГГГГ-ММ-ДД ЧЧ:ММ» или «ГГГГ-ММ-ДД ЧЧ:ММ–ЧЧ:ММ»
+    const multi = h.match(/^### \S+ \d{2}:\d{2}\s*[–-]\s*(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})/)
+    const same = h.match(/^### \S+ \d{2}:\d{2}[–-](\d{2}:\d{2})/)
+    const endDate = multi ? multi[1] : date
+    const endTime = multi ? multi[2] : same ? same[1] : time
+    return { date, endDate, key: `${endDate}|${endTime}|${n.padStart(3, '0')}`, text: ls.join('\n') }
   })
   return { head, entries }
 }
@@ -54,8 +61,8 @@ const cutoff = new Date()
 cutoff.setDate(cutoff.getDate() - (KEEP_DAYS - 1))
 const cutoffStr = ymd(cutoff)
 
-const keep = hot.entries.filter(e => e.date >= cutoffStr)
-const move = hot.entries.filter(e => e.date < cutoffStr)
+const keep = hot.entries.filter(e => e.endDate >= cutoffStr)
+const move = hot.entries.filter(e => e.endDate < cutoffStr)
 
 const byMonth = {}
 move.forEach(e => { (byMonth[e.date.slice(0, 7)] ||= []).push(e) })
