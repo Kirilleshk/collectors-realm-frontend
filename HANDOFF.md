@@ -9,6 +9,9 @@
 
 - **Ждёт Марка:** ответы на 19 вопросов по тг-боту привлечения аудитории → потом план разработки (29.09).
 - **🔴 Горит:** markeltoys.ru не открывается в РФ без VPN (Cloudflare Worker режется; подтверждено 02.10). Vercel — заблокирован. **GitHub Pages + Render напрямую — работает из РФ** (тест test.markeltoys.ru, 02.10): ждём HTTPS, перепроверка, проверка с телефона на мобильном, потом решение о переключении основного домена. Запасной вариант — Timeweb (~450–500 ₽). Проект Vercel `markeltoys` можно удалить.
+- **Ждёт Кирилла:** GitHub → Settings → Pages → «Check again» → после зелёной проверки поставить «Enforce HTTPS»; HTTPS для test.markeltoys.ru ещё не выпущен (02.10).
+- **Ждёт Кирилла/Марка:** открыть test.markeltoys.ru с телефона без VPN на мобильном интернете (у операторов ограничения бывают другими) → если ок, решение о переключении основного домена на GitHub Pages (02.10).
+- **Не сделано:** удалить тестовый проект Vercel `markeltoys` и токен (vercel.com/account/tokens), `.env.vercel` в фронт-репо (02.10).
 - **Ждёт Марка:** верификация e-mail для markeltoys.online в nic.ru — иначе домен приостановят (~до 13.10).
 - **Ждёт Кирилла:** аккаунт ВК → `VK_SERVICE_TOKEN` в `.env` бэкенда → разведка 7 ВК-групп (29.09).
 - **Ждёт Кирилла:** исключать ли из статистики «test» (ksele62@) и «KirillTest21» — кнопка 👻 во вкладке «Люди» (29.09).
@@ -19,7 +22,7 @@
 
 ## Сессии
 
-### 2026-09-28 14:00 – 2026-10-02 12:01 — домен, статистика, 👻, тг-бот (требования + разведка), сайт не открывается в РФ → выбор хостинга
+### 2026-09-28 14:00 – 2026-10-02 12:03 — домен, статистика, 👻, тг-бот (требования + разведка), сайт не открывается в РФ → тест хостингов (Vercel ❌, GitHub Pages ✅)
 <!-- session: b8bbc0ab -->
 - **Сделано (28.09) — свой домен:** markeltoys.ru (куплен Марком в nic.ru
   24.09) переведён на Cloudflare: зона в аккаунте ksele52 (Free), удалены
@@ -140,13 +143,18 @@
   prisma/schema.prisma, src/routes/{analytics,users}.routes.ts,
   src/services/{auth,assistant}.service.ts, scripts/growth/tg-recon.js,
   tsconfig.json, src/app.ts, src/routes/{cards,markBot}.routes.ts;
+  02.10 фронт — src/config.js, src/api.js, src/notifications.js,
+  src/screens/{Admin,Login,ProductDetail,Profile,UserProfile,MapScreen.web}.js,
+  src/utils/{analytics,mapShared}.js, public/leaflet/*, deploy/vercel/*, .gitignore;
   handoff — .claude/skills/handoff/{rotate.js,SKILL.md}
 - **Коммиты:** фронт b3124ad, 1d7245f, 0024424, 54fe3f6, 1abb092 (+ docs
   7e34ed1, 8cd7845, 1aaf705, a6b9561, eff1183; ветка feature/pwa) · бэкенд
   cf1a6aa, 9b20b99, 1059c61, 1dd75fb, bd10bec, e8f9d03, 9c64a12, 3de59ad;
-  фронт 02.10 — 79ba182
-- **Прод:** фронт задеплоен (последняя версия `8f5ffd69`), бэкенд —
-  автодеплой Render. ⚠️ В РФ без VPN сайт фактически не работает (см. хвосты).
+  фронт 02.10 — 79ba182; ветка gh-pages — d31e912 (тестовая выкладка)
+- **Прод:** фронт задеплоен на Cloudflare (последняя `df39872e`, 02.10), бэкенд —
+  автодеплой Render (`3de59ad`, видно в `/health`). Тестово: GitHub Pages
+  `test.markeltoys.ru` (ветка gh-pages) и Vercel `markeltoys.vercel.app` (в РФ
+  недоступен). ⚠️ Основной markeltoys.ru в РФ без VPN по-прежнему не работает.
 - **Хвосты:** см. «Открытые хвосты».
 
 ### 2026-09-30 10:37–10:58 — CLAUDE.md сокращён до 46 строк + учёт сессий `/handoff`
