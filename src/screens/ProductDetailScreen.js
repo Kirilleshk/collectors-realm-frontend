@@ -6,6 +6,7 @@ import { colors } from '../theme'
 import { pickAndUploadPhoto } from '../utils/uploadPhoto'
 import { track } from '../utils/analytics'
 import ScreenBackground from '../components/ScreenBackground'
+import { API_URL } from '../config'
 
 const CLOUD_NAME = 'dqutmb1rm'
 const UPLOAD_PRESET = 'collectors_realm'
@@ -108,7 +109,7 @@ export default function ProductDetailScreen({ route, navigation }) {
     if (url) {
       const newImages = [...(item.images || []), { url, order: (item.images || []).length }]
       try {
-        const res = await fetch(`https://collectors-realm-backend.onrender.com/api/products/${id}`, {
+        const res = await fetch(`${API_URL}/products/${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({

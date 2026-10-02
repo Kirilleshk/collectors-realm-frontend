@@ -11,13 +11,14 @@ import { CHANGELOG, CURRENT_VERSION } from '../utils/changelog'
 import { portfolioCollections as collectionsApi, reviews as reviewsApi, support as supportApi } from '../api'
 import ScreenBackground from '../components/ScreenBackground'
 import BrandHeader from '../components/BrandHeader'
+import { API_URL } from '../config'
 
 let Updates = null
 try { Updates = require('expo-updates') } catch (e) {}
 
 const CLOUD_NAME = 'dqutmb1rm'
 const UPLOAD_PRESET = 'collectors_realm'
-const API = 'https://collectors-realm-backend.onrender.com/api'
+const API = API_URL
 // Марк, 26.08.2026 (срочно): было 5, поднято до 10 — бэкенд не ограничивает
 // число фото в портфолио вообще (только фронтенд), см. также LoginScreen.js
 const MAX_PORTFOLIO_PHOTOS = 10

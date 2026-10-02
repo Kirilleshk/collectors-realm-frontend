@@ -7,10 +7,11 @@ import { pickAndUploadPhoto } from '../utils/uploadPhoto'
 import SmartInput from '../utils/SmartInput'
 import { track } from '../utils/analytics'
 import ScreenBackground from '../components/ScreenBackground'
+import { API_URL } from '../config'
 
 const CLOUD_NAME = 'dqutmb1rm'
 const UPLOAD_PRESET = 'collectors_realm'
-const API = 'https://collectors-realm-backend.onrender.com/api'
+const API = API_URL
 // Марк, 26.08.2026 (срочно): было 5, поднято до 10 — бэкенд не ограничивает
 // число фото в портфолио вообще (только фронтенд), см. также ProfileScreen.js
 const MAX_PORTFOLIO_PHOTOS = 10

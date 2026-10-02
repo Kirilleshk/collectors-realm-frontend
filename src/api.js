@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { Platform } from 'react-native'
 
-const API_URL = 'https://collectors-realm-backend.onrender.com/api'
+import { API_URL } from './config'
 
 const getToken = async () => {
   try {

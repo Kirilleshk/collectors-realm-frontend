@@ -38,7 +38,9 @@ function ensureLeafletCss() {
   const link = document.createElement('link')
   link.id = 'leaflet-css'
   link.rel = 'stylesheet'
-  link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
+  // Свой экземпляр (public/leaflet, версия = node_modules/leaflet 1.9.4), а не
+  // unpkg.com: тот за Cloudflare, а его в РФ режут — карта осталась бы без стилей
+  link.href = '/leaflet/leaflet.css'
   document.head.appendChild(link)
 }
 

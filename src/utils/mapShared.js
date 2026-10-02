@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from 'react'
 import { Alert } from 'react-native'
 import * as Location from 'expo-location'
+import { API_URL } from '../config'
 
 // Общая логика карты (вынесено 19.09.2026 при чистке техдолга) —
 // MapScreen.js (мобайл, WebView+Leaflet) и MapScreen.web.js (веб,
@@ -11,7 +12,7 @@ import * as Location from 'expo-location'
 // остаются только с рендерингом карты (WebView/iframe vs react-leaflet),
 // который по своей природе не может быть общим.
 
-export const API = 'https://collectors-realm-backend.onrender.com/api'
+export const API = API_URL
 
 export const roleMap = {
   COLLECTOR: { label: 'Коллекционер', icon: '🗿', color: '#4A90D9' },

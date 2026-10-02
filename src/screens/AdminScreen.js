@@ -12,10 +12,11 @@ import SmartInput from '../utils/SmartInput'
 import ScreenBackground from '../components/ScreenBackground'
 import BrandHeader from '../components/BrandHeader'
 import { CardArt, RARITY } from '../utils/cardArt'
+import { API_URL } from '../config'
 
 const CLOUD_NAME = 'dqutmb1rm'
 const UPLOAD_PRESET = 'collectors_realm'
-const API = 'https://collectors-realm-backend.onrender.com/api'
+const API = API_URL
 
 const EMPTY = { name: '', description: '', price: '', condition: 'NEW', manufacturer: '', franchise: '', character: '', yearMade: '', isAuction: false, startPrice: '', priceStep: '', auctionDays: '1' }
 

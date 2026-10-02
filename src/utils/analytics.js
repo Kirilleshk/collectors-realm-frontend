@@ -1,7 +1,8 @@
 import { Platform } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { API_URL } from '../config'
 
-const API = 'https://collectors-realm-backend.onrender.com/api/analytics'
+const API = `${API_URL}/analytics`
 const ANON_KEY = 'analytics_anon_id'
 const SOURCE_KEY = 'analytics_source'
 

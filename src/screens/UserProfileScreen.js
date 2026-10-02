@@ -4,8 +4,9 @@ import { colors } from '../theme'
 import { reviews as reviewsApi, portfolioCollections as collectionsApi } from '../api'
 import { useAuth } from '../AuthContext'
 import ScreenBackground from '../components/ScreenBackground'
+import { API_URL } from '../config'
 
-const API = 'https://collectors-realm-backend.onrender.com/api'
+const API = API_URL
 
 const roleMap = {
   COLLECTOR:    { label: 'Коллекционер',      color: colors.blue,   icon: '🗿' },

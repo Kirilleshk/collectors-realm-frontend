@@ -1,8 +1,9 @@
 import * as Notifications from 'expo-notifications'
 import * as Device from 'expo-device'
 import { Platform } from 'react-native'
+import { API_URL } from './config'
 
-const API = 'https://collectors-realm-backend.onrender.com/api'
+const API = API_URL
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
