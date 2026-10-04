@@ -8,9 +8,8 @@
 ## Открытые хвосты
 
 - **Ждёт Марка:** ответы на 19 вопросов по тг-боту привлечения аудитории → потом план разработки (29.09).
-- **🔴 Горит:** HTTPS для markeltoys.ru не выпущен — GitHub Pages отдаёт сертификат `*.github.io` (через 2+ ч после привязки; у test.markeltoys.ru за 2 дня тоже не выпустился). Сайт работает по `http://`. Лечение: Settings → Pages → Remove домен → снова `markeltoys.ru` → Save; потом «Enforce HTTPS» (04.10).
-- **Ждёт Кирилла/Марка:** открыть markeltoys.ru с телефона без VPN на мобильном интернете (у операторов ограничения бывают другими); ссылку Марку — после HTTPS (04.10).
-- **Не проверено:** в браузере по http изредка `ERR_EMPTY_RESPONSE` (первый заход, manifest.json), curl 20/20 ок — перепроверить по https (04.10).
+- **Ждёт Марка:** проверить https://markeltoys.ru у себя без VPN (у разных операторов ограничения разные) — сообщить ему, что сайт снова работает (04.10).
+- **На заметку:** Playwright на машине Кирилла 04.10 перестал открывать вообще всё (даже ya.ru) при выключенном VPN — мешают фоновые VPN-клиенты (xray, RvRvpnGui, OutlineService); curl ходит напрямую. Для проверок «из РФ» — curl + `ipinfo.io`, браузер — после закрытия VPN-клиентов (04.10).
 - **Потом:** постоянный хостинг вместо GitHub Pages (правила GitHub против сайтов, занятых в основном продажами; нет прокси /api) — рекомендация Timeweb ~450–500 ₽, решение за Марком (04.10).
 - **Не сделано:** удалить тестовый проект Vercel `markeltoys` и токен (vercel.com/account/tokens), `.env.vercel` в фронт-репо (02.10).
 - **Ждёт Марка:** верификация e-mail для markeltoys.online в nic.ru — иначе домен приостановят (~до 13.10).
@@ -22,7 +21,7 @@
 
 ## Сессии
 
-### 2026-10-04 11:54–14:55 — markeltoys.ru переехал с Cloudflare на GitHub Pages (из РФ работает)
+### 2026-10-04 11:54–15:22 — markeltoys.ru переехал с Cloudflare на GitHub Pages, HTTPS включён (из РФ работает)
 <!-- session: 54828e6c -->
 - **Сделано:** `npm run deploy` теперь выкладывает на GitHub Pages:
   `scripts/deploy-pages.js` — после `expo export` кладёт `404.html` (= index,
@@ -39,12 +38,18 @@
   0,4 с; Playwright по http — вход тест-аккаунтом, магазин (товар + фото
   Cloudinary), карта (подложка, 13 пользователей), прямая ссылка
   `/Main/Profile` (код 404, приложение открывается, вход сохранён); www → 301
-  на markeltoys.ru. HTTPS — ещё нет (см. хвосты).
+  на markeltoys.ru.
+- **HTTPS:** проверка DNS в GitHub висела 3 ч «DNS Check in Progress» →
+  Remove домена + снова `markeltoys.ru` → «DNS check successful» и
+  сертификат за ~1 мин (GitHub при этом сам коммитит Delete/Create CNAME в
+  gh-pages). «Enforce HTTPS» включён: http → 301 https, www → 301
+  https://markeltoys.ru. curl из РФ 20/20 по https. Кирилл в своём браузере:
+  «всё работает».
 - **Файлы:** scripts/deploy-pages.js (новый), package.json, wrangler.jsonc,
   src/config.js (комментарий), CLAUDE.md, docs/architecture.md
 - **Коммиты:** фронт 8a85eaf; ветка gh-pages 3cdcec5 (выкладка) · бэкенд —
-- **Прод:** задеплоено на GitHub Pages (`3cdcec5` из `8a85eaf`), работает по http
-- **Хвосты:** HTTPS, телефон, ERR_EMPTY_RESPONSE, постоянный хостинг — см. «Открытые хвосты».
+- **Прод:** задеплоено на GitHub Pages (`3cdcec5` из `8a85eaf`), https://markeltoys.ru работает из РФ без VPN
+- **Хвосты:** сообщить Марку, постоянный хостинг, удалить Vercel — см. «Открытые хвосты».
 
 ### 2026-09-28 14:00 – 2026-10-02 12:03 — домен, статистика, 👻, тг-бот (требования + разведка), сайт не открывается в РФ → тест хостингов (Vercel ❌, GitHub Pages ✅)
 <!-- session: b8bbc0ab -->
