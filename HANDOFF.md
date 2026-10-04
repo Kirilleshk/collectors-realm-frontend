@@ -21,7 +21,7 @@
 
 ## Сессии
 
-### 2026-10-04 11:54–15:22 — markeltoys.ru переехал с Cloudflare на GitHub Pages, HTTPS включён (из РФ работает)
+### 2026-10-04 11:54–15:21 — markeltoys.ru переехал с Cloudflare на GitHub Pages, HTTPS включён (из РФ работает)
 <!-- session: 54828e6c -->
 - **Сделано:** `npm run deploy` теперь выкладывает на GitHub Pages:
   `scripts/deploy-pages.js` — после `expo export` кладёт `404.html` (= index,
@@ -47,7 +47,8 @@
   «всё работает».
 - **Файлы:** scripts/deploy-pages.js (новый), package.json, wrangler.jsonc,
   src/config.js (комментарий), CLAUDE.md, docs/architecture.md
-- **Коммиты:** фронт 8a85eaf; ветка gh-pages 3cdcec5 (выкладка) · бэкенд —
+- **Коммиты:** фронт 8a85eaf (+ docs a921658, 31c3584 и этот); ветка gh-pages 3cdcec5
+  (выкладка) + 5eff47b/755a1a3 (GitHub сам: Delete/Create CNAME) · бэкенд —
 - **Прод:** задеплоено на GitHub Pages (`3cdcec5` из `8a85eaf`), https://markeltoys.ru работает из РФ без VPN
 - **Хвосты:** сообщить Марку, постоянный хостинг, удалить Vercel — см. «Открытые хвосты».
 
