@@ -33,6 +33,8 @@ support.routes.ts      чат «связь с администрацией» ↔
 analytics.routes.ts    POST / (событие), GET /summary (staff)
 news.routes.ts         GET / — витрина новостей
 markBot.routes.ts      GET/PATCH /notes, POST /send, POST /webhook — Telegram-бот задач Марка
+growth.routes.ts       POST /run (?dryRun ?wait ?handle ?debug), GET /stats — бот привлечения
+                       (x-bot-secret; логика — services/growth/*)
 library.routes.ts      GET /article (Groq+Wikipedia, кеш), /suggest, /recent,
                        /admin-coverage, POST /batch-generate (staff)
 cards.routes.ts        карточная игра — themes, bosses, battle/start,
@@ -65,6 +67,8 @@ enum CardFaction   { ALIEN, PREDATOR }
   вся боевая механика живёт в `cards.routes.ts`)
 - **Библиотека знаний:** `LibraryArticle` (кеш по slug), `LibrarySearchLog`
 - **Саппорт/задачи:** `SupportMessage`, `MarkNote` + `MarkNoteType`/`MarkNoteStatus`
+- **Бот привлечения:** `GrowthGroup`, `GrowthSuggestion` (+ статус PENDING/APPROVED/SKIPPED/OFFTOPIC),
+  `GrowthChannel` (канал Марка + пригласительные ссылки), `GrowthMemberEvent`
 - **Служебное:** `AnalyticsEvent`
 
 ## Telegram-бот задач Марка
@@ -74,3 +78,19 @@ enum CardFaction   { ALIEN, PREDATOR }
 правды по задачам заказчика. Проверять при «что у нас по задачам» —
 `GET /api/mark-bot/notes` с заголовком `x-bot-secret` (значение — в `.env`/Render env).
 Статус `DONE` ставить только после реальной проверки на проде.
+
+## Бот привлечения в тг-канал Марка (с 04.10.2026)
+
+Живёт внутри того же бота задач. Раз в день GitHub Actions бэкенда
+(`.github/workflows/growth-scan.yml`, 10:00 МСК, нужен секрет репо `BOT_SECRET`)
+зовёт `POST /api/growth/run`: по каждой TG-группе, где кандидата не было 2 дня,
+читает публичные `t.me/s/<группа>` + виджет обсуждения (`tgScraper.ts`), берёт
+до 2 самых обсуждаемых постов (3+ комментариев, 30 дней), Groq (`commentWriter.ts`)
+проверяет тему и пишет 3 варианта. Кандидат с кнопками ✅/🔄/⏭ уходит в
+`GROWTH_REVIEWER_CHAT_ID` (env; без него — Кириллу). Аккаунта-комментатора
+пока нет — выбранный текст публикуется руками. Канал MarkelToys подключён:
+бот-админ считает вступления по ссылкам «Аккаунт Telegram» / «Аккаунт ВК»
+(`chat_member`, allowed_updates ставятся при старте). Команды в боте:
+`/stats`, `/groups`, `/addgroup`, `/removegroup`, `/scan`. ВК — ждёт токена.
+С машины Кирилла t.me, api.telegram.org и Groq без VPN недоступны —
+проверять пробным прогоном на Render (`?dryRun=1`).
