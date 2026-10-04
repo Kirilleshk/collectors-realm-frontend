@@ -14,7 +14,7 @@
 ## Запуск и деплой
 
 - Локально: `npx expo start --web --clear`
-- Фронт: Cloudflare Workers, домен markeltoys.ru. Деплой РУЧНОЙ: `npm run deploy`. Push в GitHub прод не обновляет.
+- Фронт: GitHub Pages (ветка `gh-pages`, с 04.10.2026 — Cloudflare в РФ режется), домен markeltoys.ru. Деплой РУЧНОЙ: `npm run deploy` (`scripts/deploy-pages.js`). Push в main прод не обновляет.
 - Бэкенд: `E:\MyProgect\collectors-realm-backend` (Node + TS + Prisma) → Render, автодеплой при push в main.
 - БД: Supabase PostgreSQL. Миграции/бэкафилл — стартап-скриптами `src/startup/*.ts` бэкенда, не ручным SQL.
 - Render Free засыпает: первый запрос после простоя — 50+ сек.
@@ -23,7 +23,7 @@
 
 ```
 API           = https://collectors-realm-backend.onrender.com/api
-FRONTEND_URL  = https://markeltoys.ru   (запасной holy-grass-59e8.ksele52.workers.dev — в РФ заблокирован)
+FRONTEND_URL  = https://markeltoys.ru   (запасной holy-grass-59e8.ksele52.workers.dev — `npm run deploy:cloudflare`, в РФ заблокирован)
 CLOUD_NAME    = dqutmb1rm,  UPLOAD_PRESET = collectors_realm (unsigned)
 PROJECT_ID    = ee592544-47bd-4d06-8f93-0070a93efe36,  EXPO_ACCOUNT = kirill24125
 SERVICE_ID    = srv-d7hlnhfaqgkc739da4p0 (Render)

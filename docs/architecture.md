@@ -2,8 +2,10 @@
 
 ## Стек
 
-- React Native + Expo SDK 54, веб-сборка хостится на Cloudflare Workers
-  (`wrangler.jsonc`: markeltoys.ru + www.; запасной workers.dev в РФ заблокирован).
+- React Native + Expo SDK 54, веб-сборка хостится на GitHub Pages (ветка `gh-pages`,
+  домен markeltoys.ru, выкладка `npm run deploy` → `scripts/deploy-pages.js`; с 04.10.2026 —
+  Cloudflare российские провайдеры режут). Запасной Cloudflare Worker (`wrangler.jsonc`,
+  только workers.dev, в РФ заблокирован) — `npm run deploy:cloudflare`. API — напрямую на Render.
 - Навигация: React Navigation (Stack + Bottom Tabs).
 - Фото: Cloudinary, unsigned upload — см. [src/utils/uploadPhoto.js](../src/utils/uploadPhoto.js).
 - Нет отдельного стейт-менеджера — только React Context (`AuthContext.js`)
@@ -16,7 +18,8 @@ collectors-realm/
 ├── App.js                   ← Навигация (см. ниже)
 ├── app.json                 ← Конфиг Expo + EAS
 ├── eas.json                 ← Конфиг сборки Android/iOS
-├── wrangler.jsonc           ← Конфиг Cloudflare Workers (деплой фронтенда)
+├── scripts/deploy-pages.js  ← Выкладка веб-сборки на GitHub Pages (npm run deploy)
+├── wrangler.jsonc           ← Запасной Cloudflare Worker (npm run deploy:cloudflare)
 └── src/
     ├── api.js               ← axios + auth/products/wishlist/users/cards/library/...
     ├── AuthContext.js       ← user, token, login, register, logout, updateUser
