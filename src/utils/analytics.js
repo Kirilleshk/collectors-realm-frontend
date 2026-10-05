@@ -6,7 +6,6 @@ const API = `${API_URL}/analytics`
 const ANON_KEY = 'analytics_anon_id'
 const SOURCE_KEY = 'analytics_source'
 
-let _userId = null
 let _token = null
 let _ctx = null
 
@@ -15,10 +14,9 @@ let _ctx = null
 // track('login')/track('register'), поэтому эти события писались без
 // пользователя (или на предыдущий аккаунт), а после выхода все действия
 // продолжали приписываться вышедшему.
-// Токен нужен серверу, чтобы определить пользователя (userId из тела запроса
-// он больше не принимает на веру — его мог подставить кто угодно).
+// Пользователя сервер определяет только по токену (userId в теле запроса
+// не шлём с 05.10.2026 — его мог подставить кто угодно).
 export function setAnalyticsUser(id, token) {
-  _userId = id || null
   _token = (id && token) || null
 }
 
@@ -78,9 +76,8 @@ function getContext() {
 }
 
 export async function track(event, params = {}) {
-  // Пользователя фиксируем в момент вызова, до await: иначе событие,
-  // вызванное прямо перед выходом из аккаунта, ушло бы уже без него
-  const userId = _userId
+  // Токен фиксируем в момент вызова, до await: иначе событие, вызванное
+  // прямо перед выходом из аккаунта, ушло бы уже без пользователя
   const token = _token
   try {
     const { anonId, source } = await getContext()
@@ -94,10 +91,6 @@ export async function track(event, params = {}) {
         event,
         params,
         platform: Platform.OS,
-        // TODO: убрать после 01.10.2026 — сервер с 29.09 берёт пользователя
-        // только из токена; поле оставлено как мост, пока на Render могла
-        // крутиться старая версия бэкенда, читавшая userId из тела
-        userId,
         anonId,
         source,
       }),
