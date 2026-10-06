@@ -82,7 +82,8 @@ enum CardFaction   { ALIEN, PREDATOR }
 ## Бот привлечения в тг-канал Марка (с 04.10.2026)
 
 Живёт внутри того же бота задач. Раз в день GitHub Actions бэкенда
-(`.github/workflows/growth-scan.yml`, 10:00 МСК, нужен секрет репо `BOT_SECRET`)
+(`.github/workflows/growth-scan.yml`, 10:17 МСК + страховочный 13:43 — GitHub
+пропускает плановые запуски; нужен секрет репо `BOT_SECRET`)
 зовёт `POST /api/growth/run`: по каждой TG-группе, где кандидата не было 2 дня,
 читает публичные `t.me/s/<группа>` + виджет обсуждения (`tgScraper.ts`), берёт
 до 2 самых обсуждаемых постов (3+ комментариев, 30 дней), Groq (`commentWriter.ts`)
