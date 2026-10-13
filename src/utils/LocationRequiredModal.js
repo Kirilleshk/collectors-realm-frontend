@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { View, Text, Modal, Pressable, ActivityIndicator, StyleSheet, Platform, Linking } from 'react-native'
 import * as Location from 'expo-location'
 import { colors } from '../theme'
-import { MapPin } from 'lucide-react-native'
+import { MapPin } from '../icons'
 import { users as usersApi } from '../api'
 import { useAuth } from '../AuthContext'
 

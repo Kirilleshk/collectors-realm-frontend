@@ -5,7 +5,7 @@ import { reviews as reviewsApi, portfolioCollections as collectionsApi } from '.
 import { useAuth } from '../AuthContext'
 import ScreenBackground from '../components/ScreenBackground'
 import IconLabel from '../components/IconLabel'
-import { Boxes, Wrench, Palette, Mountain, Store, BadgeCheck, MapPin, Camera, Pencil, Plus } from 'lucide-react-native'
+import { Boxes, Wrench, Palette, Mountain, Store, BadgeCheck, MapPin, Camera, Pencil, Plus } from '../icons'
 import { API_URL } from '../config'
 
 const API = API_URL

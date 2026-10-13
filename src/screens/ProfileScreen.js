@@ -12,7 +12,7 @@ import { portfolioCollections as collectionsApi, reviews as reviewsApi, support 
 import ScreenBackground from '../components/ScreenBackground'
 import BrandHeader from '../components/BrandHeader'
 import IconLabel from '../components/IconLabel'
-import { User, CircleHelp, Camera, Store, BadgeCheck, MapPin, Pencil, Images, Boxes, MessageCircle, Mail, Hash, RefreshCw, LogOut, X, Trash2, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react-native'
+import { User, CircleHelp, Camera, Store, BadgeCheck, MapPin, Pencil, Images, Boxes, MessageCircle, Mail, Hash, RefreshCw, LogOut, X, Trash2, ChevronRight, ChevronDown, ChevronUp } from '../icons'
 import { API_URL } from '../config'
 
 let Updates = null

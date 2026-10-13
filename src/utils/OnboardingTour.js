@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { View, Text, Image, Modal, Pressable, StyleSheet, useWindowDimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { ShoppingBag, Map as MapIcon, User } from 'lucide-react-native'
+import { ShoppingBag, Map as MapIcon, User } from '../icons'
 import { colors } from '../theme'
 import { useAuth } from '../AuthContext'
 import { users as usersApi } from '../api'

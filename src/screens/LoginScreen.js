@@ -8,7 +8,7 @@ import SmartInput from '../utils/SmartInput'
 import { track } from '../utils/analytics'
 import ScreenBackground from '../components/ScreenBackground'
 import IconLabel from '../components/IconLabel'
-import { Boxes, Wrench, Palette, Mountain, PersonStanding, Landmark, Gamepad2, Disc3, Layers, Ban, MessageCircle, TriangleAlert, CircleCheck, Mail, KeyRound, Camera, User, X, Check } from 'lucide-react-native'
+import { Boxes, Wrench, Palette, Mountain, PersonStanding, Landmark, Gamepad2, Disc3, Layers, Ban, MessageCircle, TriangleAlert, CircleCheck, Mail, KeyRound, Camera, User, X, Check } from '../icons'
 import { API_URL } from '../config'
 
 const CLOUD_NAME = 'dqutmb1rm'

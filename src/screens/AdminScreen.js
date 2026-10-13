@@ -12,7 +12,7 @@ import SmartInput from '../utils/SmartInput'
 import ScreenBackground from '../components/ScreenBackground'
 import BrandHeader from '../components/BrandHeader'
 import IconLabel from '../components/IconLabel'
-import { Minus, Store, BadgeCheck, Lock, LockOpen, Ban, Package, CalendarDays, Users, BarChart3, MessageCircle, Gamepad2, Pencil, Trash2, Trophy, Ghost, ArrowLeftRight, Camera, Wallet, Gavel } from 'lucide-react-native'
+import { Minus, Store, BadgeCheck, Lock, LockOpen, Ban, Package, CalendarDays, Users, BarChart3, MessageCircle, Gamepad2, Pencil, Trash2, Trophy, Ghost, ArrowLeftRight, Camera, Wallet, Gavel } from '../icons'
 import { CardArt, RARITY } from '../utils/cardArt'
 import { API_URL } from '../config'
 

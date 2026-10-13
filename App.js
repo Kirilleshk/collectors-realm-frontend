@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { View, Image, ActivityIndicator, Platform, AppState } from 'react-native'
-import { ShoppingBag, Map as MapIcon, Gamepad2, Settings, User } from 'lucide-react-native'
+import { ShoppingBag, Map as MapIcon, Gamepad2, Settings, User } from './src/icons'
 import { NavigationContainer } from '@react-navigation/native'
 import * as NavigationBar from 'expo-navigation-bar'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'

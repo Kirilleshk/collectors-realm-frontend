@@ -7,7 +7,7 @@ import { pickAndUploadPhoto } from '../utils/uploadPhoto'
 import { track } from '../utils/analytics'
 import ScreenBackground from '../components/ScreenBackground'
 import IconLabel from '../components/IconLabel'
-import { Package, Gavel, Camera, Factory, Trophy, MessageCircle, Send, Target, Boxes, Check, CircleSlash } from 'lucide-react-native'
+import { Package, Gavel, Camera, Factory, Trophy, MessageCircle, Send, Target, Boxes, Check, CircleSlash } from '../icons'
 import { API_URL } from '../config'
 
 const CLOUD_NAME = 'dqutmb1rm'

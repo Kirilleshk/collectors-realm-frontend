@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, ScrollView, Modal, Image } from 'react-na
 import { roleMap, haversine } from '../../utils/mapShared'
 import { mapStyles as s } from './mapStyles'
 import IconLabel from '../IconLabel'
-import { MapPin, Ruler, User } from 'lucide-react-native'
+import { MapPin, Ruler, User } from '../../icons'
 
 // Карточка пользователя по тапу на маркер — общая для MapScreen.js и
 // MapScreen.web.js (см. mapShared.js про причину выноса, 19.09.2026)

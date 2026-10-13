@@ -3,7 +3,7 @@ import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, 
 import { notifications as notifApi } from '../api'
 import { colors } from '../theme'
 import ScreenBackground from '../components/ScreenBackground'
-import { BarChart3, Trophy, TrendingDown, Target, ShoppingBag, Bell } from 'lucide-react-native'
+import { BarChart3, Trophy, TrendingDown, Target, ShoppingBag, Bell } from '../icons'
 
 const TYPE_CONFIG = {
   MONTHLY_REPORT: { icon: BarChart3, color: colors.blue },

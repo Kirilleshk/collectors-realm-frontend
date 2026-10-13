@@ -4,7 +4,7 @@ import { colors } from '../theme'
 import { support as supportApi } from '../api'
 import SmartInput from '../utils/SmartInput'
 import ScreenBackground from '../components/ScreenBackground'
-import { Package } from 'lucide-react-native'
+import { Package } from '../icons'
 
 export default function ChatScreen({ route }) {
   const { productName, productId } = route.params || {}

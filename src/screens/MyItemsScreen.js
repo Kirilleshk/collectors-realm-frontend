@@ -5,7 +5,7 @@ import { colors } from '../theme'
 import ScreenBackground from '../components/ScreenBackground'
 import BrandHeader from '../components/BrandHeader'
 import IconLabel from '../components/IconLabel'
-import { Boxes, Target } from 'lucide-react-native'
+import { Boxes, Target } from '../icons'
 import CollectionScreen from './CollectionScreen'
 import WishlistScreen from './WishlistScreen'
 

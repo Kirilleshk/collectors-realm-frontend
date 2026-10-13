@@ -5,7 +5,7 @@ import { wishlist } from '../api'
 import { colors } from '../theme'
 import SmartInput from '../utils/SmartInput'
 import IconLabel from '../components/IconLabel'
-import { Target, User, Factory, CalendarDays, Link, Pencil, X, Plus } from 'lucide-react-native'
+import { Target, User, Factory, CalendarDays, Link, Pencil, X, Plus } from '../icons'
 
 const priorities = [
   { value: 'HIGH', label: 'Высокий', color: colors.accent },

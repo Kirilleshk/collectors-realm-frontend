@@ -6,7 +6,7 @@ import {
 import { news as newsApi } from '../api'
 import { colors } from '../theme'
 import ScreenBackground from '../components/ScreenBackground'
-import { Settings, Newspaper } from 'lucide-react-native'
+import { Settings, Newspaper } from '../icons'
 
 function FeedCard({ item }) {
   const date = new Date(item.date)

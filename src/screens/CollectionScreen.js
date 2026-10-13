@@ -10,7 +10,7 @@ import { colors } from '../theme'
 import { pickAndUploadPhoto } from '../utils/uploadPhoto'
 import SmartInput from '../utils/SmartInput'
 import IconLabel from '../components/IconLabel'
-import { Boxes, Package, Factory, CalendarDays, Pencil, X, Plus, Camera } from 'lucide-react-native'
+import { Boxes, Package, Factory, CalendarDays, Pencil, X, Plus, Camera } from '../icons'
 
 const EMPTY = {
   name: '', manufacturer: '', purchasePrice: '',

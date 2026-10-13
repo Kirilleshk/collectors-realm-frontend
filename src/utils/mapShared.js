@@ -2,7 +2,7 @@ import { useState, useRef, useCallback } from 'react'
 import { Alert } from 'react-native'
 import * as Location from 'expo-location'
 import { API_URL } from '../config'
-import { Boxes, Wrench, Palette, Mountain } from 'lucide-react-native'
+import { Boxes, Wrench, Palette, Mountain } from '../icons'
 
 // Общая логика карты (вынесено 19.09.2026 при чистке техдолга) —
 // MapScreen.js (мобайл, WebView+Leaflet) и MapScreen.web.js (веб,

@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { colors } from '../theme'
 import ScreenBackground from '../components/ScreenBackground'
 import BrandHeader from '../components/BrandHeader'
-import { Construction } from 'lucide-react-native'
+import { Construction } from '../icons'
 
 // Полноэкранная заглушка для разделов "в разработке" (Игра, Библиотека
 // знаний) — по решению Марка от 20.09.2026 (пауза, фокус на привлечение

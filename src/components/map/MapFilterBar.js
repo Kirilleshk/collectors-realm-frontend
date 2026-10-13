@@ -4,7 +4,7 @@ import { colors } from '../../theme'
 import { roleMap } from '../../utils/mapShared'
 import { mapStyles as s } from './mapStyles'
 import IconLabel from '../IconLabel'
-import { Radar, MapPin } from 'lucide-react-native'
+import { Radar, MapPin } from '../../icons'
 
 // Панель фильтров по роли + «Поблизости» — общая для MapScreen.js и
 // MapScreen.web.js (см. mapShared.js про причину выноса, 19.09.2026)

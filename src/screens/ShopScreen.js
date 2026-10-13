@@ -6,7 +6,7 @@ import { colors } from '../theme'
 import ScreenBackground from '../components/ScreenBackground'
 import BrandHeader from '../components/BrandHeader'
 import IconLabel from '../components/IconLabel'
-import { Gavel, CalendarDays, BookOpen, Search, SearchX, X, Package, WifiOff, RotateCw } from 'lucide-react-native'
+import { Gavel, CalendarDays, BookOpen, Search, SearchX, X, Package, WifiOff, RotateCw } from '../icons'
 
 // На узком мобильном экране — 2 колонки как раньше; на широком вебе больше
 // колонок, чтобы карточка не растягивалась на пол-окна (фикс "растянутых карточек").
