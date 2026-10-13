@@ -7,6 +7,8 @@ import { pickAndUploadPhoto } from '../utils/uploadPhoto'
 import SmartInput from '../utils/SmartInput'
 import { track } from '../utils/analytics'
 import ScreenBackground from '../components/ScreenBackground'
+import IconLabel from '../components/IconLabel'
+import { Boxes, Wrench, Palette, Mountain, PersonStanding, Landmark, Gamepad2, Disc3, Layers, Ban, MessageCircle, TriangleAlert, CircleCheck, Mail, KeyRound, Camera, User, X, Check } from 'lucide-react-native'
 import { API_URL } from '../config'
 
 const CLOUD_NAME = 'dqutmb1rm'
@@ -17,20 +19,20 @@ const API = API_URL
 const MAX_PORTFOLIO_PHOTOS = 10
 
 const ALL_ROLES = [
-  { key: 'COLLECTOR', label: 'Коллекционер', icon: '🗿', color: '#4A90D9' },
-  { key: 'MASTER_REPAIR', label: 'Мастер по ремонту', icon: '🔧', color: '#E04E28' },
-  { key: 'CUSTOMIZER', label: 'Кастомизатор', icon: '🎨', color: '#AF52DE' },
-  { key: 'DIORAMA', label: 'Мастер диорам', icon: '🏔', color: '#34C759' },
+  { key: 'COLLECTOR', label: 'Коллекционер', icon: Boxes, color: '#4A90D9' },
+  { key: 'MASTER_REPAIR', label: 'Мастер по ремонту', icon: Wrench, color: '#E04E28' },
+  { key: 'CUSTOMIZER', label: 'Кастомизатор', icon: Palette, color: '#AF52DE' },
+  { key: 'DIORAMA', label: 'Мастер диорам', icon: Mountain, color: '#34C759' },
 ]
 
 // Обязательная анкета при регистрации (Марк, 09.08) — что коллекционирует,
 // мультивыбор, минимум один вариант.
 const ALL_COLLECTOR_TYPES = [
-  { key: 'FIGURES', label: 'Фигурки', icon: '🗿' },
-  { key: 'STATUES', label: 'Статуи', icon: '🏛' },
-  { key: 'CONSOLES', label: 'Приставки', icon: '🎮' },
-  { key: 'GAMES', label: 'Компьютерные игры', icon: '💾' },
-  { key: 'CARDS', label: 'Карточки', icon: '🃏' },
+  { key: 'FIGURES', label: 'Фигурки', icon: PersonStanding },
+  { key: 'STATUES', label: 'Статуи', icon: Landmark },
+  { key: 'CONSOLES', label: 'Приставки', icon: Gamepad2 },
+  { key: 'GAMES', label: 'Компьютерные игры', icon: Disc3 },
+  { key: 'CARDS', label: 'Карточки', icon: Layers },
 ]
 
 const BIO_MIN = 100
@@ -331,7 +333,7 @@ export default function LoginScreen() {
     <SafeAreaView style={[s.wrap, { justifyContent: 'center' }]}>
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 }}>
         <View style={{ width: 90, height: 90, borderRadius: 45, backgroundColor: 'rgba(255,59,48,0.1)', justifyContent: 'center', alignItems: 'center', marginBottom: 24 }}>
-          <Text style={{ fontSize: 44 }}>🚫</Text>
+          <Ban size={44} color="#FF3B30" strokeWidth={1.6} />
         </View>
         <Text style={{ fontSize: 22, fontWeight: '800', color: colors.text, marginBottom: 12, textAlign: 'center' }}>
           Аккаунт заблокирован
@@ -343,7 +345,7 @@ export default function LoginScreen() {
           style={{ backgroundColor: colors.accent, borderRadius: 14, padding: 16, width: '100%', alignItems: 'center', marginBottom: 12 }}
           onPress={() => Linking.openURL('mailto:ksele52@gmail.com?subject=Разблокировка аккаунта')}
         >
-          <Text style={{ color: 'white', fontWeight: '700', fontSize: 16 }}>💬 Связь с администрацией</Text>
+          <IconLabel icon={MessageCircle} label="Связь с администрацией" size={18} textStyle={{ color: 'white', fontWeight: '700', fontSize: 16 }} />
         </TouchableOpacity>
         <TouchableOpacity style={{ padding: 12 }} onPress={() => { setBlocked(false); setError('') }}>
           <Text style={{ color: colors.text2, fontSize: 14 }}>← Вернуться к входу</Text>
@@ -404,14 +406,14 @@ export default function LoginScreen() {
 
           {error ? (
             <View style={s.errorBox}>
-              <Text style={s.msgIcon}>⚠️</Text>
+              <TriangleAlert size={16} color="#FF3B30" strokeWidth={2} />
               <Text style={s.errorText}>{error}</Text>
             </View>
           ) : null}
 
           {resetSuccess && mode === 'login' && !error ? (
             <View style={s.successBox}>
-              <Text style={s.msgIcon}>✅</Text>
+              <CircleCheck size={16} color={colors.green} strokeWidth={2} />
               <Text style={s.successText}>Пароль изменён. Войдите с новым паролем.</Text>
             </View>
           ) : null}
@@ -459,11 +461,11 @@ export default function LoginScreen() {
                           style={[s.roleCard, active && { borderColor: role.color, backgroundColor: `${role.color}15` }]}
                           onPress={() => toggleRole(role.key)}
                         >
-                          <Text style={s.roleIcon}>{role.icon}</Text>
+                          <role.icon size={28} color={active ? role.color : colors.text2} strokeWidth={1.7} style={s.roleIcon} />
                           <Text style={[s.roleLabel, active && { color: role.color, fontWeight: '700' }]}>{role.label}</Text>
                           {active && (
                             <View style={[s.roleCheck, { backgroundColor: role.color }]}>
-                              <Text style={{ color: 'white', fontSize: 10, fontWeight: '700' }}>✓</Text>
+                              <Check size={11} color="white" strokeWidth={3} />
                             </View>
                           )}
                         </TouchableOpacity>
@@ -479,7 +481,7 @@ export default function LoginScreen() {
           {mode === 'register' && step === 'verify' && (
             <View style={s.field}>
               <View style={{ alignItems: 'center', marginBottom: 20 }}>
-                <Text style={{ fontSize: 40, marginBottom: 8 }}>📧</Text>
+                <Mail size={40} color={colors.accent} strokeWidth={1.5} style={{ marginBottom: 8 }} />
                 <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 6 }}>Проверьте почту</Text>
                 <Text style={{ fontSize: 13, color: colors.text2, textAlign: 'center', lineHeight: 18 }}>
                   Мы отправили 6-значный код на{'\n'}
@@ -518,7 +520,7 @@ export default function LoginScreen() {
           {mode === 'forgot' && forgotStep === 'request' && (
             <View style={s.field}>
               <View style={{ alignItems: 'center', marginBottom: 20 }}>
-                <Text style={{ fontSize: 40, marginBottom: 8 }}>🔑</Text>
+                <KeyRound size={40} color={colors.accent} strokeWidth={1.5} style={{ marginBottom: 8 }} />
                 <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 6 }}>Восстановление пароля</Text>
                 <Text style={{ fontSize: 13, color: colors.text2, textAlign: 'center', lineHeight: 18 }}>
                   Введите email от аккаунта — если он зарегистрирован, пришлём код для сброса пароля
@@ -545,7 +547,7 @@ export default function LoginScreen() {
           {mode === 'forgot' && forgotStep === 'reset' && (
             <View style={s.field}>
               <View style={{ alignItems: 'center', marginBottom: 20 }}>
-                <Text style={{ fontSize: 40, marginBottom: 8 }}>📧</Text>
+                <Mail size={40} color={colors.accent} strokeWidth={1.5} style={{ marginBottom: 8 }} />
                 <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 6 }}>Проверьте почту</Text>
                 <Text style={{ fontSize: 13, color: colors.text2, textAlign: 'center', lineHeight: 18 }}>
                   Если email зарегистрирован — мы отправили 6-значный код на{'\n'}
@@ -597,11 +599,11 @@ export default function LoginScreen() {
                   ) : avatarPhoto ? (
                     <>
                       <Image source={{ uri: avatarPhoto }} style={s.avatarPickerImg} />
-                      <View style={s.avatarPickerBadge}><Text style={{ color: 'white', fontSize: 10 }}>📷</Text></View>
+                      <View style={s.avatarPickerBadge}><Camera size={12} color="white" strokeWidth={2.2} /></View>
                     </>
                   ) : (
                     <>
-                      <Text style={{ fontSize: 36, marginBottom: 4 }}>👤</Text>
+                      <User size={34} color={colors.text2} strokeWidth={1.5} style={{ marginBottom: 4 }} />
                       <Text style={{ fontSize: 11, color: colors.text2 }}>Выбрать фото</Text>
                     </>
                   )}
@@ -621,7 +623,7 @@ export default function LoginScreen() {
                       style={s.photoRemove}
                       onPress={() => setPortfolioPhotos(p => p.filter((_, j) => j !== i))}
                     >
-                      <Text style={{ color: 'white', fontSize: 10, fontWeight: '700' }}>✕</Text>
+                      <X size={11} color="white" strokeWidth={3} />
                     </TouchableOpacity>
                   </View>
                 ))}
@@ -630,7 +632,7 @@ export default function LoginScreen() {
                     {uploadingPhoto
                       ? <ActivityIndicator color={colors.accent} />
                       : <>
-                          <Text style={{ fontSize: 28, color: colors.text2 }}>📷</Text>
+                          <Camera size={26} color={colors.text2} strokeWidth={1.6} />
                           <Text style={{ fontSize: 11, color: colors.text2, marginTop: 4 }}>Добавить</Text>
                         </>
                     }
@@ -670,11 +672,11 @@ export default function LoginScreen() {
                       style={[s.roleCard, active && { borderColor: colors.accent, backgroundColor: `${colors.accent}15` }]}
                       onPress={() => toggleCollectorType(t.key)}
                     >
-                      <Text style={s.roleIcon}>{t.icon}</Text>
+                      <t.icon size={28} color={active ? colors.accent : colors.text2} strokeWidth={1.7} style={s.roleIcon} />
                       <Text style={[s.roleLabel, active && { color: colors.accent, fontWeight: '700' }]}>{t.label}</Text>
                       {active && (
                         <View style={[s.roleCheck, { backgroundColor: colors.accent }]}>
-                          <Text style={{ color: 'white', fontSize: 10, fontWeight: '700' }}>✓</Text>
+                          <Check size={11} color="white" strokeWidth={3} />
                         </View>
                       )}
                     </TouchableOpacity>
@@ -699,7 +701,7 @@ export default function LoginScreen() {
                   onPress={() => setLessThanYear(v => !v)}
                 >
                   <View style={[s.checkbox, lessThanYear && { backgroundColor: colors.accent, borderColor: colors.accent }]}>
-                    {lessThanYear && <Text style={{ color: 'white', fontSize: 10, fontWeight: '700' }}>✓</Text>}
+                    {lessThanYear && <Check size={11} color="white" strokeWidth={3} />}
                   </View>
                   <Text style={{ fontSize: 13, color: colors.text }}>Меньше года</Text>
                 </TouchableOpacity>
@@ -804,7 +806,6 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(224,78,40,0.1)', borderRadius: 10, padding: 12, marginBottom: 16,
     borderWidth: 1, borderColor: 'rgba(224,78,40,0.3)',
   },
-  msgIcon: { fontSize: 16 },
   errorText: { color: colors.accent, fontSize: 13, flex: 1 },
   successBox: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
@@ -831,7 +832,7 @@ const s = StyleSheet.create({
     borderWidth: 1.5, borderColor: colors.border,
     backgroundColor: colors.surface2, alignItems: 'center', gap: 6, position: 'relative',
   },
-  roleIcon: { fontSize: 28 },
+  roleIcon: { marginBottom: 2 },
   roleLabel: { fontSize: 12, fontWeight: '500', color: colors.text2, textAlign: 'center' },
   roleCheck: {
     position: 'absolute', top: -6, right: -6,

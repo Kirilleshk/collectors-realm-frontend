@@ -3,6 +3,8 @@ import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'rea
 import { colors } from '../../theme'
 import { roleMap } from '../../utils/mapShared'
 import { mapStyles as s } from './mapStyles'
+import IconLabel from '../IconLabel'
+import { Radar, MapPin } from 'lucide-react-native'
 
 // Панель фильтров по роли + «Поблизости» — общая для MapScreen.js и
 // MapScreen.web.js (см. mapShared.js про причину выноса, 19.09.2026)
@@ -22,7 +24,7 @@ export default function MapFilterBar({
           const active = filter === key
           return (
             <TouchableOpacity key={key} style={[s.filterBtn, active && { backgroundColor: `${r.color}20`, borderColor: r.color }]} onPress={() => setFilter(active ? null : key)}>
-              <Text style={{ fontSize: 14 }}>{r.icon}</Text>
+              <r.Icon size={14} color={active ? r.color : colors.text2} strokeWidth={2} />
               <Text style={[s.filterText, active && { color: r.color }]}>{r.label} ({count})</Text>
             </TouchableOpacity>
           )
@@ -31,9 +33,12 @@ export default function MapFilterBar({
 
       {/* Кнопки "Поблизости" */}
       <View style={s.nearbyRow}>
-        <Text style={s.nearbyLabel}>
-          {gettingLocation ? '📡 Определяем...' : '📍 Поблизости:'}
-        </Text>
+        <IconLabel
+          icon={gettingLocation ? Radar : MapPin}
+          label={gettingLocation ? 'Определяем...' : 'Поблизости:'}
+          size={13} gap={4}
+          textStyle={s.nearbyLabel}
+        />
         {gettingLocation ? (
           <ActivityIndicator color={colors.accent} size="small" />
         ) : (

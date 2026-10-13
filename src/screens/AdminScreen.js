@@ -11,6 +11,8 @@ import { pickAndUploadPhoto } from '../utils/uploadPhoto'
 import SmartInput from '../utils/SmartInput'
 import ScreenBackground from '../components/ScreenBackground'
 import BrandHeader from '../components/BrandHeader'
+import IconLabel from '../components/IconLabel'
+import { Minus, Store, BadgeCheck, Lock, LockOpen, Ban, Package, CalendarDays, Users, BarChart3, MessageCircle, Gamepad2, Pencil, Trash2, Trophy, Ghost, ArrowLeftRight, Camera, Wallet, Gavel } from 'lucide-react-native'
 import { CardArt, RARITY } from '../utils/cardArt'
 import { API_URL } from '../config'
 
@@ -21,9 +23,9 @@ const API = API_URL
 const EMPTY = { name: '', description: '', price: '', condition: 'NEW', manufacturer: '', franchise: '', character: '', yearMade: '', isAuction: false, startPrice: '', priceStep: '', auctionDays: '1' }
 
 const BADGE_OPTIONS = [
-  { value: null,      label: 'Нет',     icon: '—',  color: '#8E8E93' },
-  { value: 'SHOP',    label: 'Магазин', icon: '🏪', color: '#FF9700' },
-  { value: 'BLOGGER', label: 'Блогер',  icon: '✅', color: '#007AFF' },
+  { value: null,      label: 'Нет',     icon: Minus,      color: '#8E8E93' },
+  { value: 'SHOP',    label: 'Магазин', icon: Store,      color: '#FF9700' },
+  { value: 'BLOGGER', label: 'Блогер',  icon: BadgeCheck, color: '#007AFF' },
 ]
 
 const STATUS_LABELS = {
@@ -479,7 +481,7 @@ export default function AdminScreen() {
 
   if (!isAdmin && !isModerator && !isAnalytics) return (
     <View style={[s.center, { paddingTop: insets.top }]}>
-      <Text style={{ fontSize: 48, marginBottom: 16 }}>🔒</Text>
+      <Lock size={48} color={colors.text2} strokeWidth={1.4} style={{ marginBottom: 16 }} />
       <Text style={{ fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: 8 }}>Нет доступа</Text>
       <Text style={{ fontSize: 14, color: colors.text2 }}>Только для администраторов</Text>
     </View>
@@ -492,26 +494,26 @@ export default function AdminScreen() {
       <View style={s.tabs}>
         {isStaff && (
           <TouchableOpacity style={[s.tabBtn, tab === 'products' && s.tabBtnActive]} onPress={() => setTab('products')}>
-            <Text style={[s.tabText, tab === 'products' && s.tabTextActive]}>📦 Товары</Text>
+            <IconLabel icon={Package} label="Товары" size={14} gap={5} textStyle={[s.tabText, tab === 'products' && s.tabTextActive]} />
           </TouchableOpacity>
         )}
         {isAdmin && (
           <TouchableOpacity style={[s.tabBtn, tab === 'releases' && s.tabBtnActive]} onPress={() => setTab('releases')}>
-            <Text style={[s.tabText, tab === 'releases' && s.tabTextActive]}>📅 Релизы</Text>
+            <IconLabel icon={CalendarDays} label="Релизы" size={14} gap={5} textStyle={[s.tabText, tab === 'releases' && s.tabTextActive]} />
           </TouchableOpacity>
         )}
         {isStaff && (
           <TouchableOpacity style={[s.tabBtn, tab === 'users' && s.tabBtnActive]} onPress={() => setTab('users')}>
-            <Text style={[s.tabText, tab === 'users' && s.tabTextActive]}>👥 Люди</Text>
+            <IconLabel icon={Users} label="Люди" size={14} gap={5} textStyle={[s.tabText, tab === 'users' && s.tabTextActive]} />
           </TouchableOpacity>
         )}
         <TouchableOpacity style={[s.tabBtn, tab === 'analytics' && s.tabBtnActive]} onPress={() => setTab('analytics')}>
-          <Text style={[s.tabText, tab === 'analytics' && s.tabTextActive]}>📊 Статистика</Text>
+          <IconLabel icon={BarChart3} label="Статистика" size={14} gap={5} textStyle={[s.tabText, tab === 'analytics' && s.tabTextActive]} />
         </TouchableOpacity>
         {isStaff && (
           <TouchableOpacity style={[s.tabBtn, tab === 'support' && s.tabBtnActive]} onPress={() => setTab('support')}>
             <View style={{ position: 'relative' }}>
-              <Text style={[s.tabText, tab === 'support' && s.tabTextActive]}>💬 Чат</Text>
+              <IconLabel icon={MessageCircle} label="Чат" size={14} gap={5} textStyle={[s.tabText, tab === 'support' && s.tabTextActive]} />
               {conversations.some(c => c.unread > 0) && (
                 <View style={{ position: 'absolute', top: -4, right: -8, width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent }} />
               )}
@@ -520,7 +522,7 @@ export default function AdminScreen() {
         )}
         {isStaff && (
           <TouchableOpacity style={[s.tabBtn, tab === 'game' && s.tabBtnActive]} onPress={() => setTab('game')}>
-            <Text style={[s.tabText, tab === 'game' && s.tabTextActive]}>🎮 Игра</Text>
+            <IconLabel icon={Gamepad2} label="Игра" size={14} gap={5} textStyle={[s.tabText, tab === 'game' && s.tabTextActive]} />
           </TouchableOpacity>
         )}
       </View>
@@ -538,15 +540,15 @@ export default function AdminScreen() {
             {releasesList.length === 0 && <Text style={{ color: colors.text2, textAlign: 'center', paddingTop: 40 }}>Релизов нет — добавьте первый!</Text>}
             {releasesList.map(r => (
               <View key={r.id} style={s.card}>
-                {r.imageUrl ? <Image source={{ uri: r.imageUrl }} style={s.thumb} /> : <View style={[s.thumb, { backgroundColor: colors.surface2, justifyContent: 'center', alignItems: 'center' }]}><Text style={{ fontSize: 28 }}>📅</Text></View>}
+                {r.imageUrl ? <Image source={{ uri: r.imageUrl }} style={s.thumb} /> : <View style={[s.thumb, { backgroundColor: colors.surface2, justifyContent: 'center', alignItems: 'center' }]}><CalendarDays size={26} color={colors.border} strokeWidth={1.5} /></View>}
                 <View style={{ flex: 1, padding: 12 }}>
                   <Text style={s.cardName} numberOfLines={1}>{r.name}</Text>
                   <Text style={{ fontSize: 12, color: colors.text2 }}>{new Date(r.releaseDate).toLocaleDateString('ru')}</Text>
                   {r.manufacturer ? <Text style={{ fontSize: 11, color: colors.text2 }}>{r.manufacturer}</Text> : null}
                 </View>
                 <View style={{ flexDirection: 'column', gap: 6, padding: 8 }}>
-                  <TouchableOpacity onPress={() => openEditRelease(r)} style={s.iconBtn}><Text>✏️</Text></TouchableOpacity>
-                  <TouchableOpacity onPress={() => handleDeleteRelease(r.id)} style={[s.iconBtn, { backgroundColor: 'rgba(255,59,48,0.15)' }]}><Text>🗑</Text></TouchableOpacity>
+                  <TouchableOpacity onPress={() => openEditRelease(r)} style={s.iconBtn}><Pencil size={16} color={colors.text} strokeWidth={2} /></TouchableOpacity>
+                  <TouchableOpacity onPress={() => handleDeleteRelease(r.id)} style={[s.iconBtn, { backgroundColor: 'rgba(255,59,48,0.15)' }]}><Trash2 size={16} color="#FF3B30" strokeWidth={2} /></TouchableOpacity>
                 </View>
               </View>
             ))}
@@ -563,7 +565,7 @@ export default function AdminScreen() {
           <ScrollView contentContainerStyle={{ padding: 16, gap: 10 }}>
             {/* Отчёты */}
             <View style={s.reportCard}>
-              <Text style={s.reportTitle}>📊 Отчёты для пользователей</Text>
+              <IconLabel icon={BarChart3} label="Отчёты для пользователей" style={{ marginBottom: 4 }} textStyle={[s.reportTitle, { marginBottom: 0 }]} />
               <Text style={s.reportSub}>Claude API сгенерирует персональное сообщение для каждого</Text>
               <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
                 <TouchableOpacity
@@ -571,14 +573,14 @@ export default function AdminScreen() {
                   onPress={() => handleTriggerReport('MONTHLY')}
                   disabled={sendingReport}
                 >
-                  {sendingReport ? <ActivityIndicator color={colors.blue} size="small" /> : <Text style={[s.reportBtnText, { color: colors.blue }]}>📅 Месячный</Text>}
+                  {sendingReport ? <ActivityIndicator color={colors.blue} size="small" /> : <IconLabel icon={CalendarDays} label="Месячный" size={14} gap={5} textStyle={[s.reportBtnText, { color: colors.blue }]} />}
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[s.reportBtn, { backgroundColor: `${colors.purple}20`, borderColor: `${colors.purple}50` }]}
                   onPress={() => handleTriggerReport('YEARLY')}
                   disabled={sendingReport}
                 >
-                  {sendingReport ? <ActivityIndicator color={colors.purple} size="small" /> : <Text style={[s.reportBtnText, { color: colors.purple }]}>🏆 Годовой</Text>}
+                  {sendingReport ? <ActivityIndicator color={colors.purple} size="small" /> : <IconLabel icon={Trophy} label="Годовой" size={14} gap={5} textStyle={[s.reportBtnText, { color: colors.purple }]} />}
                 </TouchableOpacity>
               </View>
             </View>
@@ -591,17 +593,20 @@ export default function AdminScreen() {
                     {u.isBlocked && <Text style={{ fontSize: 10, color: '#FF3B30', fontWeight: '700' }}>БЛОК</Text>}
                   </View>
                   <Text style={{ fontSize: 12, color: colors.text2 }}>{u.email}</Text>
-                  {u.badge && <Text style={{ fontSize: 11, color: '#FF9700', marginTop: 2 }}>
-                    {u.badge === 'SHOP' ? '🏪 Магазин' : '✅ Блогер'}
-                  </Text>}
-                  {u.excludeFromStats && <Text style={{ fontSize: 11, color: colors.text2, marginTop: 2 }}>👻 Не учитывается в статистике</Text>}
+                  {u.badge && <IconLabel
+                    icon={u.badge === 'SHOP' ? Store : BadgeCheck}
+                    label={u.badge === 'SHOP' ? 'Магазин' : 'Блогер'}
+                    size={11} gap={4} style={{ marginTop: 2 }}
+                    textStyle={{ fontSize: 11, color: '#FF9700' }}
+                  />}
+                  {u.excludeFromStats && <IconLabel icon={Ghost} label="Не учитывается в статистике" size={11} gap={4} style={{ marginTop: 2 }} textStyle={{ fontSize: 11, color: colors.text2 }} />}
                 </View>
                 <View style={{ flexDirection: 'row', gap: 6 }}>
                   <TouchableOpacity
                     onPress={() => handleToggleStatsExclude(u)}
                     style={[s.badgeBtn, u.excludeFromStats && { borderColor: colors.text2, backgroundColor: `${colors.text2}30` }]}
                   >
-                    <Text style={{ fontSize: 14, opacity: u.excludeFromStats ? 1 : 0.5 }}>👻</Text>
+                    <Ghost size={15} color={u.excludeFromStats ? colors.text : colors.text2} strokeWidth={2} />
                   </TouchableOpacity>
                   {BADGE_OPTIONS.map(opt => (
                     <TouchableOpacity
@@ -609,7 +614,7 @@ export default function AdminScreen() {
                       onPress={() => handleSetBadge(u.id, opt.value)}
                       style={[s.badgeBtn, u.badge === opt.value && { borderColor: opt.color, backgroundColor: `${opt.color}20` }]}
                     >
-                      <Text style={{ fontSize: 14 }}>{opt.icon}</Text>
+                      <opt.icon size={15} color={u.badge === opt.value ? opt.color : colors.text2} strokeWidth={2} />
                     </TouchableOpacity>
                   ))}
                   {!u.roles?.includes('ADMIN') && (
@@ -617,7 +622,7 @@ export default function AdminScreen() {
                       onPress={() => handleToggleBlock(u)}
                       style={[s.badgeBtn, u.isBlocked && { borderColor: '#FF3B30', backgroundColor: 'rgba(255,59,48,0.15)' }]}
                     >
-                      <Text style={{ fontSize: 14 }}>{u.isBlocked ? '🔓' : '🚫'}</Text>
+                      {u.isBlocked ? <LockOpen size={15} color="#FF3B30" strokeWidth={2} /> : <Ban size={15} color={colors.text2} strokeWidth={2} />}
                     </TouchableOpacity>
                   )}
                 </View>
@@ -885,7 +890,7 @@ export default function AdminScreen() {
         <ScrollView contentContainerStyle={{ padding: 16, gap: 10 }}>
           {items.length === 0 ? (
             <View style={s.empty}>
-              <Text style={{ fontSize: 48 }}>📦</Text>
+              <Package size={48} color={colors.text2} strokeWidth={1.4} />
               <Text style={{ color: colors.text2, marginTop: 12 }}>Товаров нет — добавьте первый!</Text>
             </View>
           ) : items.map(item => {
@@ -894,7 +899,7 @@ export default function AdminScreen() {
               <View key={item.id} style={[s.card, item.status === 'SOLD' && { opacity: 0.5 }]}>
                 {item.images?.[0]?.url
                   ? <Image source={{ uri: item.images[0].url }} style={s.thumb} />
-                  : <View style={[s.thumb, { backgroundColor: colors.surface2, justifyContent: 'center', alignItems: 'center' }]}><Text style={{ fontSize: 28 }}>🗿</Text></View>
+                  : <View style={[s.thumb, { backgroundColor: colors.surface2, justifyContent: 'center', alignItems: 'center' }]}><Package size={26} color={colors.border} strokeWidth={1.5} /></View>
                 }
                 <View style={{ flex: 1, padding: 12 }}>
                   <Text style={s.cardName} numberOfLines={1}>{item.name}</Text>
@@ -906,16 +911,16 @@ export default function AdminScreen() {
                 </View>
                 <View style={{ flexDirection: 'column', gap: 6, padding: 8 }}>
                   <TouchableOpacity onPress={() => openEdit(item)} style={s.iconBtn}>
-                    <Text>✏️</Text>
+                    <Pencil size={16} color={colors.text} strokeWidth={2} />
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => handleChangeStatus(item.id, item.status)}
                     style={[s.iconBtn, { backgroundColor: 'rgba(52,199,89,0.2)' }]}
                   >
-                    <Text style={{ color: '#34C759', fontWeight: '700', fontSize: 16 }}>⇄</Text>
+                    <ArrowLeftRight size={16} color="#34C759" strokeWidth={2.2} />
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => handleDelete(item.id)} style={[s.iconBtn, { backgroundColor: 'rgba(255,59,48,0.15)' }]}>
-                    <Text>🗑</Text>
+                    <Trash2 size={16} color="#FF3B30" strokeWidth={2} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -983,7 +988,7 @@ export default function AdminScreen() {
           <ScrollView contentContainerStyle={{ padding: 16, gap: 10 }}>
             {conversations.length === 0 && (
               <View style={s.center}>
-                <Text style={{ fontSize: 40, marginBottom: 12 }}>💬</Text>
+                <MessageCircle size={40} color={colors.text2} strokeWidth={1.4} style={{ marginBottom: 12 }} />
                 <Text style={{ color: colors.text2 }}>Обращений пока нет</Text>
               </View>
             )}
@@ -1087,7 +1092,7 @@ export default function AdminScreen() {
                     {uploadingPhoto
                       ? <ActivityIndicator color={colors.accent} />
                       : <>
-                          <Text style={{ fontSize: 24, color: colors.text2 }}>📷</Text>
+                          <Camera size={22} color={colors.text2} strokeWidth={1.6} />
                           <Text style={{ fontSize: 10, color: colors.text2 }}>Добавить</Text>
                         </>
                     }
@@ -1147,13 +1152,13 @@ export default function AdminScreen() {
 
             <Text style={s.label}>ТИП ПРОДАЖИ</Text>
             <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
-              {[{ v: false, icon: '💰', t: 'Обычная' }, { v: true, icon: '🔨', t: 'Аукцион' }].map(opt => (
+              {[{ v: false, icon: Wallet, t: 'Обычная' }, { v: true, icon: Gavel, t: 'Аукцион' }].map(opt => (
                 <TouchableOpacity
                   key={String(opt.v)}
                   onPress={() => setForm(p => ({ ...p, isAuction: opt.v }))}
                   style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 12, borderRadius: 12, borderWidth: 1.5, borderColor: form.isAuction === opt.v ? (opt.v ? '#FF6B00' : colors.accent) : colors.border, backgroundColor: form.isAuction === opt.v ? (opt.v ? '#FF6B0015' : `${colors.accent}15`) : colors.surface }}
                 >
-                  <Text style={{ fontSize: 16 }}>{opt.icon}</Text>
+                  <opt.icon size={16} color={form.isAuction === opt.v ? (opt.v ? '#FF6B00' : colors.accent) : colors.text2} strokeWidth={2} />
                   <Text style={{ fontWeight: '700', color: form.isAuction === opt.v ? (opt.v ? '#FF6B00' : colors.accent) : colors.text2 }}>{opt.t}</Text>
                 </TouchableOpacity>
               ))}

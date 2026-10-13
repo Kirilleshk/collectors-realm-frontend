@@ -4,20 +4,22 @@ import { colors } from '../theme'
 import { reviews as reviewsApi, portfolioCollections as collectionsApi } from '../api'
 import { useAuth } from '../AuthContext'
 import ScreenBackground from '../components/ScreenBackground'
+import IconLabel from '../components/IconLabel'
+import { Boxes, Wrench, Palette, Mountain, Store, BadgeCheck, MapPin, Camera, Pencil, Plus } from 'lucide-react-native'
 import { API_URL } from '../config'
 
 const API = API_URL
 
 const roleMap = {
-  COLLECTOR:    { label: 'Коллекционер',      color: colors.blue,   icon: '🗿' },
-  MASTER_REPAIR:{ label: 'Мастер по ремонту', color: colors.accent, icon: '🔧' },
-  CUSTOMIZER:   { label: 'Кастомизатор',      color: colors.purple, icon: '🎨' },
-  DIORAMA:      { label: 'Мастер диорам',     color: colors.green,  icon: '🏔' },
+  COLLECTOR:    { label: 'Коллекционер',      color: colors.blue,   icon: Boxes },
+  MASTER_REPAIR:{ label: 'Мастер по ремонту', color: colors.accent, icon: Wrench },
+  CUSTOMIZER:   { label: 'Кастомизатор',      color: colors.purple, icon: Palette },
+  DIORAMA:      { label: 'Мастер диорам',     color: colors.green,  icon: Mountain },
 }
 
 const BADGE_CONFIG = {
-  SHOP:    { icon: '🏪', label: 'Магазин', bg: '#FF970015', border: '#FF970060', text: '#FF9700' },
-  BLOGGER: { icon: '✅', label: 'Блогер',  bg: '#007AFF15', border: '#007AFF60', text: '#007AFF' },
+  SHOP:    { icon: Store, label: 'Магазин', bg: '#FF970015', border: '#FF970060', text: '#FF9700' },
+  BLOGGER: { icon: BadgeCheck, label: 'Блогер',  bg: '#007AFF15', border: '#007AFF60', text: '#007AFF' },
 }
 
 function Stars({ rating, size = 16, onPress }) {
@@ -119,7 +121,7 @@ export default function UserProfileScreen({ route, navigation }) {
 
         {badgeCfg && (
           <View style={[s.badgePill, { backgroundColor: badgeCfg.bg, borderColor: badgeCfg.border }]}>
-            <Text style={[s.badgePillText, { color: badgeCfg.text }]}>{badgeCfg.icon} {badgeCfg.label}</Text>
+            <IconLabel icon={badgeCfg.icon} label={badgeCfg.label} size={13} gap={5} textStyle={[s.badgePillText, { color: badgeCfg.text }]} />
           </View>
         )}
 
@@ -133,14 +135,14 @@ export default function UserProfileScreen({ route, navigation }) {
           <Text style={s.noRating}>Нет отзывов</Text>
         )}
 
-        {user.city ? <Text style={s.city}>📍 {user.city}</Text> : null}
+        {user.city ? <IconLabel icon={MapPin} label={user.city} size={13} gap={4} style={{ marginBottom: 12 }} textStyle={s.city} /> : null}
 
         <View style={s.roles}>
           {(user.roles || []).map(r => {
             const role = roleMap[r]
             return role ? (
               <View key={r} style={[s.roleBadge, { backgroundColor: `${role.color}25`, borderColor: `${role.color}50` }]}>
-                <Text style={s.roleIcon}>{role.icon}</Text>
+                <role.icon size={14} color={role.color} strokeWidth={2} />
                 <Text style={[s.roleText, { color: role.color }]}>{role.label}</Text>
               </View>
             ) : null
@@ -187,7 +189,7 @@ export default function UserProfileScreen({ route, navigation }) {
                   <Image source={{ uri: col.photos[0].url }} style={[s.collCover, { width: collCardWidth, height: collCardWidth }]} />
                 ) : (
                   <View style={[s.collCover, { width: collCardWidth, height: collCardWidth, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.surface2 }]}>
-                    <Text style={{ fontSize: 32 }}>📷</Text>
+                    <Camera size={30} color={colors.border} strokeWidth={1.5} />
                   </View>
                 )}
                 <View style={s.collCardBody}>
@@ -206,7 +208,7 @@ export default function UserProfileScreen({ route, navigation }) {
           <Text style={s.sectionTitle}>Отзывы ({reviewData.count})</Text>
           {!isMe && (
             <TouchableOpacity onPress={() => setReviewModal(true)} style={s.leaveReviewBtn}>
-              <Text style={s.leaveReviewText}>{alreadyReviewed ? '✏️ Изменить' : '+ Оставить'}</Text>
+              <IconLabel icon={alreadyReviewed ? Pencil : Plus} label={alreadyReviewed ? 'Изменить' : 'Оставить'} size={13} gap={4} textStyle={s.leaveReviewText} />
             </TouchableOpacity>
           )}
         </View>
@@ -318,10 +320,9 @@ const s = StyleSheet.create({
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   ratingText: { fontSize: 14, color: colors.text2, fontWeight: '600' },
   noRating: { fontSize: 13, color: colors.text2, marginBottom: 8 },
-  city: { fontSize: 13, color: colors.text2, marginBottom: 12 },
+  city: { fontSize: 13, color: colors.text2 },
   roles: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center' },
   roleBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1 },
-  roleIcon: { fontSize: 14 },
   roleText: { fontSize: 12, fontWeight: '700' },
   section: { paddingHorizontal: 16, marginTop: 20 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },

@@ -6,6 +6,8 @@ import { useAuth } from '../AuthContext'
 import { colors } from '../theme'
 import ScreenBackground from '../components/ScreenBackground'
 import BrandHeader from '../components/BrandHeader'
+import IconLabel from '../components/IconLabel'
+import { WifiOff, RotateCw, Map as MapIcon } from 'lucide-react-native'
 import MapFilterBar from '../components/map/MapFilterBar'
 import MapUserCardModal from '../components/map/MapUserCardModal'
 import { mapStyles as s } from '../components/map/mapStyles'
@@ -87,14 +89,14 @@ export default function MapScreen({ navigation }) {
 
   if (error) return (
     <View style={s.center}>
-      <Text style={{ fontSize: 40, marginBottom: 8 }}>⚠️</Text>
+      <WifiOff size={40} color={colors.text2} strokeWidth={1.6} style={{ marginBottom: 8 }} />
       <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text }}>Нет соединения</Text>
       <Text style={{ fontSize: 14, color: colors.text2, textAlign: 'center', paddingHorizontal: 32 }}>{error}</Text>
       <TouchableOpacity
         style={{ marginTop: 16, paddingHorizontal: 28, paddingVertical: 12, borderRadius: 12, backgroundColor: colors.accent }}
         onPress={loadUsers}
       >
-        <Text style={{ color: 'white', fontSize: 15, fontWeight: '700' }}>↻ Повторить</Text>
+        <IconLabel icon={RotateCw} label="Повторить" textStyle={{ color: 'white', fontSize: 15, fontWeight: '700' }} />
       </TouchableOpacity>
     </View>
   )
@@ -119,7 +121,7 @@ export default function MapScreen({ navigation }) {
 
       {users.length === 0 ? (
         <View style={s.center}>
-          <Text style={{ fontSize: 48, marginBottom: 16 }}>🗺</Text>
+          <MapIcon size={48} color={colors.text2} strokeWidth={1.4} style={{ marginBottom: 16 }} />
           <Text style={{ color: colors.text, fontSize: 18, fontWeight: '700', marginBottom: 8 }}>Карта пустая</Text>
           <Text style={{ color: colors.text2, textAlign: 'center', paddingHorizontal: 32 }}>Пользователи появятся когда укажут своё местоположение в профиле</Text>
         </View>

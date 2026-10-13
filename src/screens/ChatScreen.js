@@ -4,6 +4,7 @@ import { colors } from '../theme'
 import { support as supportApi } from '../api'
 import SmartInput from '../utils/SmartInput'
 import ScreenBackground from '../components/ScreenBackground'
+import { Package } from 'lucide-react-native'
 
 export default function ChatScreen({ route }) {
   const { productName, productId } = route.params || {}
@@ -46,7 +47,7 @@ export default function ChatScreen({ route }) {
     <ScreenBackground>
     <KeyboardAvoidingView style={s.wrap} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
       <View style={s.productBar}>
-        <Text style={s.productIcon}>🗿</Text>
+        <Package size={30} color={colors.accent} strokeWidth={1.6} />
         <View>
           <Text style={s.productName} numberOfLines={1}>{productName || 'Товар'}</Text>
           <Text style={s.productSub}>Связь с администрацией магазина</Text>
@@ -99,7 +100,6 @@ const s = StyleSheet.create({
   wrap: { flex: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   productBar: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
-  productIcon: { fontSize: 32 },
   productName: { fontSize: 15, fontWeight: '700', color: colors.text },
   productSub: { fontSize: 12, color: colors.text2, marginTop: 2 },
   hint: { paddingHorizontal: 8, paddingBottom: 12 },

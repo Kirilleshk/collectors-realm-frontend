@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from 'react'
 import { Alert } from 'react-native'
 import * as Location from 'expo-location'
 import { API_URL } from '../config'
+import { Boxes, Wrench, Palette, Mountain } from 'lucide-react-native'
 
 // Общая логика карты (вынесено 19.09.2026 при чистке техдолга) —
 // MapScreen.js (мобайл, WebView+Leaflet) и MapScreen.web.js (веб,
@@ -14,11 +15,13 @@ import { API_URL } from '../config'
 
 export const API = API_URL
 
+// icon (эмодзи) — только для HTML-меток и попапов Leaflet, туда React-компонент
+// не вставить; Icon (Lucide) — для обычного интерфейса (фильтр, карточка)
 export const roleMap = {
-  COLLECTOR: { label: 'Коллекционер', icon: '🗿', color: '#4A90D9' },
-  MASTER_REPAIR: { label: 'Мастер по ремонту', icon: '🔧', color: '#E04E28' },
-  CUSTOMIZER: { label: 'Кастомизатор', icon: '🎨', color: '#AF52DE' },
-  DIORAMA: { label: 'Мастер диорам', icon: '🏔', color: '#34C759' },
+  COLLECTOR: { label: 'Коллекционер', icon: '🗿', Icon: Boxes, color: '#4A90D9' },
+  MASTER_REPAIR: { label: 'Мастер по ремонту', icon: '🔧', Icon: Wrench, color: '#E04E28' },
+  CUSTOMIZER: { label: 'Кастомизатор', icon: '🎨', Icon: Palette, color: '#AF52DE' },
+  DIORAMA: { label: 'Мастер диорам', icon: '🏔', Icon: Mountain, color: '#34C759' },
 }
 
 export function haversine(lat1, lon1, lat2, lon2) {

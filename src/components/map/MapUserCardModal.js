@@ -2,6 +2,8 @@ import React from 'react'
 import { View, Text, TouchableOpacity, ScrollView, Modal, Image } from 'react-native'
 import { roleMap, haversine } from '../../utils/mapShared'
 import { mapStyles as s } from './mapStyles'
+import IconLabel from '../IconLabel'
+import { MapPin, Ruler, User } from 'lucide-react-native'
 
 // Карточка пользователя по тапу на маркер — общая для MapScreen.js и
 // MapScreen.web.js (см. mapShared.js про причину выноса, 19.09.2026)
@@ -21,18 +23,21 @@ export default function MapUserCardModal({ selected, onClose, onOpenProfile, myL
               )}
               <View style={{ flex: 1 }}>
                 <Text style={s.cardName}>{selected?.name}</Text>
-                {selected?.city ? <Text style={s.cardCity}>📍 {selected.city}</Text> : null}
+                {selected?.city ? <IconLabel icon={MapPin} label={selected.city} size={13} gap={4} style={{ marginTop: 2 }} textStyle={[s.cardCity, { marginTop: 0 }]} /> : null}
                 {myLocation && selected?.latitude ? (
-                  <Text style={s.cardDist}>
-                    📏 {haversine(myLocation.latitude, myLocation.longitude, selected.latitude, selected.longitude).toFixed(1)} км от вас
-                  </Text>
+                  <IconLabel
+                    icon={Ruler}
+                    label={`${haversine(myLocation.latitude, myLocation.longitude, selected.latitude, selected.longitude).toFixed(1)} км от вас`}
+                    size={12} gap={4} style={{ marginTop: 2 }}
+                    textStyle={[s.cardDist, { marginTop: 0 }]}
+                  />
                 ) : null}
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
                   {(selected?.roles || []).map(r => {
                     const role = roleMap[r]
                     return role ? (
                       <View key={r} style={[s.roleBadge, { backgroundColor: `${role.color}20`, borderColor: `${role.color}50` }]}>
-                        <Text style={{ fontSize: 11, color: role.color, fontWeight: '700' }}>{role.icon} {role.label}</Text>
+                        <IconLabel icon={role.Icon} label={role.label} size={11} gap={4} textStyle={{ fontSize: 11, color: role.color, fontWeight: '700' }} />
                       </View>
                     ) : null
                   })}
@@ -42,7 +47,7 @@ export default function MapUserCardModal({ selected, onClose, onOpenProfile, myL
             {selected?.bio ? <Text style={s.cardBio} numberOfLines={6} ellipsizeMode="tail">{selected.bio}</Text> : null}
           </ScrollView>
           <TouchableOpacity style={s.profileBtn} onPress={() => onOpenProfile(selected)}>
-            <Text style={s.profileBtnText}>👤 Открыть профиль</Text>
+            <IconLabel icon={User} label="Открыть профиль" size={17} textStyle={s.profileBtnText} />
           </TouchableOpacity>
           <TouchableOpacity style={s.closeBtn} onPress={onClose}>
             <Text style={s.closeBtnText}>Закрыть</Text>

@@ -6,6 +6,7 @@ import {
 import { news as newsApi } from '../api'
 import { colors } from '../theme'
 import ScreenBackground from '../components/ScreenBackground'
+import { Settings, Newspaper } from 'lucide-react-native'
 
 function FeedCard({ item }) {
   const date = new Date(item.date)
@@ -92,7 +93,7 @@ export default function ReleasesScreen() {
 
   if (error) return (
     <View style={s.empty}>
-      <Text style={s.emptyIcon}>⚙️</Text>
+      <Settings size={48} color={colors.text2} strokeWidth={1.4} style={s.emptyIcon} />
       <Text style={s.emptyTitle}>Лента недоступна</Text>
       <Text style={s.emptySub}>{error}</Text>
       <TouchableOpacity style={s.retryBtn} onPress={() => loadFeed()}>
@@ -114,7 +115,7 @@ export default function ReleasesScreen() {
       onEndReachedThreshold={0.4}
       ListEmptyComponent={
         <View style={s.empty}>
-          <Text style={s.emptyIcon}>📰</Text>
+          <Newspaper size={48} color={colors.text2} strokeWidth={1.4} style={s.emptyIcon} />
           <Text style={s.emptyTitle}>Постов нет</Text>
           <Text style={s.emptySub}>Потяни вниз чтобы обновить</Text>
         </View>
@@ -125,7 +126,7 @@ export default function ReleasesScreen() {
             <ActivityIndicator color={colors.accent} />
           </View>
         ) : !hasMore && feed.length > 0 ? (
-          <Text style={s.endText}>Это все посты 🗿</Text>
+          <Text style={s.endText}>Это все посты</Text>
         ) : null
       }
       renderItem={({ item }) => <FeedCard item={item} />}
@@ -150,7 +151,7 @@ const s = StyleSheet.create({
   endText: { textAlign: 'center', color: colors.text2, fontSize: 12, paddingVertical: 20 },
 
   empty: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 32 },
-  emptyIcon: { fontSize: 48, marginBottom: 16 },
+  emptyIcon: { marginBottom: 16 },
   emptyTitle: { fontSize: 17, fontWeight: '600', color: colors.text, marginBottom: 8 },
   emptySub: { fontSize: 14, color: colors.text2, textAlign: 'center', lineHeight: 20 },
   retryBtn: { marginTop: 16, paddingHorizontal: 24, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: colors.accent },

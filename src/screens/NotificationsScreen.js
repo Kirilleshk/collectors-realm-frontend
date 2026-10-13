@@ -3,13 +3,14 @@ import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, 
 import { notifications as notifApi } from '../api'
 import { colors } from '../theme'
 import ScreenBackground from '../components/ScreenBackground'
+import { BarChart3, Trophy, TrendingDown, Target, ShoppingBag, Bell } from 'lucide-react-native'
 
 const TYPE_CONFIG = {
-  MONTHLY_REPORT: { icon: '📊', color: colors.blue },
-  YEARLY_REPORT:  { icon: '🏆', color: colors.purple },
-  PRICE_DROP:     { icon: '💰', color: colors.green },
-  WISHLIST_MATCH: { icon: '🎯', color: colors.accent },
-  NEW_PRODUCT:    { icon: '🛍', color: colors.blue },
+  MONTHLY_REPORT: { icon: BarChart3, color: colors.blue },
+  YEARLY_REPORT:  { icon: Trophy, color: colors.purple },
+  PRICE_DROP:     { icon: TrendingDown, color: colors.green },
+  WISHLIST_MATCH: { icon: Target, color: colors.accent },
+  NEW_PRODUCT:    { icon: ShoppingBag, color: colors.blue },
 }
 
 function timeAgo(dateStr) {
@@ -86,7 +87,7 @@ export default function NotificationsScreen({ navigation }) {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
         ListEmptyComponent={
           <View style={s.empty}>
-            <Text style={s.emptyIcon}>🔔</Text>
+            <Bell size={48} color={colors.text2} strokeWidth={1.4} style={s.emptyIcon} />
             <Text style={s.emptyTitle}>Уведомлений нет</Text>
             <Text style={s.emptySub}>Здесь будут отчёты о коллекции и уведомления о снижении цен</Text>
           </View>
@@ -100,7 +101,7 @@ export default function NotificationsScreen({ navigation }) {
               activeOpacity={0.8}
             >
               <View style={[s.iconWrap, { backgroundColor: `${cfg.color}20` }]}>
-                <Text style={s.icon}>{cfg.icon}</Text>
+                <cfg.icon size={22} color={cfg.color} strokeWidth={1.8} />
                 {!n.read && <View style={s.dot} />}
               </View>
               <View style={s.cardBody}>
@@ -125,14 +126,13 @@ const s = StyleSheet.create({
   card: { flexDirection: 'row', backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 14, gap: 12 },
   cardUnread: { borderColor: `${colors.accent}40`, backgroundColor: `${colors.accent}08` },
   iconWrap: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center', position: 'relative', flexShrink: 0 },
-  icon: { fontSize: 22 },
   dot: { position: 'absolute', top: -3, right: -3, width: 10, height: 10, borderRadius: 5, backgroundColor: colors.accent, borderWidth: 2, borderColor: colors.bg },
   cardBody: { flex: 1 },
   cardTitle: { fontSize: 14, fontWeight: '700', color: colors.text, marginBottom: 4 },
   cardDesc: { fontSize: 13, color: colors.text2, lineHeight: 19, marginBottom: 6 },
   cardTime: { fontSize: 11, color: colors.text2 },
   empty: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 32 },
-  emptyIcon: { fontSize: 48, marginBottom: 16 },
+  emptyIcon: { marginBottom: 16 },
   emptyTitle: { fontSize: 17, fontWeight: '600', color: colors.text, marginBottom: 8 },
   emptySub: { fontSize: 14, color: colors.text2, textAlign: 'center', lineHeight: 20 },
 })

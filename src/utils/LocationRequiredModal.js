@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { View, Text, Modal, Pressable, ActivityIndicator, StyleSheet, Platform, Linking } from 'react-native'
 import * as Location from 'expo-location'
 import { colors } from '../theme'
+import { MapPin } from 'lucide-react-native'
 import { users as usersApi } from '../api'
 import { useAuth } from '../AuthContext'
 
@@ -80,7 +81,7 @@ export default function LocationRequiredModal() {
     <Modal visible transparent animationType="fade" onRequestClose={handleSkip}>
       <View style={s.overlay}>
         <View style={s.card}>
-          <Text style={s.icon}>📍</Text>
+          <MapPin size={48} color={colors.accent} strokeWidth={1.5} style={s.icon} />
           <Text style={s.title}>Нужна геолокация</Text>
           <Text style={s.desc}>
             Чтобы коллекционеры поблизости могли находить друг друга на карте,
@@ -120,7 +121,7 @@ export default function LocationRequiredModal() {
 const s = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', padding: 24 },
   card: { backgroundColor: colors.surface, borderRadius: 20, padding: 24, width: '100%', maxWidth: 360, borderWidth: 1, borderColor: colors.border, alignItems: 'center' },
-  icon: { fontSize: 48, marginBottom: 12 },
+  icon: { marginBottom: 12 },
   title: { fontSize: 20, fontWeight: '900', color: colors.text, marginBottom: 8, textAlign: 'center' },
   desc: { fontSize: 14, color: colors.text2, textAlign: 'center', marginBottom: 16, lineHeight: 20 },
   deniedBox: { backgroundColor: 'rgba(255,59,48,0.1)', borderRadius: 12, padding: 12, marginBottom: 16, width: '100%' },
