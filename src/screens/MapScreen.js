@@ -109,9 +109,15 @@ html, body, #map { width: 100%; height: 100vh; }
 <div id="map"></div>
 <script>
 L.Browser.any3d = false;
-var map = L.map('map').setView([${centerLat}, ${centerLng}], ${zoom});
+// одна карта мира без копий по бокам — та же логика, что WORLD_BOUNDS/worldMinZoom в mapShared.js
+var WORLD = [[-85, -180], [85, 180]];
+var minZ = Math.max(2, Math.ceil(Math.log2(Math.max(window.innerWidth, 256) / 256)));
+var map = L.map('map', { minZoom: minZ, maxBounds: WORLD, maxBoundsViscosity: 1, worldCopyJump: false })
+  .setView([${centerLat}, ${centerLng}], Math.max(minZ, ${zoom}));
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '© OpenStreetMap'
+  attribution: '© OpenStreetMap',
+  noWrap: true,
+  bounds: WORLD
 }).addTo(map);
 
 ${nearbyCode}

@@ -24,6 +24,15 @@ export const roleMap = {
   DIORAMA: { label: 'Мастер диорам', icon: '🏔', Icon: Mountain, color: '#34C759' },
 }
 
+// Одна карта мира без бесконечных копий по горизонтали (жалоба Кирилла
+// 13.10.2026): тайлы без повтора (noWrap), карту не утащить за края
+// (maxBounds + viscosity 1), а минимальное отдаление — такое, чтобы мир
+// по ширине заполнял экран без серых полос (тайл мира — 256px на зуме 0).
+export const WORLD_BOUNDS = [[-85, -180], [85, 180]]
+export function worldMinZoom(width) {
+  return Math.max(2, Math.ceil(Math.log2(Math.max(width, 256) / 256)))
+}
+
 export function haversine(lat1, lon1, lat2, lon2) {
   const R = 6371
   const dLat = (lat2 - lat1) * Math.PI / 180

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native'
+import { View, Text, TouchableOpacity, ActivityIndicator, useWindowDimensions } from 'react-native'
 import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet'
 import L from 'leaflet'
 import { useAuth } from '../AuthContext'
@@ -11,7 +11,7 @@ import { WifiOff, RotateCw, Map as MapIcon } from '../icons'
 import MapFilterBar from '../components/map/MapFilterBar'
 import MapUserCardModal from '../components/map/MapUserCardModal'
 import { mapStyles as s } from '../components/map/mapStyles'
-import { roleMap, useMapUsers, useNearbyLocation, filterMapUsers } from '../utils/mapShared'
+import { roleMap, useMapUsers, useNearbyLocation, filterMapUsers, WORLD_BOUNDS, worldMinZoom } from '../utils/mapShared'
 
 // Веб-карта — react-leaflet, прямой DOM-рендер (не iframe, см. комментарий
 // у ensureLeafletCss). Общая логика (загрузка/фильтр пользователей, «Поблизости»,
@@ -63,6 +63,7 @@ function buildMeIcon() {
 
 export default function MapScreen({ navigation }) {
   const { token, user: me } = useAuth()
+  const { width } = useWindowDimensions()
   const { users, loading, slowLoad, error, loadUsers } = useMapUsers(token, me)
   const { nearbyRadius, myLocation, gettingLocation, toggleNearby, clearNearby } = useNearbyLocation()
   const [filter, setFilter] = useState(null)
@@ -103,7 +104,8 @@ export default function MapScreen({ navigation }) {
 
   const centerLat = myLocation ? myLocation.latitude : 55.7558
   const centerLng = myLocation ? myLocation.longitude : 37.6173
-  const zoom = myLocation && nearbyRadius ? (nearbyRadius <= 5 ? 13 : 11) : 5
+  const minZoom = worldMinZoom(width)
+  const zoom = Math.max(minZoom, myLocation && nearbyRadius ? (nearbyRadius <= 5 ? 13 : 11) : 5)
 
   return (
     <ScreenBackground style={s.wrap}>
@@ -131,9 +133,13 @@ export default function MapScreen({ navigation }) {
             key={`${centerLat}-${centerLng}-${zoom}`}
             center={[centerLat, centerLng]}
             zoom={zoom}
+            minZoom={minZoom}
+            maxBounds={WORLD_BOUNDS}
+            maxBoundsViscosity={1}
+            worldCopyJump={false}
             style={{ width: '100%', height: '100%' }}
           >
-            <TileLayer attribution="© OpenStreetMap" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            <TileLayer attribution="© OpenStreetMap" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" noWrap bounds={WORLD_BOUNDS} />
 
             {myLocation && nearbyRadius && (
               <>
