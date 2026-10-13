@@ -83,7 +83,17 @@ RootNav
 
 - **react-native-gesture-handler** — вся механика атаки в бою (drag существо →
   цель) построена на `Gesture.Pan()`, не на `onPress` (`BattleScreen.js`, `makeAttackDrag`).
-- **react-native-svg** — карта-путь лестницы боссов (`LevelSelectScreen.js`).
+- **react-native-svg** — карта-путь лестницы боссов (`LevelSelectScreen.js`) и
+  иконки Lucide.
+- **lucide-react-native** (с 13.10.2026) — иконки интерфейса вместо эмодзи.
+  Импортировать ТОЛЬКО из `src/icons.js` (по одной иконке через
+  `lucide-react-native/icons/<имя>`): импорт из общего индекса тянет в веб-сборку
+  все ~1900 иконок (бандл 1,8 → 4 МБ). Новую иконку — дописать в `src/icons.js`.
+  «Иконка + подпись» — `src/components/IconLabel.js`. Эмодзи остались
+  сознательно: метки на самой карте (HTML Leaflet), системные Alert, тексты
+  `changelog.js`/статистики, экраны закрытой игры и библиотеки.
+  Копия до замены: тег `ui-emoji-backup-2026-10-13` (код),
+  `site-before-icons-2026-10-13` (сборка сайта, откат прода — эту версию в gh-pages).
 - **expo-screen-orientation** — landscape-lock включается ТОЛЬКО в
   `BattleScreen.js`, остальные экраны — свободный поворот.
 - **react-native-webview** vs **react-leaflet** — карта рендерится по-разному:
