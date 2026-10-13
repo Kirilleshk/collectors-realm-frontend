@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { View, Text, Image, ActivityIndicator, Platform, AppState } from 'react-native'
+import { View, Image, ActivityIndicator, Platform, AppState } from 'react-native'
+import { ShoppingBag, Map as MapIcon, Gamepad2, Settings, User } from 'lucide-react-native'
 import { NavigationContainer } from '@react-navigation/native'
 import * as NavigationBar from 'expo-navigation-bar'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
@@ -35,7 +36,10 @@ const Stack = createNativeStackNavigator()
 
 // «Моё» раньше показывал плейсхолдер-эмодзи 🗿 — теперь настоящий логотип
 // (assets/logo-mark.png), рендерится отдельно от остальных вкладок в tabBarIcon ниже.
-const tabIcons = { Магазин: '🛍', Карта: '🗺', Игра: '🎮', Админ: '⚙️', Профиль: '👤' }
+// 13.10.2026: эмодзи вкладок → линейные иконки Lucide — на разных устройствах
+// эмодзи рисовались по-разному и не красились в цвета темы. Копия интерфейса
+// до замены — git-тег ui-emoji-backup-2026-10-13.
+const tabIcons = { Магазин: ShoppingBag, Карта: MapIcon, Игра: Gamepad2, Админ: Settings, Профиль: User }
 
 function ShopStack() {
   return (
@@ -105,11 +109,13 @@ function MainTabs() {
   const isAdmin = user?.roles?.includes('ADMIN') || user?.roles?.includes('ANALYTICS') || user?.roles?.includes('MODERATOR')
   return (
     <Tab.Navigator screenOptions={({ route }) => ({
-      tabBarIcon: ({ focused }) => (
-        route.name === 'Моё'
-          ? <Image source={require('./assets/logo-mark.png')} style={{ width: 22, height: 22, opacity: focused ? 1 : 0.5 }} resizeMode="contain" />
-          : <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.5 }}>{tabIcons[route.name]}</Text>
-      ),
+      tabBarIcon: ({ focused, color }) => {
+        if (route.name === 'Моё') {
+          return <Image source={require('./assets/logo-mark.png')} style={{ width: 22, height: 22, opacity: focused ? 1 : 0.5 }} resizeMode="contain" />
+        }
+        const Icon = tabIcons[route.name]
+        return Icon ? <Icon size={22} color={color} strokeWidth={focused ? 2.2 : 1.8} /> : null
+      },
       tabBarStyle: getTabBarStyle(insets),
       tabBarActiveTintColor: colors.accent,
       tabBarInactiveTintColor: colors.text2,

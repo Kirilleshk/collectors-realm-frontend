@@ -33,6 +33,7 @@
     "expo-updates": "~29.0.17",
     "install": "^0.13.0",
     "leaflet": "^1.9.4",
+    "lucide-react-native": "^1.56.0",
     "metro": "^0.83.1",
     "metro-cache": "^0.80.9",
     "metro-config": "^0.80.9",

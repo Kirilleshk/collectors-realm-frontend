@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { View, Text, Image, Modal, Pressable, StyleSheet, useWindowDimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { ShoppingBag, Map as MapIcon, User } from 'lucide-react-native'
 import { colors } from '../theme'
 import { useAuth } from '../AuthContext'
 import { users as usersApi } from '../api'
@@ -10,10 +11,10 @@ const ARROW_HALF = 12
 // Шаги тура — каждый указывает на вкладку нижнего меню, которую нужно
 // подсветить (стрелка снизу + не затемнённый таб-бар на этой вкладке)
 const ALL_STEPS = [
-  { tab: 'Магазин', icon: '🛍', title: 'Магазин', desc: 'Здесь — товары других коллекционеров: фигурки, аксессуары, диорамы. Используйте поиск и фильтры по статусу и состоянию.' },
-  { tab: 'Карта', icon: '🗺', title: 'Карта коллекционеров', desc: 'Коллекционеры, мастера по ремонту, кастомизаторы и мастера диорам рядом с вами. Нажмите на маркер — откроется профиль.' },
-  { tab: 'Моё', icon: '🗿', title: 'Коллекция и вишлист', desc: 'Каталог ваших фигурок и список того, что хотите найти. Указывайте приоритет, производителя и год выпуска.' },
-  { tab: 'Профиль', icon: '👤', title: 'Профиль', desc: 'Город, роли, фото портфолио, связь с администрацией и раздел «Помощь» со всеми функциями приложения.' },
+  { tab: 'Магазин', Icon: ShoppingBag, title: 'Магазин', desc: 'Здесь — товары других коллекционеров: фигурки, аксессуары, диорамы. Используйте поиск и фильтры по статусу и состоянию.' },
+  { tab: 'Карта', Icon: MapIcon, title: 'Карта коллекционеров', desc: 'Коллекционеры, мастера по ремонту, кастомизаторы и мастера диорам рядом с вами. Нажмите на маркер — откроется профиль.' },
+  { tab: 'Моё', title: 'Коллекция и вишлист', desc: 'Каталог ваших фигурок и список того, что хотите найти. Указывайте приоритет, производителя и год выпуска.' },
+  { tab: 'Профиль', Icon: User, title: 'Профиль', desc: 'Город, роли, фото портфолио, связь с администрацией и раздел «Помощь» со всеми функциями приложения.' },
 ]
 // Шаг про «Игра» убран из тура 22.09.2026 — раздел приостановлен (решение
 // Марка 20.09.2026) и теперь встречает заглушкой "в разработке" вместо
@@ -73,7 +74,7 @@ export default function OnboardingTour({ navigationRef, showGame, isAdmin, onFin
           <View style={s.cardHeader}>
             {current.tab === 'Моё'
               ? <Image source={require('../../assets/logo-mark.png')} style={s.cardLogo} resizeMode="contain" />
-              : <Text style={s.cardIcon}>{current.icon}</Text>}
+              : current.Icon && <current.Icon size={28} color={colors.accent} strokeWidth={2} />}
             <Text style={s.cardTitle}>{current.title}</Text>
           </View>
           <Text style={s.cardDesc}>{current.desc}</Text>
@@ -102,7 +103,6 @@ const s = StyleSheet.create({
   arrow: { position: 'absolute', fontSize: 28, fontWeight: '900', color: colors.accent },
   card: { position: 'absolute', left: 16, right: 16, backgroundColor: colors.surface, borderRadius: 16, padding: 18, borderWidth: 1, borderColor: colors.border },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
-  cardIcon: { fontSize: 28 },
   cardLogo: { width: 28, height: 28 },
   cardTitle: { fontSize: 17, fontWeight: '900', color: colors.text },
   cardDesc: { fontSize: 13, color: colors.text2, lineHeight: 19 },
