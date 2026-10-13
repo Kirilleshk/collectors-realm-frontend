@@ -5,6 +5,8 @@ import { products } from '../api'
 import { colors } from '../theme'
 import ScreenBackground from '../components/ScreenBackground'
 import BrandHeader from '../components/BrandHeader'
+import IconLabel from '../components/IconLabel'
+import { Gavel, CalendarDays, BookOpen, Search, SearchX, X, Package, WifiOff, RotateCw } from 'lucide-react-native'
 
 // На узком мобильном экране — 2 колонки как раньше; на широком вебе больше
 // колонок, чтобы карточка не растягивалась на пол-окна (фикс "растянутых карточек").
@@ -18,7 +20,7 @@ const FILTERS = [
   { label: 'Все', value: null },
   { label: 'Новые', value: 'NEW' },
   { label: 'Б/у', value: 'USED' },
-  { label: '🔨 Аукцион', value: 'AUCTION' },
+  { label: 'Аукцион', value: 'AUCTION', icon: Gavel },
   { label: 'Предзаказ', value: 'PREORDER' },
   { label: 'Резерв', value: 'RESERVED' },
   { label: 'Торг', value: 'NEGOTIABLE' },
@@ -109,7 +111,7 @@ export default function ShopScreen({ navigation }) {
 
   function getBadgeStyle(item) {
     const badge = getBadge(item)
-    if (badge.color) return { backgroundColor: `${badge.color}30`, borderColor: `${badge.color}60` }
+    if (badge.color) return { borderColor: `${badge.color}80` }
     if (item.condition === 'USED') return s.badgeUsed
     return s.badgeNew
   }
@@ -126,11 +128,11 @@ export default function ShopScreen({ navigation }) {
 
   if (error) return (
     <View style={[s.center, { paddingTop: insets.top }]}>
-      <Text style={{ fontSize: 40, marginBottom: 8 }}>⚠️</Text>
+      <WifiOff size={40} color={colors.text2} strokeWidth={1.6} style={{ marginBottom: 8 }} />
       <Text style={s.errorTitle}>Нет соединения</Text>
       <Text style={s.errorSub}>{error}</Text>
       <TouchableOpacity style={s.retryBtn} onPress={load}>
-        <Text style={s.retryText}>↻ Повторить</Text>
+        <IconLabel icon={RotateCw} label="Повторить" textStyle={s.retryText} />
       </TouchableOpacity>
     </View>
   )
@@ -141,7 +143,7 @@ export default function ShopScreen({ navigation }) {
       <View style={s.topRow}>
         {/* Кнопка Анонсы */}
         <TouchableOpacity style={s.announceBanner} onPress={() => navigation.navigate('Releases')}>
-          <Text style={s.announceBannerText}>📅 Анонсы новых фигурок →</Text>
+          <IconLabel icon={CalendarDays} label="Анонсы новых фигурок →" textStyle={s.announceBannerText} />
         </TouchableOpacity>
 
         {/* Кнопка Библиотека знаний — открытая книжка с контуром, не в кружке.
@@ -149,14 +151,14 @@ export default function ShopScreen({ navigation }) {
             в App.js ведёт на заглушку "в разработке" (NotReadyScreen), не на
             настоящий экран, так что здесь достаточно обычной навигации. */}
         <TouchableOpacity style={s.libraryIconBtn} onPress={() => navigation.navigate('Library')}>
-          <Text style={s.libraryIcon}>📖</Text>
+          <BookOpen size={24} color={colors.purple} strokeWidth={1.8} />
           <Text style={s.libraryIconLabel}>Библиотека</Text>
         </TouchableOpacity>
       </View>
 
       {/* Поиск */}
       <Animated.View style={[s.searchWrap, { opacity: searchAnim }]}>
-        <Text style={s.searchIcon}>🔍</Text>
+        <Search size={17} color={colors.text2} strokeWidth={2} />
         <TextInput
           style={s.searchInput}
           value={search}
@@ -167,7 +169,7 @@ export default function ShopScreen({ navigation }) {
         />
         {search ? (
           <TouchableOpacity onPress={() => { setSearch(''); setShowSuggestions(false) }}>
-            <Text style={s.searchClear}>✕</Text>
+            <X size={18} color={colors.text2} style={s.searchClear} />
           </TouchableOpacity>
         ) : null}
       </Animated.View>
@@ -201,9 +203,7 @@ export default function ShopScreen({ navigation }) {
               style={[s.filterBtn, filter === f.value && s.filterBtnActive]}
               onPress={() => setFilter(f.value)}
             >
-              <Text style={[s.filterText, filter === f.value && s.filterTextActive]}>
-                {f.label}
-              </Text>
+              <IconLabel icon={f.icon} label={f.label} size={14} gap={5} textStyle={[s.filterText, filter === f.value && s.filterTextActive]} />
             </TouchableOpacity>
           )}
         />
@@ -225,7 +225,9 @@ export default function ShopScreen({ navigation }) {
         }
         ListEmptyComponent={
           <View style={s.empty}>
-            <Text style={s.emptyIcon}>{search ? '🔍' : '🗿'}</Text>
+            {search
+              ? <SearchX size={44} color={colors.text2} strokeWidth={1.5} style={s.emptyIcon} />
+              : <Package size={44} color={colors.text2} strokeWidth={1.5} style={s.emptyIcon} />}
             <Text style={s.emptyTitle}>{search ? 'Ничего не найдено' : 'Товаров пока нет'}</Text>
             <Text style={s.emptySub}>{search ? `По запросу "${search}" ничего нет` : 'Загляни позже'}</Text>
             {search ? (
@@ -246,11 +248,11 @@ export default function ShopScreen({ navigation }) {
               <View style={s.imgWrap}>
                 {item.images?.[0]?.url
                   ? <Image source={{ uri: item.images[0].url }} style={s.img} resizeMode="cover" />
-                  : <Text style={s.imgIcon}>🗿</Text>
+                  : <Package size={44} color={colors.border} strokeWidth={1.5} />
                 }
                 {item.isAuction ? (
                   <View style={s.auctionBadge}>
-                    <Text style={s.auctionBadgeText}>🔨 АУКЦИОН</Text>
+                    <IconLabel icon={Gavel} label="АУКЦИОН" size={11} gap={4} textStyle={s.auctionBadgeText} />
                   </View>
                 ) : (
                   <View style={[s.badge, getBadgeStyle(item)]}>
@@ -292,7 +294,6 @@ const s = StyleSheet.create({
     margin: 12, marginBottom: 8,
     paddingHorizontal: 14, paddingVertical: 10, gap: 10,
   },
-  searchIcon: { fontSize: 16 },
   searchInput: { flex: 1, color: colors.text, fontSize: 14 },
   searchClear: { color: colors.text2, fontSize: 16, padding: 4 },
   suggestDropdown: {
@@ -308,7 +309,6 @@ const s = StyleSheet.create({
   announceBanner: { flex: 1, justifyContent: 'center', backgroundColor: `${colors.blue}15`, borderRadius: 10, borderWidth: 1, borderColor: `${colors.blue}30`, paddingHorizontal: 14, paddingVertical: 10 },
   announceBannerText: { fontSize: 13, fontWeight: '600', color: colors.blue },
   libraryIconBtn: { alignItems: 'center', justifyContent: 'center', gap: 2, backgroundColor: `${colors.purple}15`, borderRadius: 10, borderWidth: 2, borderColor: '#000', paddingHorizontal: 12, paddingVertical: 6, minWidth: 76 },
-  libraryIcon: { fontSize: 26 },
   libraryIconLabel: { fontSize: 10, fontWeight: '700', color: colors.purple },
   filtersWrap: { marginBottom: 4 },
   filterBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
@@ -329,19 +329,18 @@ const s = StyleSheet.create({
   },
   imgWrap: { height: 150, backgroundColor: colors.surface2, justifyContent: 'center', alignItems: 'center', position: 'relative', overflow: 'hidden' },
   img: { width: '100%', height: 150 },
-  imgIcon: { fontSize: 52 },
-  auctionBadge: { position: 'absolute', top: 10, right: 10, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: '#FF6B0022', borderWidth: 1, borderColor: '#FF6B0060' },
+  auctionBadge: { position: 'absolute', top: 10, right: 10, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: 'rgba(10,11,14,0.8)', borderWidth: 1, borderColor: '#FF6B0080' },
   auctionBadgeText: { fontSize: 10, fontWeight: '800', color: '#FF6B00' },
-  badge: { position: 'absolute', top: 10, right: 10, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1 },
-  badgeNew: { backgroundColor: 'rgba(42,170,96,0.2)', borderColor: 'rgba(42,170,96,0.4)' },
-  badgeUsed: { backgroundColor: 'rgba(139,79,212,0.2)', borderColor: 'rgba(139,79,212,0.4)' },
+  badge: { position: 'absolute', top: 10, right: 10, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1, backgroundColor: 'rgba(10,11,14,0.8)' },
+  badgeNew: { borderColor: 'rgba(42,170,96,0.6)' },
+  badgeUsed: { borderColor: 'rgba(139,79,212,0.6)' },
   badgeText: { fontSize: 10, fontWeight: '700', color: colors.text },
   cardBody: { padding: 12 },
   cardName: { fontSize: 14, fontWeight: '700', color: colors.text, marginBottom: 4, lineHeight: 19 },
   cardMfr: { fontSize: 11, color: colors.text2, marginBottom: 8 },
   cardPrice: { fontSize: 16, fontWeight: '800', color: colors.accent },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60, paddingHorizontal: 32 },
-  emptyIcon: { fontSize: 48, marginBottom: 16 },
+  emptyIcon: { marginBottom: 16 },
   emptyTitle: { fontSize: 17, fontWeight: '600', color: colors.text, marginBottom: 8 },
   emptySub: { fontSize: 14, color: colors.text2, textAlign: 'center' },
   clearSearchBtn: { marginTop: 16, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },

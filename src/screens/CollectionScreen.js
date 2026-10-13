@@ -9,6 +9,8 @@ import { collection } from '../api'
 import { colors } from '../theme'
 import { pickAndUploadPhoto } from '../utils/uploadPhoto'
 import SmartInput from '../utils/SmartInput'
+import IconLabel from '../components/IconLabel'
+import { Boxes, Package, Factory, CalendarDays, Pencil, X, Plus, Camera } from 'lucide-react-native'
 
 const EMPTY = {
   name: '', manufacturer: '', purchasePrice: '',
@@ -129,7 +131,7 @@ export default function CollectionScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
         ListEmptyComponent={
           <View style={s.empty}>
-            <Text style={s.emptyIcon}>🗿</Text>
+            <Boxes size={48} color={colors.text2} strokeWidth={1.4} style={s.emptyIcon} />
             <Text style={s.emptyTitle}>Коллекция пуста</Text>
             <Text style={s.emptySub}>Добавьте свои фигурки и отслеживайте стоимость коллекции</Text>
           </View>
@@ -138,7 +140,7 @@ export default function CollectionScreen() {
           <View style={s.card}>
             {item.imageUrl
               ? <Image source={{ uri: item.imageUrl }} style={s.cardImg} resizeMode="cover" />
-              : <View style={[s.cardImg, s.cardImgPlaceholder]}><Text style={{ fontSize: 28 }}>🗿</Text></View>
+              : <View style={[s.cardImg, s.cardImgPlaceholder]}><Package size={28} color={colors.border} strokeWidth={1.5} /></View>
             }
             <View style={s.cardBody}>
               <View style={s.cardRow}>
@@ -149,19 +151,19 @@ export default function CollectionScreen() {
                   </Text>
                 </View>
               </View>
-              {item.manufacturer ? <Text style={s.cardMfr}>🏭 {item.manufacturer}</Text> : null}
+              {item.manufacturer ? <IconLabel icon={Factory} label={item.manufacturer} size={12} gap={4} style={{ marginBottom: 4 }} textStyle={s.cardMfr} /> : null}
               <View style={s.cardMeta}>
                 {item.purchasePrice ? <Text style={s.cardPrice}>{item.purchasePrice.toLocaleString('ru')} ₽</Text> : null}
-                {item.purchaseDate ? <Text style={s.cardDate}>📅 {item.purchaseDate}</Text> : null}
+                {item.purchaseDate ? <IconLabel icon={CalendarDays} label={item.purchaseDate} size={12} gap={4} textStyle={s.cardDate} /> : null}
               </View>
               {item.notes ? <Text style={s.cardNotes} numberOfLines={2}>{item.notes}</Text> : null}
             </View>
             <View style={s.cardActions}>
               <TouchableOpacity style={s.actionBtn} onPress={() => openEdit(item)}>
-                <Text>✏️</Text>
+                <Pencil size={16} color={colors.text2} strokeWidth={2} />
               </TouchableOpacity>
               <TouchableOpacity style={s.actionBtn} onPress={() => handleDelete(item.id)}>
-                <Text style={{ color: colors.text2 }}>✕</Text>
+                <X size={16} color={colors.text2} strokeWidth={2} />
               </TouchableOpacity>
             </View>
           </View>
@@ -169,7 +171,7 @@ export default function CollectionScreen() {
       />
 
       <TouchableOpacity style={[s.fab, { bottom: 24 + insets.bottom }]} onPress={openAdd}>
-        <Text style={s.fabText}>+</Text>
+        <Plus size={28} color="white" strokeWidth={2.4} />
       </TouchableOpacity>
 
       <Modal visible={modal} animationType="slide" transparent>
@@ -185,7 +187,7 @@ export default function CollectionScreen() {
                     ? <Image source={{ uri: form.imageUrl }} style={s.photoPreview} resizeMode="cover" />
                     : uploadingPhoto
                       ? <ActivityIndicator color={colors.accent} />
-                      : <Text style={s.photoPlaceholder}>📷 Добавить фото</Text>
+                      : <IconLabel icon={Camera} label="Добавить фото" size={18} textStyle={s.photoPlaceholder} />
                   }
                 </TouchableOpacity>
 
@@ -283,7 +285,7 @@ const s = StyleSheet.create({
   condNew: { backgroundColor: `${colors.green}20`, borderColor: `${colors.green}50` },
   condUsed: { backgroundColor: `${colors.purple}20`, borderColor: `${colors.purple}50` },
   condText: { fontSize: 10, fontWeight: '700' },
-  cardMfr: { fontSize: 11, color: colors.text2, marginBottom: 4 },
+  cardMfr: { fontSize: 11, color: colors.text2 },
   cardMeta: { flexDirection: 'row', gap: 10, marginBottom: 4 },
   cardPrice: { fontSize: 13, fontWeight: '800', color: colors.accent },
   cardDate: { fontSize: 11, color: colors.text2 },
@@ -291,11 +293,10 @@ const s = StyleSheet.create({
   cardActions: { flexDirection: 'column', gap: 4, padding: 8, justifyContent: 'center' },
   actionBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
   empty: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 32 },
-  emptyIcon: { fontSize: 48, marginBottom: 16 },
+  emptyIcon: { marginBottom: 16 },
   emptyTitle: { fontSize: 17, fontWeight: '600', color: colors.text, marginBottom: 8 },
   emptySub: { fontSize: 14, color: colors.text2, textAlign: 'center', lineHeight: 20 },
   fab: { position: 'absolute', right: 24, width: 56, height: 56, borderRadius: 28, backgroundColor: colors.accent, justifyContent: 'center', alignItems: 'center' },
-  fabText: { color: 'white', fontSize: 28, fontWeight: '300', marginTop: -2 },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
   sheet: { backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 8, maxHeight: '94%', borderTopWidth: 1, borderColor: colors.border },
   sheetTitle: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 20 },

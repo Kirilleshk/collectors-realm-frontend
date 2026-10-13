@@ -4,12 +4,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { colors } from '../theme'
 import ScreenBackground from '../components/ScreenBackground'
 import BrandHeader from '../components/BrandHeader'
+import IconLabel from '../components/IconLabel'
+import { Boxes, Target } from 'lucide-react-native'
 import CollectionScreen from './CollectionScreen'
 import WishlistScreen from './WishlistScreen'
 
 const TABS = [
-  { key: 'collection', label: '🗿 Коллекция' },
-  { key: 'wishlist', label: '🎯 Вишлист' },
+  { key: 'collection', label: 'Коллекция', icon: Boxes },
+  { key: 'wishlist', label: 'Вишлист', icon: Target },
 ]
 
 export default function MyItemsScreen() {
@@ -26,7 +28,7 @@ export default function MyItemsScreen() {
             style={[s.switchBtn, tab === t.key && s.switchBtnActive]}
             onPress={() => setTab(t.key)}
           >
-            <Text style={[s.switchText, tab === t.key && s.switchTextActive]}>{t.label}</Text>
+            <IconLabel icon={t.icon} label={t.label} textStyle={[s.switchText, tab === t.key && s.switchTextActive]} />
           </Pressable>
         ))}
       </View>

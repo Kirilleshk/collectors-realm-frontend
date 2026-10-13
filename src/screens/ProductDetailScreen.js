@@ -6,6 +6,8 @@ import { colors } from '../theme'
 import { pickAndUploadPhoto } from '../utils/uploadPhoto'
 import { track } from '../utils/analytics'
 import ScreenBackground from '../components/ScreenBackground'
+import IconLabel from '../components/IconLabel'
+import { Package, Gavel, Camera, Factory, Trophy, MessageCircle, Send, Target, Boxes, Check, CircleSlash } from 'lucide-react-native'
 import { API_URL } from '../config'
 
 const CLOUD_NAME = 'dqutmb1rm'
@@ -196,18 +198,21 @@ export default function ProductDetailScreen({ route, navigation }) {
       {/* Фото */}
       <View style={s.imageWrap}>
         {currentPhoto
-          ? <Image source={{ uri: currentPhoto }} style={s.image} resizeMode="cover" />
-          : <Text style={s.imageIcon}>🗿</Text>
+          ? <>
+              <Image source={{ uri: currentPhoto }} style={s.imageBackdrop} resizeMode="cover" blurRadius={24} />
+              <View style={s.imageDim} />
+              <Image source={{ uri: currentPhoto }} style={s.image} resizeMode="contain" />
+            </>
+          : <Package size={80} color={colors.border} strokeWidth={1.2} />
         }
         {/* Бейдж статуса / аукциона */}
         {item.isAuction ? (
-          <View style={[s.conditionBadge, { backgroundColor: '#FF6B0025', borderColor: '#FF6B0060' }]}>
-            <Text style={[s.conditionText, { color: '#FF6B00' }]}>🔨 АУКЦИОН</Text>
+          <View style={[s.conditionBadge, { borderColor: '#FF6B0080' }]}>
+            <IconLabel icon={Gavel} label="АУКЦИОН" size={14} gap={5} textStyle={[s.conditionText, { color: '#FF6B00' }]} />
           </View>
         ) : (
           <View style={[s.conditionBadge, {
-            backgroundColor: statusInfo.color ? `${statusInfo.color}25` : `${conditionColor}25`,
-            borderColor: statusInfo.color ? `${statusInfo.color}60` : `${conditionColor}60`
+            borderColor: statusInfo.color ? `${statusInfo.color}80` : `${conditionColor}80`
           }]}>
             <Text style={[s.conditionText, { color: statusInfo.color || conditionColor }]}>
               {statusInfo.label || conditionLabel}
@@ -218,7 +223,7 @@ export default function ProductDetailScreen({ route, navigation }) {
           <TouchableOpacity style={s.photoBtn} onPress={handlePickPhoto} disabled={uploading}>
             {uploading
               ? <ActivityIndicator color="white" size="small" />
-              : <Text style={s.photoBtnText}>📷 Добавить фото</Text>
+              : <IconLabel icon={Camera} label="Добавить фото" textStyle={s.photoBtnText} />
             }
           </TouchableOpacity>
         )}
@@ -246,7 +251,7 @@ export default function ProductDetailScreen({ route, navigation }) {
 
         {item.manufacturer ? (
           <View style={s.manufacturerRow}>
-            <Text style={s.manufacturerIcon}>🏭</Text>
+            <Factory size={16} color={colors.text2} strokeWidth={1.8} />
             <Text style={s.manufacturer}>{item.manufacturer}</Text>
           </View>
         ) : null}
@@ -307,7 +312,7 @@ export default function ProductDetailScreen({ route, navigation }) {
         {item.isAuction && (
           <View style={s.auctionCard}>
             <View style={s.auctionHeader}>
-              <Text style={s.auctionTitle}>🔨 Аукцион</Text>
+              <IconLabel icon={Gavel} label="Аукцион" size={18} textStyle={s.auctionTitle} />
               {timeLeft ? (
                 <View style={s.timer}>
                   <Text style={s.timerText}>
@@ -344,9 +349,12 @@ export default function ProductDetailScreen({ route, navigation }) {
                 {auctionBids.slice(0, 5).map((bid, i) => (
                   <View key={bid.id || i} style={s.bidRow}>
                     <Text style={s.bidName}>{bid.userName || 'Участник'}</Text>
-                    <Text style={[s.bidAmount, i === 0 && { color: '#FF6B00', fontWeight: '800' }]}>
-                      {i === 0 ? '🏆 ' : ''}{bid.amount?.toLocaleString('ru')} ₽
-                    </Text>
+                    <IconLabel
+                      icon={i === 0 ? Trophy : null}
+                      label={`${bid.amount?.toLocaleString('ru')} ₽`}
+                      size={14} gap={5}
+                      textStyle={[s.bidAmount, i === 0 && { color: '#FF6B00', fontWeight: '800' }]}
+                    />
                   </View>
                 ))}
               </View>
@@ -379,12 +387,12 @@ export default function ProductDetailScreen({ route, navigation }) {
             <Text style={s.contactTitle}>Связаться с продавцом</Text>
             <View style={s.contactRow}>
               <TouchableOpacity style={s.whatsappBtn} onPress={openWhatsApp}>
-                <Text style={s.contactBtnIcon}>💬</Text>
+                <MessageCircle size={18} color="white" strokeWidth={2} />
                 <Text style={s.whatsappBtnText}>WhatsApp</Text>
               </TouchableOpacity>
             </View>
             <TouchableOpacity style={s.maxBtn} onPress={openMax}>
-              <Text style={s.contactBtnIcon}>💙</Text>
+              <Send size={18} color="white" strokeWidth={2} />
               <Text style={s.maxBtnText}>Написать в Max</Text>
             </TouchableOpacity>
           </View>
@@ -394,7 +402,7 @@ export default function ProductDetailScreen({ route, navigation }) {
         {!isSold && !item.isAuction ? (
           <View style={s.actions}>
             <TouchableOpacity style={s.buyBtn} onPress={() => navigation.navigate('Chat', { productName: item.name, productId: item.id })}>
-              <Text style={s.buyBtnText}>💬 Написать в чате</Text>
+              <IconLabel icon={MessageCircle} label="Написать в чате" size={18} textStyle={s.buyBtnText} />
             </TouchableOpacity>
             <TouchableOpacity
               style={[s.wishlistBtn, addedToWishlist && s.wishlistBtnAdded]}
@@ -403,9 +411,11 @@ export default function ProductDetailScreen({ route, navigation }) {
             >
               {addingToWishlist
                 ? <ActivityIndicator color={colors.accent} size="small" />
-                : <Text style={[s.wishlistBtnText, addedToWishlist && { color: colors.green }]}>
-                    {addedToWishlist ? '✓ В вишлисте' : '🎯 В вишлист'}
-                  </Text>
+                : <IconLabel
+                    icon={addedToWishlist ? Check : Target}
+                    label={addedToWishlist ? 'В вишлисте' : 'В вишлист'}
+                    textStyle={[s.wishlistBtnText, addedToWishlist && { color: colors.green }]}
+                  />
               }
             </TouchableOpacity>
           </View>
@@ -418,17 +428,19 @@ export default function ProductDetailScreen({ route, navigation }) {
           >
             {addingToCollection
               ? <ActivityIndicator color={colors.blue} size="small" />
-              : <Text style={[s.collectionBtnText, addedToCollection && { color: colors.green }]}>
-                  {addedToCollection ? '✓ Добавлено в коллекцию' : '🗿 В мою коллекцию'}
-                </Text>
+              : <IconLabel
+                  icon={addedToCollection ? Check : Boxes}
+                  label={addedToCollection ? 'Добавлено в коллекцию' : 'В мою коллекцию'}
+                  textStyle={[s.collectionBtnText, addedToCollection && { color: colors.green }]}
+                />
             }
           </TouchableOpacity>
         ) : null}
         {isSold ? (
           <View style={s.soldBanner}>
-            <Text style={s.soldBannerText}>😔 Товар уже продан</Text>
+            <IconLabel icon={CircleSlash} label="Товар уже продан" size={18} textStyle={s.soldBannerText} />
             <TouchableOpacity style={s.wishlistBtn} onPress={handleAddToWishlist} disabled={addingToWishlist || addedToWishlist}>
-              <Text style={s.wishlistBtnText}>{addedToWishlist ? '✓ В вишлисте' : '🎯 Слежу за похожим'}</Text>
+              <IconLabel icon={addedToWishlist ? Check : Target} label={addedToWishlist ? 'В вишлисте' : 'Слежу за похожим'} textStyle={s.wishlistBtnText} />
             </TouchableOpacity>
           </View>
         ) : null}
@@ -442,10 +454,11 @@ const s = StyleSheet.create({
   wrap: { flex: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   errorText: { color: colors.text2, fontSize: 16 },
-  imageWrap: { height: 280, backgroundColor: colors.surface, justifyContent: 'center', alignItems: 'center', position: 'relative', borderBottomWidth: 1, borderBottomColor: colors.border },
+  imageWrap: { height: 280, backgroundColor: colors.surface, justifyContent: 'center', alignItems: 'center', position: 'relative', overflow: 'hidden', borderBottomWidth: 1, borderBottomColor: colors.border },
   image: { width: '100%', height: '100%' },
-  imageIcon: { fontSize: 100 },
-  conditionBadge: { position: 'absolute', top: 16, right: 16, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, borderWidth: 1 },
+  imageBackdrop: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%', opacity: 0.55 },
+  imageDim: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(10,11,14,0.35)' },
+  conditionBadge: { position: 'absolute', top: 16, right: 16, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, borderWidth: 1, backgroundColor: 'rgba(10,11,14,0.8)' },
   conditionText: { fontSize: 13, fontWeight: '700' },
   photoBtn: { position: 'absolute', bottom: 12, alignSelf: 'center', backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
   photoBtnText: { color: 'white', fontSize: 13, fontWeight: '600' },
@@ -457,7 +470,6 @@ const s = StyleSheet.create({
   title: { flex: 1, fontSize: 22, fontWeight: '800', color: colors.text, lineHeight: 28 },
   price: { fontSize: 24, fontWeight: '900', color: colors.accent },
   manufacturerRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 20 },
-  manufacturerIcon: { fontSize: 16 },
   manufacturer: { fontSize: 14, color: colors.text2, fontWeight: '500' },
   specsCard: { backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.border, padding: 16, marginBottom: 16 },
   specsTitle: { fontSize: 11, fontWeight: '700', color: colors.text2, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 14 },
@@ -476,7 +488,6 @@ const s = StyleSheet.create({
   whatsappBtnText: { color: 'white', fontWeight: '700', fontSize: 15 },
   maxBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#0077FF', borderRadius: 12, padding: 14 },
   maxBtnText: { color: 'white', fontWeight: '700', fontSize: 15 },
-  contactBtnIcon: { fontSize: 18 },
   actions: { flexDirection: 'row', gap: 12, marginTop: 8 },
   buyBtn: { flex: 1, backgroundColor: colors.accent, borderRadius: 14, padding: 16, alignItems: 'center' },
   buyBtnText: { color: 'white', fontSize: 16, fontWeight: '700' },

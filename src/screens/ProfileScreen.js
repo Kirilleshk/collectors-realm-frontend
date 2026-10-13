@@ -11,6 +11,8 @@ import { CHANGELOG, CURRENT_VERSION } from '../utils/changelog'
 import { portfolioCollections as collectionsApi, reviews as reviewsApi, support as supportApi } from '../api'
 import ScreenBackground from '../components/ScreenBackground'
 import BrandHeader from '../components/BrandHeader'
+import IconLabel from '../components/IconLabel'
+import { User, CircleHelp, Camera, Store, BadgeCheck, MapPin, Pencil, Images, Boxes, MessageCircle, Mail, Hash, RefreshCw, LogOut, X, Trash2, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react-native'
 import { API_URL } from '../config'
 
 let Updates = null
@@ -67,6 +69,8 @@ export default function ProfileScreen() {
   const { user, token, logout, updateUser } = useAuth()
   const [editModal, setEditModal] = useState(false)
   const [profileTab, setProfileTab] = useState('profile')
+  // Длинное «О себе» сворачиваем — иначе растягивает профиль на несколько экранов
+  const [bioExpanded, setBioExpanded] = useState(false)
   const [form, setForm] = useState({ name: user?.name || '', city: user?.city || '', bio: user?.bio || '', roles: user?.roles || [] })
   const [saving, setSaving] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl || null)
@@ -360,10 +364,10 @@ export default function ProfileScreen() {
       {/* Переключатель вкладок профиля */}
       <View style={s.profileTabs}>
         <TouchableOpacity style={[s.profileTab, profileTab === 'profile' && s.profileTabActive]} onPress={() => setProfileTab('profile')}>
-          <Text style={[s.profileTabText, profileTab === 'profile' && s.profileTabTextActive]}>👤 Профиль</Text>
+          <IconLabel icon={User} label="Профиль" textStyle={[s.profileTabText, profileTab === 'profile' && s.profileTabTextActive]} />
         </TouchableOpacity>
         <TouchableOpacity style={[s.profileTab, profileTab === 'help' && s.profileTabActive]} onPress={() => setProfileTab('help')}>
-          <Text style={[s.profileTabText, profileTab === 'help' && s.profileTabTextActive]}>❓ Помощь</Text>
+          <IconLabel icon={CircleHelp} label="Помощь" textStyle={[s.profileTabText, profileTab === 'help' && s.profileTabTextActive]} />
         </TouchableOpacity>
       </View>
 
@@ -425,21 +429,21 @@ export default function ProfileScreen() {
           ) : (
             <View style={s.avatar}><Text style={s.avatarText}>{initials}</Text></View>
           )}
-          <View style={s.avatarEditBadge}><Text style={{ color: 'white', fontSize: 10 }}>📷</Text></View>
+          <View style={s.avatarEditBadge}><Camera size={13} color="white" strokeWidth={2.2} /></View>
         </TouchableOpacity>
 
         <Text style={s.name}>{user?.name}</Text>
         {user?.badge === 'SHOP' && (
           <View style={s.badgeWrap}>
-            <Text style={[s.badgeText, { color: '#FF9700', borderColor: '#FF970060', backgroundColor: '#FF970015' }]}>🏪 Магазин</Text>
+            <IconLabel icon={Store} label="Магазин" size={13} gap={5} style={[s.badgePill, { borderColor: '#FF970060', backgroundColor: '#FF970015' }]} textStyle={[s.badgeText, { color: '#FF9700' }]} />
           </View>
         )}
         {user?.badge === 'BLOGGER' && (
           <View style={s.badgeWrap}>
-            <Text style={[s.badgeText, { color: '#007AFF', borderColor: '#007AFF60', backgroundColor: '#007AFF15' }]}>✅ Блогер</Text>
+            <IconLabel icon={BadgeCheck} label="Блогер" size={13} gap={5} style={[s.badgePill, { borderColor: '#007AFF60', backgroundColor: '#007AFF15' }]} textStyle={[s.badgeText, { color: '#007AFF' }]} />
           </View>
         )}
-        {user?.city ? <Text style={s.city}>📍 {user.city}</Text> : null}
+        {user?.city ? <IconLabel icon={MapPin} label={user.city} size={13} gap={4} style={{ marginBottom: 12 }} textStyle={s.city} /> : null}
 
         <View style={s.roles}>
           {(user?.roles || []).map(r => {
@@ -456,13 +460,13 @@ export default function ProfileScreen() {
           setForm({ name: user?.name || '', city: user?.city || '', bio: user?.bio || '', roles: user?.roles || [] })
           setEditModal(true)
         }}>
-          <Text style={s.editBtnText}>✏️ Редактировать профиль</Text>
+          <IconLabel icon={Pencil} label="Редактировать профиль" textStyle={s.editBtnText} />
         </TouchableOpacity>
 
         <TouchableOpacity style={[s.editBtn, { marginTop: 8, borderColor: `${colors.green}40`, backgroundColor: `${colors.green}10` }]} onPress={handleLocation} disabled={locating}>
           {locating
             ? <ActivityIndicator color={colors.green} size="small" />
-            : <Text style={[s.editBtnText, { color: colors.green }]}>📍 Указать моё местоположение</Text>
+            : <IconLabel icon={MapPin} label="Указать моё местоположение" textStyle={[s.editBtnText, { color: colors.green }]} />
           }
         </TouchableOpacity>
       </View>
@@ -471,7 +475,12 @@ export default function ProfileScreen() {
       {user?.bio ? (
         <View style={s.section}>
           <Text style={s.sectionTitle}>О себе</Text>
-          <Text style={s.bio}>{user.bio}</Text>
+          <Text style={s.bio} numberOfLines={bioExpanded ? undefined : 5}>{user.bio}</Text>
+          {user.bio.length > 250 && (
+            <TouchableOpacity onPress={() => setBioExpanded(v => !v)} style={{ marginTop: 8, alignSelf: 'flex-start' }}>
+              <IconLabel icon={bioExpanded ? ChevronUp : ChevronDown} label={bioExpanded ? 'Свернуть' : 'Показать полностью'} size={15} gap={4} textStyle={{ color: colors.accent, fontSize: 13, fontWeight: '700' }} />
+            </TouchableOpacity>
+          )}
         </View>
       ) : null}
 
@@ -551,7 +560,7 @@ export default function ProfileScreen() {
             {uploadingPortfolio
               ? <ActivityIndicator color={colors.accent} />
               : <>
-                  <Text style={{ fontSize: 36 }}>📸</Text>
+                  <Images size={36} color={colors.text2} strokeWidth={1.5} />
                   <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text }}>Добавить фото коллекции</Text>
                   <Text style={{ fontSize: 12, color: colors.text2, textAlign: 'center' }}>До {MAX_PORTFOLIO_PHOTOS} фото · видны всем в вашем профиле</Text>
                 </>
@@ -564,7 +573,7 @@ export default function ProfileScreen() {
                 <View key={i} style={{ position: 'relative' }}>
                   <Image source={{ uri: url }} style={s.portfolioImg} />
                   <TouchableOpacity style={s.portfolioRemove} onPress={() => removePortfolioPhoto(i)}>
-                    <Text style={{ color: 'white', fontSize: 10, fontWeight: '700' }}>✕</Text>
+                    <X size={11} color="white" strokeWidth={3} />
                   </TouchableOpacity>
                 </View>
               ))}
@@ -573,7 +582,7 @@ export default function ProfileScreen() {
                   {uploadingPortfolio
                     ? <ActivityIndicator color={colors.accent} />
                     : <>
-                        <Text style={{ fontSize: 28, color: colors.text2 }}>📷</Text>
+                        <Camera size={26} color={colors.text2} strokeWidth={1.6} />
                         <Text style={{ fontSize: 11, color: colors.text2, marginTop: 4 }}>Добавить</Text>
                       </>
                   }
@@ -595,7 +604,7 @@ export default function ProfileScreen() {
 
         {collections.length === 0 ? (
           <TouchableOpacity style={s.collEmpty} onPress={openAddCollection}>
-            <Text style={{ fontSize: 32, marginBottom: 8 }}>🗿</Text>
+            <Boxes size={32} color={colors.text2} strokeWidth={1.5} style={{ marginBottom: 8 }} />
             <Text style={{ color: colors.text2, fontSize: 14 }}>Добавьте первую коллекцию</Text>
           </TouchableOpacity>
         ) : (
@@ -610,7 +619,7 @@ export default function ProfileScreen() {
                   <Image source={{ uri: col.photos[0].url }} style={[s.collCover, { width: collCardWidth, height: collCardWidth }]} />
                 ) : (
                   <View style={[s.collCover, { width: collCardWidth, height: collCardWidth, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.surface2 }]}>
-                    <Text style={{ fontSize: 32 }}>📷</Text>
+                    <Camera size={30} color={colors.border} strokeWidth={1.5} />
                   </View>
                 )}
                 <View style={s.collCardBody}>
@@ -626,7 +635,7 @@ export default function ProfileScreen() {
       {/* Связь с администрацией */}
       <View style={s.section}>
         <TouchableOpacity style={s.supportBtn} onPress={() => { setSupportModal(true); loadSupportMessages() }}>
-          <Text style={{ fontSize: 22 }}>💬</Text>
+          <MessageCircle size={22} color={colors.accent} strokeWidth={1.8} />
           <View style={{ flex: 1 }}>
             <Text style={s.supportBtnTitle}>Связь с администрацией</Text>
             <Text style={s.supportBtnSub}>Вопросы, жалобы, предложения</Text>
@@ -634,7 +643,7 @@ export default function ProfileScreen() {
           {supportUnread > 0 && (
             <View style={s.unreadBadge}><Text style={s.unreadBadgeText}>{supportUnread}</Text></View>
           )}
-          <Text style={{ color: colors.text2, fontSize: 20 }}>›</Text>
+          <ChevronRight size={20} color={colors.text2} />
         </TouchableOpacity>
       </View>
 
@@ -643,7 +652,7 @@ export default function ProfileScreen() {
         <Text style={s.sectionTitle}>Аккаунт</Text>
         <View style={s.infoCard}>
           <View style={s.infoRow}>
-            <Text style={s.infoIcon}>📧</Text>
+            <Mail size={20} color={colors.text2} strokeWidth={1.8} />
             <View>
               <Text style={s.infoLabel}>Email</Text>
               <Text style={s.infoValue}>{user?.email || '—'}</Text>
@@ -651,7 +660,7 @@ export default function ProfileScreen() {
           </View>
           <View style={s.divider} />
           <View style={s.infoRow}>
-            <Text style={s.infoIcon}>🆔</Text>
+            <Hash size={20} color={colors.text2} strokeWidth={1.8} />
             <View>
               <Text style={s.infoLabel}>ID пользователя</Text>
               <Text style={s.infoValue}>#{user?.id?.slice(0, 8) || '—'}</Text>
@@ -664,14 +673,14 @@ export default function ProfileScreen() {
       <TouchableOpacity style={s.updateBtn} onPress={checkForUpdate} disabled={checkingUpdate}>
         {checkingUpdate
           ? <ActivityIndicator color={colors.blue} size="small" />
-          : <Text style={s.updateIcon}>🔄</Text>
+          : <RefreshCw size={18} color={colors.blue} strokeWidth={2} />
         }
         <Text style={s.updateText}>Проверить обновления</Text>
       </TouchableOpacity>
 
       {/* Выход */}
       <TouchableOpacity style={s.logoutBtn} onPress={logout}>
-        <Text style={s.logoutIcon}>🚪</Text>
+        <LogOut size={18} color={colors.accent} strokeWidth={2} />
         <Text style={s.logoutText}>Выйти из аккаунта</Text>
       </TouchableOpacity>
       <View style={{ height: 32 }} />
@@ -682,7 +691,7 @@ export default function ProfileScreen() {
           <View style={s.modalHead}>
             <Text style={s.modalTitle}>Редактировать профиль</Text>
             <TouchableOpacity onPress={() => setEditModal(false)}>
-              <Text style={{ fontSize: 20, color: colors.text2 }}>✕</Text>
+              <X size={22} color={colors.text2} />
             </TouchableOpacity>
           </View>
           <ScrollView style={{ padding: 20 }} keyboardShouldPersistTaps="handled">
@@ -724,7 +733,7 @@ export default function ProfileScreen() {
                     style={s.portfolioRemove}
                     onPress={() => removePortfolioPhoto(i)}
                   >
-                    <Text style={{ color: 'white', fontSize: 10, fontWeight: '700' }}>✕</Text>
+                    <X size={11} color="white" strokeWidth={3} />
                   </TouchableOpacity>
                 </View>
               ))}
@@ -737,7 +746,7 @@ export default function ProfileScreen() {
                   {uploadingPortfolio
                     ? <ActivityIndicator color={colors.accent} />
                     : <>
-                        <Text style={{ fontSize: 26, color: colors.text2 }}>📷</Text>
+                        <Camera size={24} color={colors.text2} strokeWidth={1.6} />
                         <Text style={{ fontSize: 10, color: colors.text2, marginTop: 4 }}>Добавить</Text>
                       </>
                   }
@@ -758,7 +767,7 @@ export default function ProfileScreen() {
           <View style={s.modalHead}>
             <Text style={s.modalTitle} numberOfLines={1}>{activeCollection?.name}</Text>
             <TouchableOpacity onPress={() => setCollectionDetailVisible(false)}>
-              <Text style={{ fontSize: 20, color: colors.text2 }}>✕</Text>
+              <X size={22} color={colors.text2} />
             </TouchableOpacity>
           </View>
           <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
@@ -775,7 +784,7 @@ export default function ProfileScreen() {
                     style={s.collPhotoRemove}
                     onPress={() => removePhotoFromCollection(activeCollection.id, photo.id)}
                   >
-                    <Text style={{ color: 'white', fontSize: 10, fontWeight: '700' }}>✕</Text>
+                    <X size={11} color="white" strokeWidth={3} />
                   </TouchableOpacity>
                 </View>
               ))}
@@ -795,13 +804,13 @@ export default function ProfileScreen() {
                 style={[s.saveBtn, { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }]}
                 onPress={() => { setCollectionDetailVisible(false); openEditCollection(activeCollection) }}
               >
-                <Text style={{ color: colors.text, fontSize: 15, fontWeight: '600' }}>✏️ Редактировать</Text>
+                <IconLabel icon={Pencil} label="Редактировать" textStyle={{ color: colors.text, fontSize: 15, fontWeight: '600' }} />
               </TouchableOpacity>
               <TouchableOpacity
                 style={[s.saveBtn, { backgroundColor: 'rgba(255,59,48,0.1)', borderWidth: 1, borderColor: 'rgba(255,59,48,0.3)' }]}
                 onPress={() => deleteCollection(activeCollection?.id)}
               >
-                <Text style={{ color: '#FF3B30', fontSize: 15, fontWeight: '600' }}>🗑 Удалить коллекцию</Text>
+                <IconLabel icon={Trash2} label="Удалить коллекцию" textStyle={{ color: '#FF3B30', fontSize: 15, fontWeight: '600' }} />
               </TouchableOpacity>
             </View>
             <View style={{ height: 40 }} />
@@ -815,7 +824,7 @@ export default function ProfileScreen() {
           <View style={s.modalHead}>
             <Text style={s.modalTitle}>Отзывы {myReviewData.count > 0 ? `(${myReviewData.count})` : ''}</Text>
             <TouchableOpacity onPress={() => setReviewsModalVisible(false)}>
-              <Text style={{ fontSize: 20, color: colors.text2 }}>✕</Text>
+              <X size={22} color={colors.text2} />
             </TouchableOpacity>
           </View>
           {myReviewData.avgRating != null && (
@@ -849,7 +858,7 @@ export default function ProfileScreen() {
           <View style={s.modalHead}>
             <Text style={s.modalTitle}>{editingCollection ? 'Редактировать' : 'Новая коллекция'}</Text>
             <TouchableOpacity onPress={() => setAddCollectionVisible(false)}>
-              <Text style={{ fontSize: 20, color: colors.text2 }}>✕</Text>
+              <X size={22} color={colors.text2} />
             </TouchableOpacity>
           </View>
           <ScrollView style={{ padding: 20 }} keyboardShouldPersistTaps="handled">
@@ -884,7 +893,7 @@ export default function ProfileScreen() {
                         style={s.collPhotoRemove}
                         onPress={() => setCollectionForm(prev => ({ ...prev, photos: prev.photos.filter((_, j) => j !== i) }))}
                       >
-                        <Text style={{ color: 'white', fontSize: 10, fontWeight: '700' }}>✕</Text>
+                        <X size={11} color="white" strokeWidth={3} />
                       </TouchableOpacity>
                     </View>
                   ))}
@@ -917,9 +926,9 @@ export default function ProfileScreen() {
       <Modal visible={supportModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setSupportModal(false)}>
         <View style={[s.modal, { flex: 1 }]}>
           <View style={s.modalHead}>
-            <Text style={s.modalTitle}>💬 Связь с администрацией</Text>
+            <IconLabel icon={MessageCircle} label="Связь с администрацией" size={20} gap={8} textStyle={s.modalTitle} />
             <TouchableOpacity onPress={() => setSupportModal(false)}>
-              <Text style={{ fontSize: 20, color: colors.text2 }}>✕</Text>
+              <X size={22} color={colors.text2} />
             </TouchableOpacity>
           </View>
 
@@ -935,7 +944,7 @@ export default function ProfileScreen() {
               contentContainerStyle={{ padding: 16, gap: 10, flexGrow: 1 }}
               ListEmptyComponent={
                 <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60 }}>
-                  <Text style={{ fontSize: 48, marginBottom: 16 }}>💬</Text>
+                  <MessageCircle size={48} color={colors.text2} strokeWidth={1.3} style={{ marginBottom: 16 }} />
                   <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 8 }}>Напишите нам</Text>
                   <Text style={{ fontSize: 13, color: colors.text2, textAlign: 'center', lineHeight: 19 }}>
                     Мы ответим как можно скорее
@@ -1008,8 +1017,9 @@ const s = StyleSheet.create({
   avatarEditBadge: { position: 'absolute', bottom: -4, right: -4, width: 24, height: 24, borderRadius: 12, backgroundColor: colors.accent, justifyContent: 'center', alignItems: 'center' },
   name: { fontSize: 24, fontWeight: '800', color: colors.text, marginBottom: 6 },
   badgeWrap: { marginBottom: 8 },
-  badgeText: { fontSize: 12, fontWeight: '700', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, borderWidth: 1, overflow: 'hidden' },
-  city: { fontSize: 13, color: colors.text2, marginBottom: 12 },
+  badgePill: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, borderWidth: 1 },
+  badgeText: { fontSize: 12, fontWeight: '700' },
+  city: { fontSize: 13, color: colors.text2 },
   roles: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 16 },
   roleBadge: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1 },
   roleText: { fontSize: 12, fontWeight: '700' },
@@ -1023,15 +1033,12 @@ const s = StyleSheet.create({
   portfolioAdd: { width: 100, height: 100, borderRadius: 12, backgroundColor: colors.surface, borderWidth: 2, borderColor: colors.border, borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center' },
   infoCard: { backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16 },
-  infoIcon: { fontSize: 20 },
   infoLabel: { fontSize: 11, color: colors.text2, fontWeight: '600', marginBottom: 2 },
   infoValue: { fontSize: 14, color: colors.text, fontWeight: '500' },
   divider: { height: 1, backgroundColor: colors.border, marginHorizontal: 16 },
   updateBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginHorizontal: 16, marginBottom: 10, padding: 14, borderRadius: 14, borderWidth: 1, borderColor: `${colors.blue}40`, backgroundColor: `${colors.blue}10` },
-  updateIcon: { fontSize: 18 },
   updateText: { color: colors.blue, fontSize: 15, fontWeight: '600' },
   logoutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, margin: 16, marginTop: 0, padding: 16, borderRadius: 14, borderWidth: 1, borderColor: `${colors.accent}40`, backgroundColor: `${colors.accent}10` },
-  logoutIcon: { fontSize: 18 },
   logoutText: { color: colors.accent, fontSize: 15, fontWeight: '600' },
   modal: { flex: 1, backgroundColor: colors.bg },
   modalHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface },

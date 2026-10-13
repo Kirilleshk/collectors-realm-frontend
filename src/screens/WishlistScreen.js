@@ -4,6 +4,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { wishlist } from '../api'
 import { colors } from '../theme'
 import SmartInput from '../utils/SmartInput'
+import IconLabel from '../components/IconLabel'
+import { Target, User, Factory, CalendarDays, Link, Pencil, X, Plus } from 'lucide-react-native'
 
 const priorities = [
   { value: 'HIGH', label: 'Высокий', color: colors.accent },
@@ -144,7 +146,7 @@ export default function WishlistScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
         ListEmptyComponent={
           <View style={s.empty}>
-            <Text style={s.emptyIcon}>🎯</Text>
+            <Target size={48} color={colors.text2} strokeWidth={1.4} style={s.emptyIcon} />
             <Text style={s.emptyTitle}>Вишлист пуст</Text>
             <Text style={s.emptySub}>Добавьте фигурки которые хотите найти — система уведомит вас когда они появятся в магазине</Text>
           </View>
@@ -158,22 +160,22 @@ export default function WishlistScreen() {
                 <Text style={s.cardName}>{item.name}</Text>
                 {item.originalName ? <Text style={s.cardOriginal}>{item.originalName}</Text> : null}
                 <View style={s.cardTags}>
-                  {item.characterRu ? <Text style={s.cardTag}>👤 {item.characterRu}</Text> : null}
-                  {item.manufacturer ? <Text style={s.cardTag}>🏭 {item.manufacturer}</Text> : null}
-                  {item.releaseDate ? <Text style={s.cardTag}>📅 {item.releaseDate}</Text> : null}
+                  {item.characterRu ? <IconLabel icon={User} label={item.characterRu} size={11} gap={4} style={s.cardTag} textStyle={s.cardTagText} /> : null}
+                  {item.manufacturer ? <IconLabel icon={Factory} label={item.manufacturer} size={11} gap={4} style={s.cardTag} textStyle={s.cardTagText} /> : null}
+                  {item.releaseDate ? <IconLabel icon={CalendarDays} label={item.releaseDate} size={11} gap={4} style={s.cardTag} textStyle={s.cardTagText} /> : null}
                 </View>
                 {item.comment ? <Text style={s.cardComment}>{item.comment}</Text> : null}
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                   <Text style={[s.cardPriority, { color: p?.color }]}>{p?.label} приоритет</Text>
-                  {item.productId ? <Text style={s.linkedBadge}>🔗 Слежу за ценой</Text> : null}
+                  {item.productId ? <IconLabel icon={Link} label="Слежу за ценой" size={11} gap={4} textStyle={s.linkedBadge} /> : null}
                 </View>
               </View>
               <View style={s.cardActions}>
                 <TouchableOpacity style={s.editBtn} onPress={() => openEdit(item)}>
-                  <Text style={s.editBtnText}>✏️</Text>
+                  <Pencil size={16} color={colors.text2} strokeWidth={2} />
                 </TouchableOpacity>
                 <TouchableOpacity style={s.deleteBtn} onPress={() => handleDelete(item.id)}>
-                  <Text style={s.deleteText}>✕</Text>
+                  <X size={16} color={colors.text2} strokeWidth={2} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -182,7 +184,7 @@ export default function WishlistScreen() {
       />
 
       <TouchableOpacity style={[s.fab, { bottom: 24 + insets.bottom }]} onPress={openAdd}>
-        <Text style={s.fabText}>+</Text>
+        <Plus size={28} color="white" strokeWidth={2.4} />
       </TouchableOpacity>
 
       <Modal visible={modal} animationType="slide" transparent>
@@ -286,20 +288,18 @@ const s = StyleSheet.create({
   cardName: { fontSize: 15, fontWeight: '600', color: colors.text, marginBottom: 2 },
   cardOriginal: { fontSize: 12, color: colors.text2, marginBottom: 6 },
   cardTags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 6 },
-  cardTag: { fontSize: 11, color: colors.text2, backgroundColor: colors.surface2, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  cardTag: { backgroundColor: colors.surface2, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  cardTagText: { fontSize: 11, color: colors.text2 },
   cardComment: { fontSize: 13, color: colors.text2, marginBottom: 6 },
   cardPriority: { fontSize: 12, fontWeight: '500' },
   cardActions: { flexDirection: 'column', gap: 4, padding: 8, justifyContent: 'center' },
   editBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
-  editBtnText: { fontSize: 16 },
   deleteBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
-  deleteText: { color: colors.text2, fontSize: 16 },
   empty: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 32 },
-  emptyIcon: { fontSize: 48, marginBottom: 16 },
+  emptyIcon: { marginBottom: 16 },
   emptyTitle: { fontSize: 17, fontWeight: '600', color: colors.text, marginBottom: 8 },
   emptySub: { fontSize: 14, color: colors.text2, textAlign: 'center', lineHeight: 20 },
   fab: { position: 'absolute', right: 24, width: 56, height: 56, borderRadius: 28, backgroundColor: colors.accent, justifyContent: 'center', alignItems: 'center' },
-  fabText: { color: 'white', fontSize: 28, fontWeight: '300', marginTop: -2 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
   modalCard: { backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 8, borderTopWidth: 1, borderColor: colors.border, maxHeight: '92%' },
   modalTitle: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 20 },
