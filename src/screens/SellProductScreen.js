@@ -5,6 +5,7 @@ import { useAuth } from '../AuthContext'
 import { colors } from '../theme'
 import { pickAndUploadPhoto } from '../utils/uploadPhoto'
 import { track } from '../utils/analytics'
+import { showNotice } from '../utils/notice'
 import ScreenBackground from '../components/ScreenBackground'
 import IconLabel from '../components/IconLabel'
 import { ImagePlus, X, ChevronDown, ChevronUp, Send, Phone } from '../icons'
@@ -55,7 +56,7 @@ export default function SellProductScreen({ navigation, route }) {
   const needContacts = editing ? !!editing.sellerId && !isStaff : !isStaff
 
   useLayoutEffect(() => {
-    if (editing) navigation.setOptions({ title: 'Редактировать товар' })
+    if (editing) navigation.setOptions({ title: 'Редактировать объявление' })
   }, [navigation, editing])
 
   const initial = (v) => (v == null ? '' : String(v))
@@ -149,12 +150,14 @@ export default function SellProductScreen({ navigation, route }) {
       }
       if (editing) {
         await products.update(editing.id, body)
-        // Карточка товара перечитает его сама, когда снова окажется на экране
+        showNotice('Изменения сохранены')
+        // Карточка товара / «Мои объявления» перечитают его сами при возврате
         navigation.goBack()
         return
       }
       const res = await products.create(body)
       track('product_listed', { productId: res.data.id })
+      showNotice('Объявление опубликовано')
       // replace, а не navigate: «назад» из карточки должен вести в магазин,
       // а не обратно в уже отправленную форму
       navigation.replace('ProductDetail', { id: res.data.id })

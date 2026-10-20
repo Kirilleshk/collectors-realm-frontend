@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { View, Image, ActivityIndicator, Platform, AppState } from 'react-native'
-import { ShoppingBag, Map as MapIcon, Gamepad2, Settings, User } from './src/icons'
+import { ShoppingBag, Map as MapIcon, Gamepad2, Settings, User, Plus } from './src/icons'
 import { NavigationContainer } from '@react-navigation/native'
 import * as NavigationBar from 'expo-navigation-bar'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
@@ -14,6 +14,7 @@ import * as Notifications from 'expo-notifications'
 import OnboardingTour from './src/utils/OnboardingTour'
 import LocationRequiredModal from './src/utils/LocationRequiredModal'
 import { track } from './src/utils/analytics'
+import { NoticeHost } from './src/utils/notice'
 
 import LoginScreen from './src/screens/LoginScreen'
 import ShopScreen from './src/screens/ShopScreen'
@@ -29,8 +30,10 @@ import ReleasesScreen from './src/screens/ReleasesScreen'
 import SellProductScreen from './src/screens/SellProductScreen'
 import NotReadyScreen from './src/screens/NotReadyScreen'
 
-// Флаг видимости карточной игры — поставить false, чтобы мгновенно скрыть вкладку
-const SHOW_GAME = true
+// Флаг видимости карточной игры — поставить false, чтобы мгновенно скрыть вкладку.
+// 20.10.2026: скрыта (раздел закрыт 13.10) — нижнее меню как на Авито:
+// Магазин · Карта · Продать · Моё · Профиль
+const SHOW_GAME = false
 
 const Tab = createBottomTabNavigator()
 const Stack = createNativeStackNavigator()
@@ -55,7 +58,7 @@ function ShopStack() {
       <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: 'Уведомления' }} />
       <Stack.Screen name="UserProfile" component={UserProfileScreen} options={{ title: 'Профиль' }} />
       <Stack.Screen name="Releases" component={ReleasesScreen} options={{ title: 'Новости' }} />
-      <Stack.Screen name="SellProduct" component={SellProductScreen} options={{ title: 'Новый товар' }} />
+      <Stack.Screen name="SellProduct" component={SellProductScreen} options={{ title: 'Новое объявление' }} />
       {/* Библиотека знаний приостановлена (решение Марка 20.09.2026) — вместо
           реального LibraryScreen зарегистрирована заглушка "в разработке"
           прямо на уровне роута (не перехват клика), см. NotReadyScreen.js */}
@@ -70,6 +73,32 @@ function ShopStack() {
       />
     </Stack.Navigator>
   )
+}
+
+// «Моё» — свой стек (20.10.2026): из «Мои объявления» карточка товара и форма
+// правки открываются здесь же, и «назад» возвращает в список, а не в магазин.
+// Имена роутов совпадают с ShopStack — ProductDetail/SellProduct навигируют
+// по ним и находят ближайший стек.
+function MyStack() {
+  return (
+    <Stack.Navigator screenOptions={{
+      headerStyle: { backgroundColor: colors.surface },
+      headerTintColor: colors.text,
+      headerTitleStyle: { fontWeight: '700' },
+    }}>
+      <Stack.Screen name="MyItemsMain" component={MyItemsScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="ProductDetail" component={ProductDetailScreen} options={{ title: 'Товар' }} />
+      <Stack.Screen name="SellProduct" component={SellProductScreen} options={{ title: 'Новое объявление' }} />
+      <Stack.Screen name="Chat" component={ChatScreen} options={{ title: 'Чат с магазином' }} />
+      <Stack.Screen name="UserProfile" component={UserProfileScreen} options={{ title: 'Профиль' }} />
+    </Stack.Navigator>
+  )
+}
+
+// Вкладка «Продать» — не экран, а кнопка: нажатие открывает форму
+// объявления в магазине (tabPress ниже), сама вкладка никогда не показывается
+function SellTabPlaceholder() {
+  return null
 }
 
 function MapStack() {
@@ -112,6 +141,13 @@ function MainTabs() {
   return (
     <Tab.Navigator screenOptions={({ route }) => ({
       tabBarIcon: ({ focused, color }) => {
+        if (route.name === 'Продать') {
+          return (
+            <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: colors.accent, justifyContent: 'center', alignItems: 'center', marginTop: -4 }}>
+              <Plus size={22} color="#fff" strokeWidth={2.6} />
+            </View>
+          )
+        }
         if (route.name === 'Моё') {
           return <Image source={require('./assets/logo-mark.png')} style={{ width: 22, height: 22, opacity: focused ? 1 : 0.5 }} resizeMode="contain" />
         }
@@ -128,7 +164,19 @@ function MainTabs() {
     })}>
       <Tab.Screen name="Магазин" component={ShopStack} options={{ headerShown: false }} />
       <Tab.Screen name="Карта" component={MapStack} options={{ headerShown: false }} />
-      <Tab.Screen name="Моё" component={MyItemsScreen} options={{ headerShown: false }} />
+      {/* «Продать» по центру — как «Разместить» на Авито (20.10.2026) */}
+      <Tab.Screen
+        name="Продать"
+        component={SellTabPlaceholder}
+        options={{ headerShown: false, tabBarLabelStyle: { fontSize: 11, fontWeight: '700', color: colors.accent } }}
+        listeners={({ navigation }) => ({
+          tabPress: e => {
+            e.preventDefault()
+            navigation.navigate('Магазин', { screen: 'SellProduct' })
+          },
+        })}
+      />
+      <Tab.Screen name="Моё" component={MyStack} options={{ headerShown: false }} />
       {SHOW_GAME && <Tab.Screen name="Игра" component={GameStack} options={{ headerShown: false }} />}
       {isAdmin && <Tab.Screen name="Админ" component={AdminScreen} options={{ headerShown: false }} />}
       <Tab.Screen name="Профиль" component={ProfileScreen} options={{ headerShown: false }} />
@@ -143,7 +191,7 @@ const navigationRef = React.createRef()
 // история не рвётся. Роуты не из списка пишутся как есть (ProductDetail,
 // Chat, Notifications, Releases, Library, Login...).
 const SCREEN_KEYS = {
-  ShopList: 'Shop', MapMain: 'Map', 'Моё': 'MyItems', GameMain: 'Game',
+  ShopList: 'Shop', MapMain: 'Map', 'Моё': 'MyItems', MyItemsMain: 'MyItems', GameMain: 'Game',
   'Профиль': 'Profile', 'Админ': 'Admin', UserProfileMap: 'UserProfile',
 }
 
@@ -242,6 +290,7 @@ export default function App() {
         <AuthProvider>
           <RootNav />
         </AuthProvider>
+        <NoticeHost />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   )

@@ -5,6 +5,7 @@ import { useAuth } from '../AuthContext'
 import { colors } from '../theme'
 import { pickAndUploadPhoto } from '../utils/uploadPhoto'
 import { track } from '../utils/analytics'
+import { showNotice } from '../utils/notice'
 import ScreenBackground from '../components/ScreenBackground'
 import IconLabel from '../components/IconLabel'
 import { Package, Gavel, Camera, Factory, Trophy, MessageCircle, Send, Target, Boxes, Check, CircleSlash, Phone, Pencil, CircleCheck, RotateCw, Trash2, User, ChevronRight } from '../icons'
@@ -13,12 +14,10 @@ import { API_URL } from '../config'
 const CLOUD_NAME = 'dqutmb1rm'
 const UPLOAD_PRESET = 'collectors_realm'
 
-const SELLER = {
-  telegram: 'collector_realm_shop',
-  whatsapp: '79001234567',
-  max: 'collector_realm_shop',
-  name: "Markeltoys"
-}
+// 20.10.2026: у товаров магазина убраны WhatsApp и Max — номер 79001234567
+// был ненастоящим, ник в Max не проверен. Покупатель пишет магазину в чат
+// поддержки внутри сайта (ChatScreen), он точно работает. Настоящие
+// контакты магазина — добавить, когда их даст Марк.
 
 const STATUS_INFO = {
   AVAILABLE: { label: null, color: null },
@@ -186,20 +185,6 @@ export default function ProductDetailScreen({ route, navigation }) {
     setAddingToCollection(false)
   }
 
-  async function openTelegram() {
-    track('contact_seller', { method: 'telegram', productId: item.id })
-    const msg = encodeURIComponent(`Здравствуйте! Меня интересует товар "${item.name}" за ${item.price?.toLocaleString('ru')} ₽`)
-    const url = `https://t.me/${SELLER.telegram}?text=${msg}`
-    try { await Linking.openURL(url) } catch { Linking.openURL(`https://t.me/${SELLER.telegram}`) }
-  }
-
-  async function openWhatsApp() {
-    track('contact_seller', { method: 'whatsapp', productId: item.id })
-    const msg = encodeURIComponent(`Здравствуйте! Меня интересует товар "${item.name}" за ${item.price?.toLocaleString('ru')} ₽`)
-    const url = `https://wa.me/${SELLER.whatsapp}?text=${msg}`
-    try { await Linking.openURL(url) } catch { Linking.openURL(`https://wa.me/${SELLER.whatsapp}`) }
-  }
-
   // Связь с продавцом-пользователем — напрямую, по его контактам из товара
   function openSellerTelegram() {
     track('contact_seller', { method: 'telegram', productId: item.id, sellerId: item.sellerId })
@@ -223,6 +208,7 @@ export default function ProductDetailScreen({ route, navigation }) {
     try {
       await products.setStatus(item.id, next)
       setItem(prev => ({ ...prev, status: next }))
+      showNotice(next === 'SOLD' ? 'Отмечено проданным' : 'Снова в продаже')
     } catch (e) {
       setManageError(e.response?.data?.error || 'Не удалось изменить статус — попробуйте ещё раз')
     }
@@ -234,6 +220,7 @@ export default function ProductDetailScreen({ route, navigation }) {
       setManaging(true); setManageError(null)
       try {
         await products.remove(item.id)
+        showNotice('Объявление удалено')
         navigation.goBack()
       } catch (e) {
         setManageError(e.response?.data?.error || 'Не удалось удалить — попробуйте ещё раз')
@@ -242,11 +229,6 @@ export default function ProductDetailScreen({ route, navigation }) {
     })
   }
 
-  async function openMax() {
-    const msg = encodeURIComponent(`Здравствуйте! Меня интересует товар "${item.name}" за ${item.price?.toLocaleString('ru')} ₽`)
-    const url = `https://max.ru/im?to=${SELLER.max}&text=${msg}`
-    try { await Linking.openURL(url) } catch { Linking.openURL(`https://max.ru/${SELLER.max}`) }
-  }
 
   if (loading) return (
     <View style={s.center}><ActivityIndicator color={colors.accent} size="large" /></View>
@@ -536,29 +518,15 @@ export default function ProductDetailScreen({ route, navigation }) {
           </View>
         ) : null}
 
-        {/* Контакты магазина Markeltoys */}
-        {!isUserListing && !isSold && !item.isAuction ? (
-          <View style={s.contactCard}>
-            <Text style={s.contactTitle}>Связаться с продавцом</Text>
-            <View style={s.contactRow}>
-              <TouchableOpacity style={s.whatsappBtn} onPress={openWhatsApp}>
-                <MessageCircle size={18} color="white" strokeWidth={2} />
-                <Text style={s.whatsappBtnText}>WhatsApp</Text>
-              </TouchableOpacity>
-            </View>
-            <TouchableOpacity style={s.maxBtn} onPress={openMax}>
-              <Send size={18} color="white" strokeWidth={2} />
-              <Text style={s.maxBtnText}>Написать в Max</Text>
-            </TouchableOpacity>
-          </View>
-        ) : null}
-
-        {/* Кнопки (чат с администрацией — только у товаров магазина) */}
-        {!isOwner && !isSold && !item.isAuction ? (
+        {/* Кнопки покупателя. Тому, кто управляет товаром (продавец, а у
+            товаров магазина — персонал: продавец там он сам), не показываем:
+            раньше админ на товаре магазина видел «Написать» самому себе.
+            Чат с администрацией — только у товаров магазина */}
+        {!canManage && !isSold && !item.isAuction ? (
           <View style={s.actions}>
             {!isUserListing ? (
               <TouchableOpacity style={s.buyBtn} onPress={() => navigation.navigate('Chat', { productName: item.name, productId: item.id })}>
-                <IconLabel icon={MessageCircle} label="Написать в чате" size={18} textStyle={s.buyBtnText} />
+                <IconLabel icon={MessageCircle} label="Написать магазину" size={18} textStyle={s.buyBtnText} />
               </TouchableOpacity>
             ) : null}
             <TouchableOpacity
@@ -577,7 +545,7 @@ export default function ProductDetailScreen({ route, navigation }) {
             </TouchableOpacity>
           </View>
         ) : null}
-        {!isOwner && !item.isAuction ? (
+        {!canManage && !item.isAuction ? (
           <TouchableOpacity
             style={[s.collectionBtn, addedToCollection && s.collectionBtnAdded]}
             onPress={handleAddToCollection}
@@ -593,7 +561,7 @@ export default function ProductDetailScreen({ route, navigation }) {
             }
           </TouchableOpacity>
         ) : null}
-        {isSold && !isOwner ? (
+        {isSold && !canManage ? (
           <View style={s.soldBanner}>
             <IconLabel icon={CircleSlash} label="Товар уже продан" size={18} textStyle={s.soldBannerText} />
             <TouchableOpacity style={s.wishlistBtn} onPress={handleAddToWishlist} disabled={addingToWishlist || addedToWishlist}>
@@ -609,7 +577,7 @@ export default function ProductDetailScreen({ route, navigation }) {
 
 const s = StyleSheet.create({
   wrap: { flex: 1 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.bg },
   errorText: { color: colors.text2, fontSize: 16 },
   imageWrap: { height: 280, backgroundColor: colors.surface, justifyContent: 'center', alignItems: 'center', position: 'relative', overflow: 'hidden', borderBottomWidth: 1, borderBottomColor: colors.border },
   image: { width: '100%', height: '100%' },
@@ -660,8 +628,6 @@ const s = StyleSheet.create({
   deleteBtn: { alignSelf: 'center', paddingVertical: 6, paddingHorizontal: 12 },
   deleteBtnText: { color: colors.red, fontSize: 14, fontWeight: '600' },
   manageError: { fontSize: 13, color: colors.red, textAlign: 'center' },
-  maxBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#0077FF', borderRadius: 12, padding: 14 },
-  maxBtnText: { color: 'white', fontWeight: '700', fontSize: 15 },
   actions: { flexDirection: 'row', gap: 12, marginTop: 8 },
   buyBtn: { flex: 1, backgroundColor: colors.accent, borderRadius: 14, padding: 16, alignItems: 'center' },
   buyBtnText: { color: 'white', fontSize: 16, fontWeight: '700' },

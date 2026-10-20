@@ -5,18 +5,23 @@ import { colors } from '../theme'
 import ScreenBackground from '../components/ScreenBackground'
 import BrandHeader from '../components/BrandHeader'
 import IconLabel from '../components/IconLabel'
-import { Boxes, Target } from '../icons'
+import { Boxes, Target, Tag } from '../icons'
+import MyListingsScreen from './MyListingsScreen'
 import CollectionScreen from './CollectionScreen'
 import WishlistScreen from './WishlistScreen'
 
+// «Объявления» — первыми и по умолчанию (20.10.2026, как «Мои объявления»
+// на Авито): сюда человек попадает после публикации и отсюда управляет
+// своими товарами
 const TABS = [
+  { key: 'listings', label: 'Объявления', icon: Tag },
   { key: 'collection', label: 'Коллекция', icon: Boxes },
   { key: 'wishlist', label: 'Вишлист', icon: Target },
 ]
 
 export default function MyItemsScreen() {
   const insets = useSafeAreaInsets()
-  const [tab, setTab] = useState('collection')
+  const [tab, setTab] = useState('listings')
 
   return (
     <ScreenBackground style={s.wrap}>
@@ -33,6 +38,9 @@ export default function MyItemsScreen() {
         ))}
       </View>
 
+      <View style={[s.page, { display: tab === 'listings' ? 'flex' : 'none' }]}>
+        <MyListingsScreen />
+      </View>
       <View style={[s.page, { display: tab === 'collection' ? 'flex' : 'none' }]}>
         <CollectionScreen />
       </View>

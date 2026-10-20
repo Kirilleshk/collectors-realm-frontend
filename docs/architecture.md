@@ -27,15 +27,16 @@ collectors-realm/
     ├── theme.js             ← bg, surface, surface2, text, text2, accent, border, blue, purple, green
     ├── screens/
     │   ├── LoginScreen.js          ← Вход + регистрация (анкета коллекционера, мин. 3 фото)
-    │   ├── ShopScreen.js           ← Магазин: «Новости» и «+» сверху, поиск, фильтры (в т.ч. «Мои»), аукцион
+    │   ├── ShopScreen.js           ← Магазин: «Новости» сверху, поиск, фильтры, аукцион
     │   ├── ProductDetailScreen.js  ← Карточка товара, галерея, ставки; продавец-пользователь / панель владельца
-    │   ├── SellProductScreen.js    ← Форма «+»: разместить свой товар / редактировать (route.params.product)
+    │   ├── SellProductScreen.js    ← Форма объявления (вкладка «Продать»): разместить / редактировать (route.params.product)
+    │   ├── MyListingsScreen.js     ← «Моё → Объявления»: свои товары (у персонала — товары магазина), В продаже / Проданные
     │   ├── AdminScreen.js          ← вкладки Товары/Люди/Чат/Игра (ADMIN+MODERATOR),
     │   │                              Релизы (только ADMIN), Статистика (+ ANALYTICS)
     │   ├── ProfileScreen.js        ← Профиль: аватар, роли, геолокация, портфолио-коллекции
     │   ├── UserProfileScreen.js    ← Публичный профиль (портфолио read-only)
     │   ├── MapScreen.js / .web.js  ← Leaflet (react-leaflet веб / WebView мобайл), радиус 5/20км
-    │   ├── MyItemsScreen.js        ← вкладка «Моё» — переключатель Коллекция/Вишлист
+    │   ├── MyItemsScreen.js        ← вкладка «Моё» — переключатель Объявления/Коллекция/Вишлист
     │   ├── CollectionScreen.js     ← Моя коллекция
     │   ├── WishlistScreen.js       ← Вишлист с приоритетами
     │   ├── LibraryScreen.js        ← Библиотека знаний гик-культуры (Groq + Wikipedia)
@@ -56,7 +57,8 @@ collectors-realm/
         ├── analytics.js            ← track() — отправка событий аналитики
         ├── WhatsNewModal.js        ← Модал "Что нового" при обновлении
         ├── changelog.js            ← История версий (ОБНОВЛЯТЬ ПРИ КАЖДОМ РЕЛИЗЕ)
-        ├── OnboardingTour.js       ← Тур по вкладкам (один раз за аккаунт)
+        ├── OnboardingTour.js       ← Тур по вкладкам (один раз за аккаунт; «Продать» — stay, не переходит)
+        ├── notice.js               ← showNotice('текст') + <NoticeHost/> в App.js — всплывающее подтверждение
         ├── LocationRequiredModal.js← Запрос геолокации при входе (со skip)
         ├── HowToPlayModal.js       ← «Как играть» в карточной игре
         ├── cardArt.js              ← RARITY, CardImage, бейджи маны/атаки/HP
@@ -72,8 +74,9 @@ RootNav
 └── Main → MainTabs
     ├── Магазин → ShopStack (ShopList → ProductDetail / SellProduct / Chat / Notifications / UserProfile / Releases / Library)
     ├── Карта   → MapStack (MapMain → UserProfileMap)
-    ├── Моё     → MyItemsScreen (Коллекция / Вишлист, переключатель внутри)
-    ├── Игра    → GameStack (GameMain → LevelSelect → Battle) — вкладка скрывается флагом SHOW_GAME
+    ├── Продать → не экран: tabPress → Магазин › SellProduct (кнопка по центру, как «Разместить» на Авито)
+    ├── Моё     → MyStack (MyItemsMain → ProductDetail / SellProduct / Chat / UserProfile) — те же имена роутов, что в ShopStack
+    ├── Игра    → GameStack — СКРЫТА с 20.10.2026 (SHOW_GAME = false, раздел закрыт)
     ├── Админ   → только если роль ADMIN/ANALYTICS/MODERATOR (условный таб)
     └── Профиль
 ```
