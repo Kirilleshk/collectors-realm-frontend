@@ -112,7 +112,8 @@ export default function SellProductScreen({ navigation, route }) {
     if (needContacts) {
       const tg = normalizeTelegram(telegram)
       const ph = normalizePhone(phone)
-      if (!tg && !ph) e.contact = 'Оставьте Telegram или телефон — иначе покупатель не сможет с вами связаться'
+      // Контакты необязательны с 20.10.2026 — покупатель пишет в «Сообщения»
+      // на сайте; Telegram/телефон — запасной способ, проверяем только формат
       if (tg && !/^[A-Za-z0-9_]{5,32}$/.test(tg)) e.telegram = 'Ник в Telegram — от 5 символов: латинские буквы, цифры, _'
       if (ph && (ph.length < 10 || ph.length > 15)) e.phone = 'Проверьте номер — не хватает цифр'
     }
@@ -176,11 +177,9 @@ export default function SellProductScreen({ navigation, route }) {
   }
 
   // Ошибка поля пропадает, как только человек начал его исправлять
-  // (общая ошибка «оставьте хоть один контакт» — при правке любого из двух)
   function clearError(key) {
-    const isContact = key === 'telegram' || key === 'phone'
-    if (!errors[key] && !(isContact && errors.contact)) return
-    setErrors(prev => ({ ...prev, [key]: undefined, ...(isContact ? { contact: undefined } : {}) }))
+    if (!errors[key]) return
+    setErrors(prev => ({ ...prev, [key]: undefined }))
   }
 
   return (
@@ -192,7 +191,7 @@ export default function SellProductScreen({ navigation, route }) {
           ? 'Изменения сразу появятся в магазине.'
           : isStaff
             ? 'Товар появится в магазине от имени Markeltoys.'
-            : 'Товар сразу появится в магазине. Покупатели свяжутся с вами напрямую — в Telegram или по телефону.'}
+            : 'Объявление сразу появится в магазине. Покупатели напишут вам на сайте — переписка будет во вкладке «Сообщения».'}
       </Text>
 
       {/* Фото */}
@@ -319,9 +318,9 @@ export default function SellProductScreen({ navigation, route }) {
 
       {/* Контакты — только у товара пользователя (не магазина) */}
       {needContacts && (
-        <View style={[s.card, errors.contact && s.cardError]}>
-          <Text style={s.cardTitle}>Как с вами связаться <Text style={s.req}>*</Text></Text>
-          <Text style={s.cardHint}>Хотя бы одно. Увидят все, кто откроет ваш товар.</Text>
+        <View style={s.card}>
+          <Text style={s.cardTitle}>Telegram и телефон</Text>
+          <Text style={s.cardHint}>Необязательно — покупатели и так напишут вам в «Сообщения». Если оставите, их увидят все, кто откроет объявление.</Text>
 
           <View style={[s.iconInput, errors.telegram && s.inputError]}>
             <Send size={18} color={colors.blue} strokeWidth={2} />
@@ -351,7 +350,6 @@ export default function SellProductScreen({ navigation, route }) {
             />
           </View>
           {errors.phone ? <Text style={s.error}>{errors.phone}</Text> : null}
-          {errors.contact ? <Text style={s.error}>{errors.contact}</Text> : null}
         </View>
       )}
 
@@ -372,7 +370,6 @@ const s = StyleSheet.create({
   content: { padding: 16, paddingBottom: 40, gap: 12, width: '100%', maxWidth: 640, alignSelf: 'center' },
   lead: { fontSize: 14, color: colors.text2, lineHeight: 20, paddingHorizontal: 4 },
   card: { backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.border, padding: 16 },
-  cardError: { borderColor: `${colors.red}90` },
   cardTitle: { fontSize: 15, fontWeight: '700', color: colors.text },
   cardHint: { fontSize: 12, color: colors.text2, marginTop: 4, lineHeight: 17 },
   photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 12 },

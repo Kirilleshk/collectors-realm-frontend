@@ -58,6 +58,15 @@ export const products = {
   remove: (id) => api.delete(`/products/${id}`),
 }
 
+// Чат покупатель ↔ продавец по товару пользователя (20.10.2026)
+export const messages = {
+  unreadCount: () => api.get('/messages/unread-count'),
+  conversations: () => api.get('/messages/conversations'),
+  start: (productId) => api.post('/messages/conversations', { productId }),
+  get: (id, after) => api.get(`/messages/conversations/${id}`, { params: after ? { after } : {} }),
+  send: (id, text) => api.post(`/messages/conversations/${id}`, { text }),
+}
+
 export const wishlist = {
   getAll: () => api.get('/wishlist'),
   add: (data) => api.post('/wishlist', data),

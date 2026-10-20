@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Image, Platform, Linking, Alert, TextInput } from 'react-native'
-import { products, wishlist, bids, collection, reviews } from '../api'
+import { products, wishlist, bids, collection, reviews, messages as messagesApi } from '../api'
 import { useAuth } from '../AuthContext'
 import { colors } from '../theme'
 import { pickAndUploadPhoto } from '../utils/uploadPhoto'
@@ -78,6 +78,7 @@ export default function ProductDetailScreen({ route, navigation }) {
   const [managing, setManaging] = useState(false)
   const [manageError, setManageError] = useState(null)
   const [sellerRating, setSellerRating] = useState(null) // { avg, count }
+  const [openingChat, setOpeningChat] = useState(false)
   const timerRef = useRef(null)
 
   useEffect(() => { load() }, [id])
@@ -212,6 +213,21 @@ export default function ProductDetailScreen({ route, navigation }) {
     Linking.openURL(`https://wa.me/${item.sellerPhone}?text=${msg}`)
   }
 
+  // «Написать» у товара пользователя — переписка на сайте (этап 3 «как на
+  // Авито», 20.10.2026): найти/создать переписку и открыть её
+  async function openChat() {
+    if (openingChat) return
+    setOpeningChat(true)
+    try {
+      const res = await messagesApi.start(item.id)
+      track('contact_seller', { method: 'chat', productId: item.id, sellerId: item.sellerId })
+      navigation.navigate('Conversation', { id: res.data.id })
+    } catch (e) {
+      showNotice(e.response?.data?.error || 'Не удалось открыть переписку — попробуйте ещё раз', { error: true })
+    }
+    setOpeningChat(false)
+  }
+
   function callSeller() {
     track('contact_seller', { method: 'call', productId: item.id, sellerId: item.sellerId })
     Linking.openURL(`tel:+${item.sellerPhone}`)
@@ -267,17 +283,22 @@ export default function ProductDetailScreen({ route, navigation }) {
   // (товар магазина, модерация чужого). Аукцион — только из админки:
   // в форме «+» нет полей аукциона
   const canManage = isOwner || (isStaff && !item.isAuction)
+  // Кнопки покупателя («Написать», вишлист, коллекция) прячем только у того,
+  // кто в этом товаре продавец: у владельца и у персонала на товаре магазина.
+  // Модератор на чужом товаре пользователя — тоже покупатель: ему и панель
+  // модерации, и «Написать» (раньше прятали по canManage — персонал не мог
+  // написать продавцу, 20.10.2026)
+  const hideBuyer = isOwner || (isStaff && !isUserListing)
   // Закреплённая внизу панель «Написать / Позвонить» (20.10.2026, этап 2
   // «как на Авито»): видна при любой прокрутке — покупателю не нужно искать
   // контакты внизу длинной страницы. Не показывается тому, кто управляет
   // товаром, у проданного и у аукциона (там свой блок ставок).
-  // «Написать» — Telegram, а если его нет — WhatsApp; у товара магазина — чат.
-  const writeAction = !isUserListing
-    ? () => navigation.navigate('Chat', { productName: item.name, productId: item.id })
-    : item.sellerTelegram ? openSellerTelegram
-    : item.sellerPhone ? openSellerWhatsApp
-    : null
-  const showBar = !canManage && !isSold && !item.isAuction && !!writeAction
+  // «Написать» — переписка на сайте с продавцом (Telegram/WhatsApp — запасные,
+  // в блоке продавца); у товара магазина — чат с администрацией.
+  const writeAction = isUserListing
+    ? openChat
+    : () => navigation.navigate('Chat', { productName: item.name, productId: item.id })
+  const showBar = !hideBuyer && !isSold && !item.isAuction
   const ratingText = sellerRating?.count
     ? `${sellerRating.avg.toFixed(1)} · ${sellerRating.count} ${sellerRating.count % 10 === 1 && sellerRating.count % 100 !== 11 ? 'отзыв' : [2, 3, 4].includes(sellerRating.count % 10) && ![12, 13, 14].includes(sellerRating.count % 100) ? 'отзыва' : 'отзывов'}`
     : 'Пока нет отзывов'
@@ -347,9 +368,9 @@ export default function ProductDetailScreen({ route, navigation }) {
         ) : null}
 
         {/* Продавец — сразу под ценой, до характеристик: кто продаёт и
-            насколько ему доверяют (рейтинг из отзывов). Тому, кто управляет
-            товаром, вместо этого — панель управления ниже */}
-        {!canManage && isUserListing ? (
+            насколько ему доверяют (рейтинг из отзывов). Владельцу и персоналу
+            на товаре магазина — не показываем (hideBuyer), у них панель ниже */}
+        {!hideBuyer && isUserListing ? (
           <View style={s.sellerCard}>
             {item.seller ? (
               <TouchableOpacity style={s.sellerRow} onPress={() => navigation.navigate('UserProfile', { userId: item.seller.id })} activeOpacity={0.7}>
@@ -366,17 +387,29 @@ export default function ProductDetailScreen({ route, navigation }) {
                 <ChevronRight size={18} color={colors.text2} />
               </TouchableOpacity>
             ) : null}
-            {!isSold && item.sellerTelegram && item.sellerPhone ? (
-              <TouchableOpacity style={s.altContact} onPress={openSellerWhatsApp}>
-                <MessageCircle size={15} color="#25D366" strokeWidth={2} />
-                <Text style={s.altContactText}>Или написать в WhatsApp</Text>
-              </TouchableOpacity>
+            {/* Запасные способы связи — если продавец их оставил */}
+            {!isSold && (item.sellerTelegram || item.sellerPhone) ? (
+              <View style={s.altRow}>
+                <Text style={s.altLabel}>Или напрямую:</Text>
+                {item.sellerTelegram ? (
+                  <TouchableOpacity style={s.altContact} onPress={openSellerTelegram}>
+                    <Send size={14} color={colors.blue} strokeWidth={2} />
+                    <Text style={[s.altContactText, { color: colors.blue }]}>Telegram</Text>
+                  </TouchableOpacity>
+                ) : null}
+                {item.sellerPhone ? (
+                  <TouchableOpacity style={s.altContact} onPress={openSellerWhatsApp}>
+                    <MessageCircle size={14} color="#25D366" strokeWidth={2} />
+                    <Text style={s.altContactText}>WhatsApp</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
             ) : null}
             {!isSold && item.sellerPhone ? <Text style={s.sellerPhone}>Телефон: {formatPhone(item.sellerPhone)}</Text> : null}
             {!isSold ? <Text style={s.sellerNote}>Сделку вы обсуждаете с продавцом напрямую — Markeltoys в ней не участвует.</Text> : null}
           </View>
         ) : null}
-        {!canManage && !isUserListing ? (
+        {!hideBuyer && !isUserListing ? (
           <View style={[s.sellerCard, s.sellerRow]}>
             <Image source={require('../../assets/logo-mark.png')} style={s.sellerAvatar} resizeMode="contain" />
             <View style={{ flex: 1 }}>
@@ -552,7 +585,7 @@ export default function ProductDetailScreen({ route, navigation }) {
             товаров магазина — персонал: продавец там он сам), не показываем:
             раньше админ на товаре магазина видел «Написать» самому себе.
             «Написать» / «Позвонить» — в закреплённой панели внизу экрана */}
-        {!canManage && !isSold && !item.isAuction ? (
+        {!hideBuyer && !isSold && !item.isAuction ? (
           <View style={s.actions}>
             <TouchableOpacity
               style={[s.wishlistBtn, addedToWishlist && s.wishlistBtnAdded]}
@@ -570,7 +603,7 @@ export default function ProductDetailScreen({ route, navigation }) {
             </TouchableOpacity>
           </View>
         ) : null}
-        {!canManage && !item.isAuction ? (
+        {!hideBuyer && !item.isAuction ? (
           <TouchableOpacity
             style={[s.collectionBtn, addedToCollection && s.collectionBtnAdded]}
             onPress={handleAddToCollection}
@@ -586,7 +619,7 @@ export default function ProductDetailScreen({ route, navigation }) {
             }
           </TouchableOpacity>
         ) : null}
-        {isSold && !canManage ? (
+        {isSold && !hideBuyer ? (
           <View style={s.soldBanner}>
             <IconLabel icon={CircleSlash} label="Товар уже продан" size={18} textStyle={s.soldBannerText} />
             <TouchableOpacity style={s.wishlistBtn} onPress={handleAddToWishlist} disabled={addingToWishlist || addedToWishlist}>
@@ -605,13 +638,15 @@ export default function ProductDetailScreen({ route, navigation }) {
             <Phone size={20} color={colors.text} strokeWidth={2} />
           </TouchableOpacity>
         ) : null}
-        <TouchableOpacity style={s.barWrite} onPress={writeAction}>
-          <IconLabel
-            icon={isUserListing && item.sellerTelegram ? Send : MessageCircle}
-            label={isUserListing ? 'Написать' : 'Написать магазину'}
-            size={18}
-            textStyle={s.barWriteText}
-          />
+        <TouchableOpacity style={[s.barWrite, openingChat && { opacity: 0.7 }]} onPress={writeAction} disabled={openingChat}>
+          {openingChat
+            ? <ActivityIndicator color="#fff" size="small" />
+            : <IconLabel
+                icon={MessageCircle}
+                label={isUserListing ? 'Написать' : 'Написать магазину'}
+                size={18}
+                textStyle={s.barWriteText}
+              />}
         </TouchableOpacity>
         </View>
       </View>
@@ -654,7 +689,9 @@ const s = StyleSheet.create({
   sellerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   sellerCard: { backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.border, padding: 14, marginBottom: 16, gap: 10 },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
-  altContact: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start' },
+  altRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 14 },
+  altLabel: { fontSize: 13, color: colors.text2 },
+  altContact: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   altContactText: { fontSize: 13, fontWeight: '600', color: '#25D366' },
   // На широком экране ПК карточка не растягивается на всё окно (20.10.2026):
   // контент и панель внизу — по центру, не шире MAX_CONTENT. На телефоне

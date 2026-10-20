@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { View, Text, Image, Modal, Pressable, StyleSheet, useWindowDimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { ShoppingBag, Map as MapIcon, User, Plus } from '../icons'
+import { ShoppingBag, Map as MapIcon, User, Plus, MessageCircle } from '../icons'
 import { colors } from '../theme'
 import { useAuth } from '../AuthContext'
 import { users as usersApi } from '../api'
@@ -15,6 +15,7 @@ const ALL_STEPS = [
   { tab: 'Карта', Icon: MapIcon, title: 'Карта коллекционеров', desc: 'Коллекционеры, мастера по ремонту, кастомизаторы и мастера диорам рядом с вами. Нажмите на маркер — откроется профиль.' },
   // «Продать» — кнопка, а не экран: туда не переходим (stay), только подсвечиваем
   { tab: 'Продать', Icon: Plus, stay: true, title: 'Продать', desc: 'Выставьте свою фигурку: фото, название, цена и контакт — она сразу появится в магазине.' },
+  { tab: 'Сообщения', Icon: MessageCircle, title: 'Сообщения', desc: 'Переписки с продавцами и покупателями по товарам. Нажмите «Написать» в карточке товара — ответ придёт сюда.' },
   { tab: 'Моё', title: 'Объявления, коллекция и вишлист', desc: 'Ваши объявления — изменить, отметить проданным, удалить. А ещё каталог ваших фигурок и список того, что хотите найти.' },
   { tab: 'Профиль', Icon: User, title: 'Профиль', desc: 'Город, роли, фото портфолио, связь с администрацией и раздел «Помощь» со всеми функциями приложения.' },
 ]
@@ -28,7 +29,7 @@ const ALL_STEPS = [
 // что определяют состав вкладок в MainTabs (нужны для подсветки нужной)
 export default function OnboardingTour({ navigationRef, showGame, isAdmin, onFinish }) {
   const STEPS = ALL_STEPS
-  const TABS = ['Магазин', 'Карта', 'Продать', 'Моё', ...(showGame ? ['Игра'] : []), ...(isAdmin ? ['Админ'] : []), 'Профиль']
+  const TABS = ['Магазин', 'Карта', 'Продать', 'Сообщения', 'Моё', ...(showGame ? ['Игра'] : []), ...(isAdmin ? ['Админ'] : []), 'Профиль']
 
   const insets = useSafeAreaInsets()
   const { width, height } = useWindowDimensions()

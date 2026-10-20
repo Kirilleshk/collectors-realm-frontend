@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { View, Image, ActivityIndicator, Platform, AppState } from 'react-native'
-import { ShoppingBag, Map as MapIcon, Gamepad2, Settings, User, Plus } from './src/icons'
+import { ShoppingBag, Map as MapIcon, Gamepad2, Settings, User, Plus, MessageCircle } from './src/icons'
 import { NavigationContainer } from '@react-navigation/native'
 import * as NavigationBar from 'expo-navigation-bar'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
@@ -15,6 +15,7 @@ import OnboardingTour from './src/utils/OnboardingTour'
 import LocationRequiredModal from './src/utils/LocationRequiredModal'
 import { track } from './src/utils/analytics'
 import { NoticeHost } from './src/utils/notice'
+import { useUnreadCount } from './src/utils/unread'
 
 import LoginScreen from './src/screens/LoginScreen'
 import ShopScreen from './src/screens/ShopScreen'
@@ -28,6 +29,8 @@ import UserProfileScreen from './src/screens/UserProfileScreen'
 import MyItemsScreen from './src/screens/MyItemsScreen'
 import ReleasesScreen from './src/screens/ReleasesScreen'
 import SellProductScreen from './src/screens/SellProductScreen'
+import MessagesScreen from './src/screens/MessagesScreen'
+import ConversationScreen from './src/screens/ConversationScreen'
 import NotReadyScreen from './src/screens/NotReadyScreen'
 
 // Флаг видимости карточной игры — поставить false, чтобы мгновенно скрыть вкладку.
@@ -43,7 +46,7 @@ const Stack = createNativeStackNavigator()
 // 13.10.2026: эмодзи вкладок → линейные иконки Lucide — на разных устройствах
 // эмодзи рисовались по-разному и не красились в цвета темы. Копия интерфейса
 // до замены — git-тег ui-emoji-backup-2026-10-13.
-const tabIcons = { Магазин: ShoppingBag, Карта: MapIcon, Игра: Gamepad2, Админ: Settings, Профиль: User }
+const tabIcons = { Магазин: ShoppingBag, Карта: MapIcon, Сообщения: MessageCircle, Игра: Gamepad2, Админ: Settings, Профиль: User }
 
 function ShopStack() {
   return (
@@ -59,6 +62,7 @@ function ShopStack() {
       <Stack.Screen name="UserProfile" component={UserProfileScreen} options={{ title: 'Профиль' }} />
       <Stack.Screen name="Releases" component={ReleasesScreen} options={{ title: 'Новости' }} />
       <Stack.Screen name="SellProduct" component={SellProductScreen} options={{ title: 'Новое объявление' }} />
+      <Stack.Screen name="Conversation" component={ConversationScreen} options={{ title: 'Сообщения' }} />
       {/* Библиотека знаний приостановлена (решение Марка 20.09.2026) — вместо
           реального LibraryScreen зарегистрирована заглушка "в разработке"
           прямо на уровне роута (не перехват клика), см. NotReadyScreen.js */}
@@ -91,6 +95,27 @@ function MyStack() {
       <Stack.Screen name="SellProduct" component={SellProductScreen} options={{ title: 'Новое объявление' }} />
       <Stack.Screen name="Chat" component={ChatScreen} options={{ title: 'Чат с магазином' }} />
       <Stack.Screen name="UserProfile" component={UserProfileScreen} options={{ title: 'Профиль' }} />
+      <Stack.Screen name="Conversation" component={ConversationScreen} options={{ title: 'Сообщения' }} />
+    </Stack.Navigator>
+  )
+}
+
+// «Сообщения» — переписки покупатель ↔ продавец (20.10.2026, этап 3 «как на
+// Авито»). Из переписки можно открыть карточку товара — поэтому здесь те же
+// роуты, что в ShopStack/MyStack
+function MessagesStack() {
+  return (
+    <Stack.Navigator screenOptions={{
+      headerStyle: { backgroundColor: colors.surface },
+      headerTintColor: colors.text,
+      headerTitleStyle: { fontWeight: '700' },
+    }}>
+      <Stack.Screen name="MessagesList" component={MessagesScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="Conversation" component={ConversationScreen} options={{ title: 'Сообщения' }} />
+      <Stack.Screen name="ProductDetail" component={ProductDetailScreen} options={{ title: 'Товар' }} />
+      <Stack.Screen name="SellProduct" component={SellProductScreen} options={{ title: 'Новое объявление' }} />
+      <Stack.Screen name="UserProfile" component={UserProfileScreen} options={{ title: 'Профиль' }} />
+      <Stack.Screen name="Chat" component={ChatScreen} options={{ title: 'Чат с магазином' }} />
     </Stack.Navigator>
   )
 }
@@ -138,6 +163,7 @@ function MainTabs() {
   const insets = useSafeAreaInsets()
   const { user } = useAuth()
   const isAdmin = user?.roles?.includes('ADMIN') || user?.roles?.includes('ANALYTICS') || user?.roles?.includes('MODERATOR')
+  const unread = useUnreadCount()
   return (
     <Tab.Navigator screenOptions={({ route }) => ({
       tabBarIcon: ({ focused, color }) => {
@@ -176,6 +202,15 @@ function MainTabs() {
           },
         })}
       />
+      <Tab.Screen
+        name="Сообщения"
+        component={MessagesStack}
+        options={{
+          headerShown: false,
+          tabBarBadge: unread > 0 ? (unread > 99 ? '99+' : unread) : undefined,
+          tabBarBadgeStyle: { backgroundColor: colors.accent, color: '#fff', fontSize: 10, fontWeight: '800' },
+        }}
+      />
       <Tab.Screen name="Моё" component={MyStack} options={{ headerShown: false }} />
       {SHOW_GAME && <Tab.Screen name="Игра" component={GameStack} options={{ headerShown: false }} />}
       {isAdmin && <Tab.Screen name="Админ" component={AdminScreen} options={{ headerShown: false }} />}
@@ -191,7 +226,7 @@ const navigationRef = React.createRef()
 // история не рвётся. Роуты не из списка пишутся как есть (ProductDetail,
 // Chat, Notifications, Releases, Library, Login...).
 const SCREEN_KEYS = {
-  ShopList: 'Shop', MapMain: 'Map', 'Моё': 'MyItems', MyItemsMain: 'MyItems', GameMain: 'Game',
+  ShopList: 'Shop', MapMain: 'Map', 'Моё': 'MyItems', MyItemsMain: 'MyItems', MessagesList: 'Messages', GameMain: 'Game',
   'Профиль': 'Profile', 'Админ': 'Admin', UserProfileMap: 'UserProfile',
 }
 
@@ -248,6 +283,14 @@ function RootNav() {
   useEffect(() => {
     const sub = Notifications.addNotificationResponseReceivedListener(response => {
       const data = response.notification.request.content.data
+      if (data?.conversationId && navigationRef.current) {
+        navigationRef.current.navigate('Сообщения', {
+          screen: 'Conversation',
+          params: { id: data.conversationId },
+          initial: false,
+        })
+        return
+      }
       if (data?.productId && navigationRef.current) {
         navigationRef.current.navigate('Магазин', {
           screen: 'ProductDetail',

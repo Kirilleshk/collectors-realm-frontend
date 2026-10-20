@@ -22,9 +22,14 @@ users.routes.ts        GET / (карта), /me, /:id; PUT /me; POST /me/avatar,
 products.routes.ts     CRUD, PATCH /:id/status, /:id/sold, GET/POST /:id/bids
                        (аукцион). POST — любой незаблокированный: staff → товар
                        магазина (sellerId null), остальные → свой (без аукциона,
-                       обязателен sellerTelegram|sellerPhone, ≤5 фото Cloudinary,
-                       лимит 50 активных / 20 в сутки). PUT/PATCH/DELETE —
-                       staff или владелец. Товары заблокированных скрыты в GET
+                       sellerTelegram/sellerPhone необязательны, ≤5 фото
+                       Cloudinary, лимит 50 активных / 20 в сутки). PUT/PATCH/
+                       DELETE — staff или владелец. Товары заблокированных скрыты
+messages.routes.ts     чат покупатель ↔ продавец (товары пользователей):
+                       GET /unread-count, GET /conversations, POST /conversations
+                       {productId} (найти/создать), GET /conversations/:id
+                       [?after=] (опрос, отмечает прочитанным), POST
+                       /conversations/:id {text} (≤2000, ≤20/мин, пуш Expo)
 wishlist.routes.ts     CRUD (name, priority, comment, originalName,
                        characterRu, manufacturer, releaseDate)
 collection.routes.ts   CRUD личной коллекции (CollectionItem)
@@ -65,6 +70,8 @@ enum CardFaction   { ALIEN, PREDATOR }
   isBlocked, onboardingSeen), `Product` (+ аукцион isAuction/startPrice/
   priceStep/auctionEndTime; продавец sellerId/sellerTelegram/sellerPhone —
   null = товар магазина), `ProductImage`, `Bid`, `WishlistItem`,
+  `Conversation` (товар + покупатель + продавец, *LastReadAt, снимок
+  productName; unique productId+buyerId) + `ChatMessage`,
   `CollectionItem`, `Review`, `Notification`, `Release`, `ReleaseReminder`
 - **Профиль/портфолио:** `PortfolioPhoto`, `PortfolioCollection` + `PortfolioCollectionPhoto`
 - **Карточная игра** (см. [card-game.md](card-game.md)): `CardTheme`, `Boss`,

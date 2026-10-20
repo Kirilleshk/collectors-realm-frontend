@@ -77,7 +77,7 @@ export default function MyListingsScreen() {
       setItems(prev => prev.map(p => (p.id === item.id ? { ...p, status: next } : p)))
       showNotice(next === 'SOLD' ? 'Отмечено проданным' : 'Снова в продаже')
     } catch (e) {
-      showNotice(e.response?.data?.error || 'Не удалось изменить статус')
+      showNotice(e.response?.data?.error || 'Не удалось изменить статус', { error: true })
     }
     setBusyId(null)
   }
@@ -90,7 +90,7 @@ export default function MyListingsScreen() {
         setItems(prev => prev.filter(p => p.id !== item.id))
         showNotice('Объявление удалено')
       } catch (e) {
-        showNotice(e.response?.data?.error || 'Не удалось удалить')
+        showNotice(e.response?.data?.error || 'Не удалось удалить', { error: true })
       }
       setBusyId(null)
     })

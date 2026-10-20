@@ -31,6 +31,8 @@ collectors-realm/
     │   ├── ProductDetailScreen.js  ← Карточка товара, галерея, ставки; продавец-пользователь / панель владельца
     │   ├── SellProductScreen.js    ← Форма объявления (вкладка «Продать»): разместить / редактировать (route.params.product)
     │   ├── MyListingsScreen.js     ← «Моё → Объявления»: свои товары (у персонала — товары магазина), В продаже / Проданные
+    │   ├── MessagesScreen.js       ← вкладка «Сообщения»: переписки по товарам (покупатель и продавец), непрочитанные
+    │   ├── ConversationScreen.js   ← переписка: товар сверху, пузыри, опрос новых раз в 4 с (?after=), Enter — отправить
     │   ├── AdminScreen.js          ← вкладки Товары/Люди/Чат/Игра (ADMIN+MODERATOR),
     │   │                              Релизы (только ADMIN), Статистика (+ ANALYTICS)
     │   ├── ProfileScreen.js        ← Профиль: аватар, роли, геолокация, портфолио-коллекции
@@ -58,7 +60,8 @@ collectors-realm/
         ├── WhatsNewModal.js        ← Модал "Что нового" при обновлении
         ├── changelog.js            ← История версий (ОБНОВЛЯТЬ ПРИ КАЖДОМ РЕЛИЗЕ)
         ├── OnboardingTour.js       ← Тур по вкладкам (один раз за аккаунт; «Продать» — stay, не переходит)
-        ├── notice.js               ← showNotice('текст') + <NoticeHost/> в App.js — всплывающее подтверждение
+        ├── notice.js               ← showNotice('текст' [, { error: true }]) + <NoticeHost/> в App.js — всплывающее сообщение
+        ├── unread.js               ← useUnreadCount() (счётчик на вкладке, опрос 30 с) + refreshUnread()
         ├── LocationRequiredModal.js← Запрос геолокации при входе (со skip)
         ├── HowToPlayModal.js       ← «Как играть» в карточной игре
         ├── cardArt.js              ← RARITY, CardImage, бейджи маны/атаки/HP
@@ -75,7 +78,8 @@ RootNav
     ├── Магазин → ShopStack (ShopList → ProductDetail / SellProduct / Chat / Notifications / UserProfile / Releases / Library)
     ├── Карта   → MapStack (MapMain → UserProfileMap)
     ├── Продать → не экран: tabPress → Магазин › SellProduct (кнопка по центру, как «Разместить» на Авито)
-    ├── Моё     → MyStack (MyItemsMain → ProductDetail / SellProduct / Chat / UserProfile) — те же имена роутов, что в ShopStack
+    ├── Сообщения → MessagesStack (MessagesList → Conversation / ProductDetail / SellProduct / UserProfile / Chat), счётчик непрочитанных
+    ├── Моё     → MyStack (MyItemsMain → ProductDetail / SellProduct / Chat / UserProfile / Conversation) — те же имена роутов, что в ShopStack
     ├── Игра    → GameStack — СКРЫТА с 20.10.2026 (SHOW_GAME = false, раздел закрыт)
     ├── Админ   → только если роль ADMIN/ANALYTICS/MODERATOR (условный таб)
     └── Профиль
