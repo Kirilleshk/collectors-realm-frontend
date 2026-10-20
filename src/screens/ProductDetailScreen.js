@@ -7,7 +7,7 @@ import { pickAndUploadPhoto } from '../utils/uploadPhoto'
 import { track } from '../utils/analytics'
 import ScreenBackground from '../components/ScreenBackground'
 import IconLabel from '../components/IconLabel'
-import { Package, Gavel, Camera, Factory, Trophy, MessageCircle, Send, Target, Boxes, Check, CircleSlash } from '../icons'
+import { Package, Gavel, Camera, Factory, Trophy, MessageCircle, Send, Target, Boxes, Check, CircleSlash, Phone, Pencil, CircleCheck, RotateCw, Trash2, User, ChevronRight } from '../icons'
 import { API_URL } from '../config'
 
 const CLOUD_NAME = 'dqutmb1rm'
@@ -26,6 +26,25 @@ const STATUS_INFO = {
   PREORDER: { label: 'Предзаказ', color: '#007AFF' },
   RESERVED: { label: 'Резерв', color: '#FF9500' },
   NEGOTIABLE: { label: 'Торг уместен', color: '#AF52DE' },
+}
+
+// 79001234567 → «+7 900 123-45-67»; другие форматы — просто с плюсом
+function formatPhone(d) {
+  if (d?.length === 11 && d[0] === '7') return `+7 ${d.slice(1, 4)} ${d.slice(4, 7)}-${d.slice(7, 9)}-${d.slice(9)}`
+  return d ? '+' + d : ''
+}
+
+// Подтверждение действия: Alert.alert с кнопками в вебе — пустая заглушка
+// (диалог не появится и действие не выполнится), там — window.confirm
+function confirmAction(title, text, okLabel, onOk) {
+  if (Platform.OS === 'web') {
+    if (window.confirm(`${title}\n\n${text}`)) onOk()
+    return
+  }
+  Alert.alert(title, text, [
+    { text: 'Отмена', style: 'cancel' },
+    { text: okLabel, style: 'destructive', onPress: onOk },
+  ])
 }
 
 function getTimeLeft(endTime) {
@@ -55,9 +74,18 @@ export default function ProductDetailScreen({ route, navigation }) {
   const [bidAmount, setBidAmount] = useState('')
   const [placingBid, setPlacingBid] = useState(false)
   const [timeLeft, setTimeLeft] = useState(null)
+  const [managing, setManaging] = useState(false)
+  const [manageError, setManageError] = useState(null)
   const timerRef = useRef(null)
 
   useEffect(() => { load() }, [id])
+
+  // Возврат на карточку (после «Редактировать») — перечитываем товар без
+  // спиннера. Пока не закончилась первая загрузка — пропускаем (там уже идёт load())
+  const loadedOnceRef = useRef(false)
+  useEffect(() => navigation.addListener('focus', () => {
+    if (loadedOnceRef.current) load()
+  }), [navigation, id])
 
   useEffect(() => {
     if (item?.isAuction && item?.auctionEndTime) {
@@ -102,6 +130,7 @@ export default function ProductDetailScreen({ route, navigation }) {
       const res = await products.getById(id)
       setItem(res.data)
     } catch (e) { console.error(e) }
+    loadedOnceRef.current = true
     setLoading(false)
   }
 
@@ -171,6 +200,48 @@ export default function ProductDetailScreen({ route, navigation }) {
     try { await Linking.openURL(url) } catch { Linking.openURL(`https://wa.me/${SELLER.whatsapp}`) }
   }
 
+  // Связь с продавцом-пользователем — напрямую, по его контактам из товара
+  function openSellerTelegram() {
+    track('contact_seller', { method: 'telegram', productId: item.id, sellerId: item.sellerId })
+    Linking.openURL(`https://t.me/${item.sellerTelegram}`)
+  }
+
+  function openSellerWhatsApp() {
+    track('contact_seller', { method: 'whatsapp', productId: item.id, sellerId: item.sellerId })
+    const msg = encodeURIComponent(`Здравствуйте! Меня интересует ваш товар "${item.name}" за ${item.price?.toLocaleString('ru')} ₽ (Markeltoys)`)
+    Linking.openURL(`https://wa.me/${item.sellerPhone}?text=${msg}`)
+  }
+
+  function callSeller() {
+    track('contact_seller', { method: 'call', productId: item.id, sellerId: item.sellerId })
+    Linking.openURL(`tel:+${item.sellerPhone}`)
+  }
+
+  async function handleToggleSold() {
+    const next = item.status === 'SOLD' ? 'AVAILABLE' : 'SOLD'
+    setManaging(true); setManageError(null)
+    try {
+      await products.setStatus(item.id, next)
+      setItem(prev => ({ ...prev, status: next }))
+    } catch (e) {
+      setManageError(e.response?.data?.error || 'Не удалось изменить статус — попробуйте ещё раз')
+    }
+    setManaging(false)
+  }
+
+  function handleDelete() {
+    confirmAction('Удалить товар?', 'Он пропадёт из магазина, вернуть его будет нельзя.', 'Удалить', async () => {
+      setManaging(true); setManageError(null)
+      try {
+        await products.remove(item.id)
+        navigation.goBack()
+      } catch (e) {
+        setManageError(e.response?.data?.error || 'Не удалось удалить — попробуйте ещё раз')
+        setManaging(false)
+      }
+    })
+  }
+
   async function openMax() {
     const msg = encodeURIComponent(`Здравствуйте! Меня интересует товар "${item.name}" за ${item.price?.toLocaleString('ru')} ₽`)
     const url = `https://max.ru/im?to=${SELLER.max}&text=${msg}`
@@ -191,6 +262,10 @@ export default function ProductDetailScreen({ route, navigation }) {
   const statusInfo = STATUS_INFO[item.status] || STATUS_INFO.AVAILABLE
   const allPhotos = item.images || []
   const currentPhoto = allPhotos[currentPhotoIndex]?.url || null
+  // Товар пользователя (не магазина): свой блок продавца и прямые контакты
+  // вместо контактов Markeltoys и чата с администрацией
+  const isUserListing = !!item.sellerId
+  const isOwner = isUserListing && item.sellerId === user?.id
 
   return (
     <ScreenBackground>
@@ -381,8 +456,78 @@ export default function ProductDetailScreen({ route, navigation }) {
           </View>
         )}
 
-        {/* Контакты продавца */}
-        {!isSold && !item.isAuction ? (
+        {/* Свой товар — управление вместо кнопок покупателя */}
+        {isOwner ? (
+          <View style={s.ownerCard}>
+            <Text style={s.contactTitle}>Это ваш товар</Text>
+            <Text style={s.ownerHint}>
+              {isSold
+                ? 'Отмечен проданным — в магазине он в разделе «Продано».'
+                : 'Покупатели видят его в магазине и пишут вам напрямую.'}
+            </Text>
+            <View style={s.contactRow}>
+              <TouchableOpacity style={s.ownerBtn} onPress={() => navigation.navigate('SellProduct', { product: item })} disabled={managing}>
+                <IconLabel icon={Pencil} label="Редактировать" size={16} textStyle={s.ownerBtnText} />
+              </TouchableOpacity>
+              <TouchableOpacity style={[s.ownerBtn, !isSold && s.ownerBtnSold]} onPress={handleToggleSold} disabled={managing}>
+                {managing
+                  ? <ActivityIndicator color={colors.text} size="small" />
+                  : <IconLabel
+                      icon={isSold ? RotateCw : CircleCheck}
+                      label={isSold ? 'Снова в продаже' : 'Продано'}
+                      size={16}
+                      textStyle={[s.ownerBtnText, !isSold && { color: colors.green }]}
+                    />}
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity style={s.deleteBtn} onPress={handleDelete} disabled={managing}>
+              <IconLabel icon={Trash2} label="Удалить товар" size={15} textStyle={s.deleteBtnText} />
+            </TouchableOpacity>
+            {manageError ? <Text style={s.manageError}>{manageError}</Text> : null}
+          </View>
+        ) : null}
+
+        {/* Продавец-пользователь: кто он и как с ним связаться */}
+        {isUserListing && !isOwner ? (
+          <View style={s.contactCard}>
+            <Text style={s.contactTitle}>Продавец</Text>
+            {item.seller ? (
+              <TouchableOpacity style={s.sellerRow} onPress={() => navigation.navigate('UserProfile', { userId: item.seller.id })} activeOpacity={0.7}>
+                {item.seller.avatarUrl
+                  ? <Image source={{ uri: item.seller.avatarUrl }} style={s.sellerAvatar} />
+                  : <View style={[s.sellerAvatar, s.sellerAvatarEmpty]}><User size={20} color={colors.text2} /></View>}
+                <View style={{ flex: 1 }}>
+                  <Text style={s.sellerName} numberOfLines={1}>{item.seller.name}</Text>
+                  <Text style={s.sellerSub}>Открыть профиль</Text>
+                </View>
+                <ChevronRight size={18} color={colors.text2} />
+              </TouchableOpacity>
+            ) : null}
+            {!isSold && item.sellerTelegram ? (
+              <TouchableOpacity style={s.telegramBtn} onPress={openSellerTelegram}>
+                <Send size={18} color="white" strokeWidth={2} />
+                <Text style={s.telegramBtnText} numberOfLines={1}>Telegram · @{item.sellerTelegram}</Text>
+              </TouchableOpacity>
+            ) : null}
+            {!isSold && item.sellerPhone ? (
+              <View style={s.contactRow}>
+                <TouchableOpacity style={s.whatsappBtn} onPress={openSellerWhatsApp}>
+                  <MessageCircle size={18} color="white" strokeWidth={2} />
+                  <Text style={s.whatsappBtnText}>WhatsApp</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={s.callBtn} onPress={callSeller}>
+                  <Phone size={18} color={colors.text} strokeWidth={2} />
+                  <Text style={s.callBtnText}>Позвонить</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
+            {!isSold && item.sellerPhone ? <Text style={s.sellerPhone}>{formatPhone(item.sellerPhone)}</Text> : null}
+            {!isSold ? <Text style={s.sellerNote}>Сделку вы обсуждаете с продавцом напрямую — Markeltoys в ней не участвует.</Text> : null}
+          </View>
+        ) : null}
+
+        {/* Контакты магазина Markeltoys */}
+        {!isUserListing && !isSold && !item.isAuction ? (
           <View style={s.contactCard}>
             <Text style={s.contactTitle}>Связаться с продавцом</Text>
             <View style={s.contactRow}>
@@ -398,12 +543,14 @@ export default function ProductDetailScreen({ route, navigation }) {
           </View>
         ) : null}
 
-        {/* Кнопки */}
-        {!isSold && !item.isAuction ? (
+        {/* Кнопки (чат с администрацией — только у товаров магазина) */}
+        {!isOwner && !isSold && !item.isAuction ? (
           <View style={s.actions}>
-            <TouchableOpacity style={s.buyBtn} onPress={() => navigation.navigate('Chat', { productName: item.name, productId: item.id })}>
-              <IconLabel icon={MessageCircle} label="Написать в чате" size={18} textStyle={s.buyBtnText} />
-            </TouchableOpacity>
+            {!isUserListing ? (
+              <TouchableOpacity style={s.buyBtn} onPress={() => navigation.navigate('Chat', { productName: item.name, productId: item.id })}>
+                <IconLabel icon={MessageCircle} label="Написать в чате" size={18} textStyle={s.buyBtnText} />
+              </TouchableOpacity>
+            ) : null}
             <TouchableOpacity
               style={[s.wishlistBtn, addedToWishlist && s.wishlistBtnAdded]}
               onPress={handleAddToWishlist}
@@ -420,7 +567,7 @@ export default function ProductDetailScreen({ route, navigation }) {
             </TouchableOpacity>
           </View>
         ) : null}
-        {!item.isAuction ? (
+        {!isOwner && !item.isAuction ? (
           <TouchableOpacity
             style={[s.collectionBtn, addedToCollection && s.collectionBtnAdded]}
             onPress={handleAddToCollection}
@@ -436,7 +583,7 @@ export default function ProductDetailScreen({ route, navigation }) {
             }
           </TouchableOpacity>
         ) : null}
-        {isSold ? (
+        {isSold && !isOwner ? (
           <View style={s.soldBanner}>
             <IconLabel icon={CircleSlash} label="Товар уже продан" size={18} textStyle={s.soldBannerText} />
             <TouchableOpacity style={s.wishlistBtn} onPress={handleAddToWishlist} disabled={addingToWishlist || addedToWishlist}>
@@ -482,10 +629,27 @@ const s = StyleSheet.create({
   contactCard: { backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.border, padding: 16, marginBottom: 16, gap: 10 },
   contactTitle: { fontSize: 11, fontWeight: '700', color: colors.text2, textTransform: 'uppercase', letterSpacing: 1.5 },
   contactRow: { flexDirection: 'row', gap: 10 },
-  telegramBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#229ED9', borderRadius: 12, padding: 14 },
+  telegramBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#229ED9', borderRadius: 12, padding: 14 },
   telegramBtnText: { color: 'white', fontWeight: '700', fontSize: 15 },
   whatsappBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#25D366', borderRadius: 12, padding: 14 },
   whatsappBtnText: { color: 'white', fontWeight: '700', fontSize: 15 },
+  callBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: colors.surface2, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.border },
+  callBtnText: { color: colors.text, fontWeight: '700', fontSize: 15 },
+  sellerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 4 },
+  sellerAvatar: { width: 44, height: 44, borderRadius: 22 },
+  sellerAvatarEmpty: { backgroundColor: colors.surface2, justifyContent: 'center', alignItems: 'center' },
+  sellerName: { fontSize: 16, fontWeight: '700', color: colors.text },
+  sellerSub: { fontSize: 12, color: colors.text2, marginTop: 2 },
+  sellerPhone: { fontSize: 13, color: colors.text2, textAlign: 'center' },
+  sellerNote: { fontSize: 12, color: colors.text2, lineHeight: 17 },
+  ownerCard: { backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: `${colors.accent}50`, padding: 16, marginBottom: 16, gap: 10 },
+  ownerHint: { fontSize: 13, color: colors.text2, lineHeight: 18 },
+  ownerBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface2, borderRadius: 12, borderWidth: 1, borderColor: colors.border, paddingVertical: 13, minHeight: 48 },
+  ownerBtnSold: { borderColor: `${colors.green}60` },
+  ownerBtnText: { color: colors.text, fontSize: 14, fontWeight: '700' },
+  deleteBtn: { alignSelf: 'center', paddingVertical: 6, paddingHorizontal: 12 },
+  deleteBtnText: { color: colors.red, fontSize: 14, fontWeight: '600' },
+  manageError: { fontSize: 13, color: colors.red, textAlign: 'center' },
   maxBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#0077FF', borderRadius: 12, padding: 14 },
   maxBtnText: { color: 'white', fontWeight: '700', fontSize: 15 },
   actions: { flexDirection: 'row', gap: 12, marginTop: 8 },

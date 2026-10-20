@@ -2,11 +2,12 @@ import React, { useState, useEffect, useRef } from 'react'
 import { View, Text, Image, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl, useWindowDimensions, TextInput, Animated } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { products } from '../api'
+import { useAuth } from '../AuthContext'
 import { colors } from '../theme'
 import ScreenBackground from '../components/ScreenBackground'
 import BrandHeader from '../components/BrandHeader'
 import IconLabel from '../components/IconLabel'
-import { Gavel, CalendarDays, BookOpen, Search, SearchX, X, Package, WifiOff, RotateCw } from '../icons'
+import { Gavel, CalendarDays, Plus, Search, SearchX, X, Package, WifiOff, RotateCw, User } from '../icons'
 
 // На узком мобильном экране — 2 колонки как раньше; на широком вебе больше
 // колонок, чтобы карточка не растягивалась на пол-окна (фикс "растянутых карточек").
@@ -16,8 +17,14 @@ function getNumColumns(width) {
   return width >= 1100 ? 5 : width >= 860 ? 4 : width >= 600 ? 3 : 2
 }
 
+// «Мои» — товары, выставленные самим пользователем через «+» (вместе с
+// проданными, чтобы их можно было найти и вернуть в продажу). Персоналу
+// не показывается: их товары — товары магазина, своих у них нет
+const MINE = 'MINE'
+
 const FILTERS = [
   { label: 'Все', value: null },
+  { label: 'Мои', value: MINE, icon: User },
   { label: 'Новые', value: 'NEW' },
   { label: 'Б/у', value: 'USED' },
   { label: 'Аукцион', value: 'AUCTION', icon: Gavel },
@@ -37,6 +44,9 @@ const STATUS_BADGE = {
 
 export default function ShopScreen({ navigation }) {
   const insets = useSafeAreaInsets()
+  const { user } = useAuth()
+  const isStaff = user?.roles?.some(r => r === 'ADMIN' || r === 'MODERATOR')
+  const filters = isStaff ? FILTERS.filter(f => f.value !== MINE) : FILTERS
   const { width } = useWindowDimensions()
   const numColumns = getNumColumns(width)
   const cardWidth = (width - 12 * (numColumns + 1)) / numColumns
@@ -64,6 +74,19 @@ export default function ShopScreen({ navigation }) {
 
   useEffect(() => { load() }, [])
 
+  // Возврат на магазин (из формы «+», из карточки товара) — тихо обновляем
+  // список без спиннера, чтобы только что выставленный товар сразу был виден.
+  // Пока не закончилась первая загрузка (load() ставит флаг), focus
+  // пропускаем — не завязываемся на то, придёт ли focus при монтировании.
+  const loadedOnceRef = useRef(false)
+  useEffect(() => navigation.addListener('focus', async () => {
+    if (!loadedOnceRef.current) return
+    try {
+      const res = await products.getAll()
+      setItems(Array.isArray(res.data) ? res.data : (res.data.products || []))
+    } catch (e) {}
+  }), [navigation])
+
   useEffect(() => {
     Animated.timing(searchAnim, {
       toValue: 1, duration: 400, useNativeDriver: true
@@ -82,6 +105,7 @@ export default function ShopScreen({ navigation }) {
       setError('Не удалось загрузить товары')
     }
     clearTimeout(slowTimer)
+    loadedOnceRef.current = true
     setSlowLoad(false)
     setLoading(false)
   }
@@ -94,6 +118,7 @@ export default function ShopScreen({ navigation }) {
     const matchSearch = item.name?.toLowerCase().includes(search.toLowerCase()) ||
       item.manufacturer?.toLowerCase().includes(search.toLowerCase())
     const matchFilter = !filter ? item.status !== 'SOLD' : (
+      filter === MINE ? !!item.sellerId && item.sellerId === user?.id :
       filter === 'NEW' ? item.status !== 'SOLD' && item.condition === 'NEW' :
       filter === 'USED' ? item.status !== 'SOLD' && item.condition === 'USED' :
       filter === 'AUCTION' ? item.isAuction && item.status !== 'SOLD' :
@@ -140,19 +165,21 @@ export default function ShopScreen({ navigation }) {
   return (
     <ScreenBackground style={s.wrap}>
       <BrandHeader insets={insets} />
+      {/* Верхний ряд (20.10.2026, упрощение магазина): слева — компактная
+          кнопка «Новости» (бывшая «Анонсы новых фигурок», ведёт на тот же
+          экран анонсов), справа — «+» для размещения своего товара. Кнопка
+          «Библиотека» убрана: раздел закрыт. */}
       <View style={s.topRow}>
-        {/* Кнопка Анонсы */}
-        <TouchableOpacity style={s.announceBanner} onPress={() => navigation.navigate('Releases')}>
-          <IconLabel icon={CalendarDays} label="Анонсы новых фигурок →" textStyle={s.announceBannerText} />
+        <TouchableOpacity style={s.newsBtn} onPress={() => navigation.navigate('Releases')}>
+          <IconLabel icon={CalendarDays} label="Новости" size={14} gap={5} textStyle={s.newsBtnText} />
         </TouchableOpacity>
-
-        {/* Кнопка Библиотека знаний — открытая книжка с контуром, не в кружке.
-            Раздел приостановлен (решение Марка 20.09.2026) — маршрут "Library"
-            в App.js ведёт на заглушку "в разработке" (NotReadyScreen), не на
-            настоящий экран, так что здесь достаточно обычной навигации. */}
-        <TouchableOpacity style={s.libraryIconBtn} onPress={() => navigation.navigate('Library')}>
-          <BookOpen size={24} color={colors.purple} strokeWidth={1.8} />
-          <Text style={s.libraryIconLabel}>Библиотека</Text>
+        <TouchableOpacity
+          style={s.addBtn}
+          onPress={() => navigation.navigate('SellProduct')}
+          accessibilityRole="button"
+          accessibilityLabel="Разместить товар"
+        >
+          <Plus size={22} color="#fff" strokeWidth={2.6} />
         </TouchableOpacity>
       </View>
 
@@ -193,7 +220,7 @@ export default function ShopScreen({ navigation }) {
       {/* Фильтры */}
       <View style={s.filtersWrap}>
         <FlatList
-          data={FILTERS}
+          data={filters}
           horizontal
           showsHorizontalScrollIndicator={false}
           keyExtractor={f => f.label}
@@ -223,7 +250,16 @@ export default function ShopScreen({ navigation }) {
             <Text style={s.headerCount}>{filtered.length} из {items.length}</Text>
           </View>
         }
-        ListEmptyComponent={
+        ListEmptyComponent={filter === MINE && !search ? (
+          <View style={s.empty}>
+            <Package size={44} color={colors.text2} strokeWidth={1.5} style={s.emptyIcon} />
+            <Text style={s.emptyTitle}>Вы ещё ничего не выставили</Text>
+            <Text style={s.emptySub}>Нажмите «+», чтобы продать свою фигурку — она сразу появится в магазине</Text>
+            <TouchableOpacity style={s.sellEmptyBtn} onPress={() => navigation.navigate('SellProduct')}>
+              <IconLabel icon={Plus} label="Разместить товар" textStyle={s.sellEmptyText} />
+            </TouchableOpacity>
+          </View>
+        ) : (
           <View style={s.empty}>
             {search
               ? <SearchX size={44} color={colors.text2} strokeWidth={1.5} style={s.emptyIcon} />
@@ -236,7 +272,7 @@ export default function ShopScreen({ navigation }) {
               </TouchableOpacity>
             ) : null}
           </View>
-        }
+        )}
         renderItem={({ item }) => {
           const badge = getBadge(item)
           return (
@@ -305,18 +341,20 @@ const s = StyleSheet.create({
   suggestItem: { paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
   suggestItemLast: { borderBottomWidth: 0 },
   suggestItemText: { fontSize: 14, color: colors.text },
-  topRow: { flexDirection: 'row', alignItems: 'stretch', gap: 8, marginHorizontal: 12, marginTop: 8, marginBottom: 4 },
-  announceBanner: { flex: 1, justifyContent: 'center', backgroundColor: `${colors.blue}15`, borderRadius: 10, borderWidth: 1, borderColor: `${colors.blue}30`, paddingHorizontal: 14, paddingVertical: 10 },
-  announceBannerText: { fontSize: 13, fontWeight: '600', color: colors.blue },
-  libraryIconBtn: { alignItems: 'center', justifyContent: 'center', gap: 2, backgroundColor: `${colors.purple}15`, borderRadius: 10, borderWidth: 2, borderColor: '#000', paddingHorizontal: 12, paddingVertical: 6, minWidth: 76 },
-  libraryIconLabel: { fontSize: 10, fontWeight: '700', color: colors.purple },
+  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: 12, marginTop: 8, marginBottom: 4 },
+  newsBtn: { height: 34, justifyContent: 'center', backgroundColor: `${colors.blue}15`, borderRadius: 17, borderWidth: 1, borderColor: `${colors.blue}30`, paddingHorizontal: 12 },
+  newsBtnText: { fontSize: 13, fontWeight: '600', color: colors.blue },
+  addBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.accent, justifyContent: 'center', alignItems: 'center', shadowColor: colors.accent, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.4, shadowRadius: 6, elevation: 4 },
   filtersWrap: { marginBottom: 4 },
   filterBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   filterBtnActive: { backgroundColor: colors.accent, borderColor: colors.accent },
   filterText: { fontSize: 13, fontWeight: '600', color: colors.text2 },
   filterTextActive: { color: 'white' },
   list: { padding: 12, paddingBottom: 24 },
-  row: { justifyContent: 'space-between' },
+  // Ровный отступ 12 между карточками (он же заложен в cardWidth). Раньше
+  // стоял space-between — неполный ряд на широком экране разъезжался
+  // по краям (2 товара при 5 колонках — слева и справа, дыра посередине)
+  row: { gap: 12 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingHorizontal: 4 },
   headerTitle: { fontSize: 20, fontWeight: '800', color: colors.text },
   headerCount: { fontSize: 13, color: colors.text2 },
@@ -345,4 +383,6 @@ const s = StyleSheet.create({
   emptySub: { fontSize: 14, color: colors.text2, textAlign: 'center' },
   clearSearchBtn: { marginTop: 16, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   clearSearchText: { color: colors.accent, fontSize: 14, fontWeight: '600' },
+  sellEmptyBtn: { marginTop: 18, paddingHorizontal: 22, paddingVertical: 12, borderRadius: 12, backgroundColor: colors.accent },
+  sellEmptyText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 })

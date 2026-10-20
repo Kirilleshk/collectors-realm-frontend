@@ -52,6 +52,10 @@ export const users = {
 export const products = {
   getAll: () => api.get('/products'),
   getById: (id) => api.get(`/products/${id}`),
+  create: (data) => api.post('/products', data),
+  update: (id, data) => api.put(`/products/${id}`, data),
+  setStatus: (id, status) => api.patch(`/products/${id}/status`, { status }),
+  remove: (id) => api.delete(`/products/${id}`),
 }
 
 export const wishlist = {

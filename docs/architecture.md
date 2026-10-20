@@ -27,8 +27,9 @@ collectors-realm/
     ├── theme.js             ← bg, surface, surface2, text, text2, accent, border, blue, purple, green
     ├── screens/
     │   ├── LoginScreen.js          ← Вход + регистрация (анкета коллекционера, мин. 3 фото)
-    │   ├── ShopScreen.js           ← Магазин: фото, поиск, фильтры, аукцион
-    │   ├── ProductDetailScreen.js  ← Карточка товара, галерея, ставки, Telegram/WhatsApp/Max
+    │   ├── ShopScreen.js           ← Магазин: «Новости» и «+» сверху, поиск, фильтры (в т.ч. «Мои»), аукцион
+    │   ├── ProductDetailScreen.js  ← Карточка товара, галерея, ставки; продавец-пользователь / панель владельца
+    │   ├── SellProductScreen.js    ← Форма «+»: разместить свой товар / редактировать (route.params.product)
     │   ├── AdminScreen.js          ← вкладки Товары/Люди/Чат/Игра (ADMIN+MODERATOR),
     │   │                              Релизы (только ADMIN), Статистика (+ ANALYTICS)
     │   ├── ProfileScreen.js        ← Профиль: аватар, роли, геолокация, портфолио-коллекции
@@ -69,7 +70,7 @@ collectors-realm/
 RootNav
 ├── Login (не авторизован)
 └── Main → MainTabs
-    ├── Магазин → ShopStack (ShopList → ProductDetail / Chat / Notifications / UserProfile / Releases / Library)
+    ├── Магазин → ShopStack (ShopList → ProductDetail / SellProduct / Chat / Notifications / UserProfile / Releases / Library)
     ├── Карта   → MapStack (MapMain → UserProfileMap)
     ├── Моё     → MyItemsScreen (Коллекция / Вишлист, переключатель внутри)
     ├── Игра    → GameStack (GameMain → LevelSelect → Battle) — вкладка скрывается флагом SHOW_GAME

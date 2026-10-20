@@ -26,6 +26,7 @@ import MapScreen from './src/screens/MapScreen'
 import UserProfileScreen from './src/screens/UserProfileScreen'
 import MyItemsScreen from './src/screens/MyItemsScreen'
 import ReleasesScreen from './src/screens/ReleasesScreen'
+import SellProductScreen from './src/screens/SellProductScreen'
 import NotReadyScreen from './src/screens/NotReadyScreen'
 
 // Флаг видимости карточной игры — поставить false, чтобы мгновенно скрыть вкладку
@@ -53,7 +54,8 @@ function ShopStack() {
       <Stack.Screen name="Chat" component={ChatScreen} options={{ title: 'Чат с продавцом' }} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: 'Уведомления' }} />
       <Stack.Screen name="UserProfile" component={UserProfileScreen} options={{ title: 'Профиль' }} />
-      <Stack.Screen name="Releases" component={ReleasesScreen} options={{ title: 'Анонсы' }} />
+      <Stack.Screen name="Releases" component={ReleasesScreen} options={{ title: 'Новости' }} />
+      <Stack.Screen name="SellProduct" component={SellProductScreen} options={{ title: 'Новый товар' }} />
       {/* Библиотека знаний приостановлена (решение Марка 20.09.2026) — вместо
           реального LibraryScreen зарегистрирована заглушка "в разработке"
           прямо на уровне роута (не перехват клика), см. NotReadyScreen.js */}

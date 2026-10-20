@@ -20,7 +20,11 @@ auth.routes.ts        send-code/verify-code, register, login,
 users.routes.ts        GET / (карта), /me, /:id; PUT /me; POST /me/avatar,
                        /me/fcm-token; PATCH /:id/badge, /:id/block (staff)
 products.routes.ts     CRUD, PATCH /:id/status, /:id/sold, GET/POST /:id/bids
-                       (аукцион)
+                       (аукцион). POST — любой незаблокированный: staff → товар
+                       магазина (sellerId null), остальные → свой (без аукциона,
+                       обязателен sellerTelegram|sellerPhone, ≤5 фото Cloudinary,
+                       лимит 50 активных / 20 в сутки). PUT/PATCH/DELETE —
+                       staff или владелец. Товары заблокированных скрыты в GET
 wishlist.routes.ts     CRUD (name, priority, comment, originalName,
                        characterRu, manufacturer, releaseDate)
 collection.routes.ts   CRUD личной коллекции (CollectionItem)
@@ -59,7 +63,8 @@ enum CardFaction   { ALIEN, PREDATOR }
 - **Маркетплейс:** `User` (роли[], геолокация, анкета коллекционера —
   age/collectorTypes/collectingSinceYears/favoriteFranchise/favoriteCharacter,
   isBlocked, onboardingSeen), `Product` (+ аукцион isAuction/startPrice/
-  priceStep/auctionEndTime), `ProductImage`, `Bid`, `WishlistItem`,
+  priceStep/auctionEndTime; продавец sellerId/sellerTelegram/sellerPhone —
+  null = товар магазина), `ProductImage`, `Bid`, `WishlistItem`,
   `CollectionItem`, `Review`, `Notification`, `Release`, `ReleaseReminder`
 - **Профиль/портфолио:** `PortfolioPhoto`, `PortfolioCollection` + `PortfolioCollectionPhoto`
 - **Карточная игра** (см. [card-game.md](card-game.md)): `CardTheme`, `Boss`,
