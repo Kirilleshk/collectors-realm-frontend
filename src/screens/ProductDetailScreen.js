@@ -19,6 +19,8 @@ const UPLOAD_PRESET = 'collectors_realm'
 // поддержки внутри сайта (ChatScreen), он точно работает. Настоящие
 // контакты магазина — добавить, когда их даст Марк.
 
+const MAX_CONTENT = 820
+
 const STATUS_INFO = {
   AVAILABLE: { label: null, color: null },
   SOLD: { label: 'Продан', color: '#8E8E93' },
@@ -282,7 +284,7 @@ export default function ProductDetailScreen({ route, navigation }) {
 
   return (
     <ScreenBackground>
-    <ScrollView style={s.wrap} contentContainerStyle={showBar && s.scrollWithBar} showsVerticalScrollIndicator={false}>
+    <ScrollView style={s.wrap} contentContainerStyle={[s.scrollContent, showBar && s.scrollWithBar]} showsVerticalScrollIndicator={false}>
       {/* Фото */}
       <View style={s.imageWrap}>
         {currentPhoto
@@ -596,6 +598,7 @@ export default function ProductDetailScreen({ route, navigation }) {
     </ScrollView>
     {showBar ? (
       <View style={s.bottomBar}>
+        <View style={s.bottomBarInner}>
         <Text style={s.barPrice} numberOfLines={1}>{item.price?.toLocaleString('ru')} ₽</Text>
         {isUserListing && item.sellerPhone ? (
           <TouchableOpacity style={s.barCall} onPress={callSeller} accessibilityLabel="Позвонить продавцу">
@@ -610,6 +613,7 @@ export default function ProductDetailScreen({ route, navigation }) {
             textStyle={s.barWriteText}
           />
         </TouchableOpacity>
+        </View>
       </View>
     ) : null}
     </ScreenBackground>
@@ -652,8 +656,13 @@ const s = StyleSheet.create({
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
   altContact: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start' },
   altContactText: { fontSize: 13, fontWeight: '600', color: '#25D366' },
+  // На широком экране ПК карточка не растягивается на всё окно (20.10.2026):
+  // контент и панель внизу — по центру, не шире MAX_CONTENT. На телефоне
+  // ширина экрана меньше — ничего не меняется
+  scrollContent: { width: '100%', maxWidth: MAX_CONTENT, alignSelf: 'center' },
   scrollWithBar: { paddingBottom: 88 },
-  bottomBar: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 12, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border },
+  bottomBar: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 16, paddingVertical: 12, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border },
+  bottomBarInner: { flexDirection: 'row', alignItems: 'center', gap: 10, width: '100%', maxWidth: MAX_CONTENT - 32, alignSelf: 'center' },
   barPrice: { flexShrink: 1, fontSize: 18, fontWeight: '900', color: colors.accent, marginRight: 'auto' },
   barCall: { width: 48, height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.border },
   barWrite: { height: 48, paddingHorizontal: 20, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accent },
