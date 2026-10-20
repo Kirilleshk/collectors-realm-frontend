@@ -50,8 +50,9 @@ export default function SellProductScreen({ navigation, route }) {
   const isStaff = user?.roles?.some(r => r === 'ADMIN' || r === 'MODERATOR')
   // Товары персонала публикуются от имени магазина Markeltoys — контакты
   // продавца им не нужны, покупатель пишет администрации как и раньше.
-  // При правке решает сам товар: свой (sellerId) — контакты нужны
-  const needContacts = editing ? !!editing.sellerId : !isStaff
+  // При правке решает сам товар: у товара пользователя контакты нужны — но
+  // правит их только сам продавец (схема персонала на бэкенде их не принимает)
+  const needContacts = editing ? !!editing.sellerId && !isStaff : !isStaff
 
   useLayoutEffect(() => {
     if (editing) navigation.setOptions({ title: 'Редактировать товар' })
@@ -126,9 +127,11 @@ export default function SellProductScreen({ navigation, route }) {
 
     setSubmitting(true)
     try {
-      // Пустое поле: при создании — просто не шлём, при правке — null, иначе
-      // стёртое человеком описание/контакт сервер счёл бы «не трогать»
-      const empty = editing ? null : undefined
+      // Пустое поле: при создании — просто не шлём, при правке — очищаем явно,
+      // иначе стёртое человеком описание/контакт сервер счёл бы «не трогать».
+      // Схема персонала на бэкенде не принимает null в текстовых полях
+      // (только строку) — ему шлём '', продавцу — null
+      const empty = editing ? (isStaff ? '' : null) : undefined
       const body = {
         name: name.trim(),
         description: description.trim() || empty,
@@ -137,7 +140,7 @@ export default function SellProductScreen({ navigation, route }) {
         manufacturer: manufacturer.trim() || empty,
         franchise: franchise.trim() || empty,
         character: character.trim() || empty,
-        yearMade: yearMade.trim() ? Number(yearMade.trim()) : empty,
+        yearMade: yearMade.trim() ? Number(yearMade.trim()) : (editing ? null : undefined),
         imageUrls: photos,
       }
       if (needContacts) {

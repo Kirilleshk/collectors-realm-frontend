@@ -266,6 +266,10 @@ export default function ProductDetailScreen({ route, navigation }) {
   // вместо контактов Markeltoys и чата с администрацией
   const isUserListing = !!item.sellerId
   const isOwner = isUserListing && item.sellerId === user?.id
+  // Управлять из карточки: продавец — своим товаром, персонал — любым
+  // (товар магазина, модерация чужого). Аукцион — только из админки:
+  // в форме «+» нет полей аукциона
+  const canManage = isOwner || (isStaff && !item.isAuction)
 
   return (
     <ScreenBackground>
@@ -344,19 +348,19 @@ export default function ProductDetailScreen({ route, navigation }) {
               <Text style={[s.specValue, { color: statusInfo.color }]}>{statusInfo.label}</Text>
             </View>
           )}
-          {item.manufacturer && (
+          {!!item.manufacturer && (
             <View style={s.specRow}>
               <Text style={s.specLabel}>Производитель</Text>
               <Text style={s.specValue}>{item.manufacturer}</Text>
             </View>
           )}
-          {item.franchise && (
+          {!!item.franchise && (
             <View style={s.specRow}>
               <Text style={s.specLabel}>Франшиза</Text>
               <Text style={s.specValue}>{item.franchise}</Text>
             </View>
           )}
-          {item.character && (
+          {!!item.character && (
             <View style={s.specRow}>
               <Text style={s.specLabel}>Персонаж</Text>
               <Text style={s.specValue}>{item.character}</Text>
@@ -456,14 +460,18 @@ export default function ProductDetailScreen({ route, navigation }) {
           </View>
         )}
 
-        {/* Свой товар — управление вместо кнопок покупателя */}
-        {isOwner ? (
+        {/* Управление: свой товар (вместо кнопок покупателя) или персонал */}
+        {canManage ? (
           <View style={s.ownerCard}>
-            <Text style={s.contactTitle}>Это ваш товар</Text>
+            <Text style={s.contactTitle}>{isOwner ? 'Это ваш товар' : 'Управление товаром'}</Text>
             <Text style={s.ownerHint}>
               {isSold
                 ? 'Отмечен проданным — в магазине он в разделе «Продано».'
-                : 'Покупатели видят его в магазине и пишут вам напрямую.'}
+                : isOwner
+                  ? 'Покупатели видят его в магазине и пишут вам напрямую.'
+                  : isUserListing
+                    ? 'Товар пользователя — как модератор вы можете изменить или удалить его.'
+                    : 'Товар магазина Markeltoys — видите эту панель, потому что вы администратор.'}
             </Text>
             <View style={s.contactRow}>
               <TouchableOpacity style={s.ownerBtn} onPress={() => navigation.navigate('SellProduct', { product: item })} disabled={managing}>
