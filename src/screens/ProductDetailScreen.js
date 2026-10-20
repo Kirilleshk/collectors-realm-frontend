@@ -335,6 +335,43 @@ export default function ProductDetailScreen({ route, navigation }) {
           </View>
         ) : null}
 
+        {/* Управление: свой товар (вместо кнопок покупателя) или персонал.
+            Сразу под названием и ценой, до характеристик: внизу карточки на
+            телефоне панель уходила за край экрана и её не находили (20.10) */}
+        {canManage ? (
+          <View style={s.ownerCard}>
+            <Text style={s.contactTitle}>{isOwner ? 'Это ваш товар' : 'Управление товаром'}</Text>
+            <Text style={s.ownerHint}>
+              {isSold
+                ? 'Отмечен проданным — в магазине он в разделе «Продано».'
+                : isOwner
+                  ? 'Покупатели видят его в магазине и пишут вам напрямую.'
+                  : isUserListing
+                    ? 'Товар пользователя — как модератор вы можете изменить или удалить его.'
+                    : 'Товар магазина Markeltoys — видите эту панель, потому что вы администратор.'}
+            </Text>
+            <View style={s.contactRow}>
+              <TouchableOpacity style={s.ownerBtn} onPress={() => navigation.navigate('SellProduct', { product: item })} disabled={managing}>
+                <IconLabel icon={Pencil} label="Редактировать" size={16} textStyle={s.ownerBtnText} />
+              </TouchableOpacity>
+              <TouchableOpacity style={[s.ownerBtn, !isSold && s.ownerBtnSold]} onPress={handleToggleSold} disabled={managing}>
+                {managing
+                  ? <ActivityIndicator color={colors.text} size="small" />
+                  : <IconLabel
+                      icon={isSold ? RotateCw : CircleCheck}
+                      label={isSold ? 'Снова в продаже' : 'Продано'}
+                      size={16}
+                      textStyle={[s.ownerBtnText, !isSold && { color: colors.green }]}
+                    />}
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity style={s.deleteBtn} onPress={handleDelete} disabled={managing}>
+              <IconLabel icon={Trash2} label="Удалить товар" size={15} textStyle={s.deleteBtnText} />
+            </TouchableOpacity>
+            {manageError ? <Text style={s.manageError}>{manageError}</Text> : null}
+          </View>
+        ) : null}
+
         {/* Характеристики */}
         <View style={s.specsCard}>
           <Text style={s.specsTitle}>Характеристики</Text>
@@ -459,41 +496,6 @@ export default function ProductDetailScreen({ route, navigation }) {
             )}
           </View>
         )}
-
-        {/* Управление: свой товар (вместо кнопок покупателя) или персонал */}
-        {canManage ? (
-          <View style={s.ownerCard}>
-            <Text style={s.contactTitle}>{isOwner ? 'Это ваш товар' : 'Управление товаром'}</Text>
-            <Text style={s.ownerHint}>
-              {isSold
-                ? 'Отмечен проданным — в магазине он в разделе «Продано».'
-                : isOwner
-                  ? 'Покупатели видят его в магазине и пишут вам напрямую.'
-                  : isUserListing
-                    ? 'Товар пользователя — как модератор вы можете изменить или удалить его.'
-                    : 'Товар магазина Markeltoys — видите эту панель, потому что вы администратор.'}
-            </Text>
-            <View style={s.contactRow}>
-              <TouchableOpacity style={s.ownerBtn} onPress={() => navigation.navigate('SellProduct', { product: item })} disabled={managing}>
-                <IconLabel icon={Pencil} label="Редактировать" size={16} textStyle={s.ownerBtnText} />
-              </TouchableOpacity>
-              <TouchableOpacity style={[s.ownerBtn, !isSold && s.ownerBtnSold]} onPress={handleToggleSold} disabled={managing}>
-                {managing
-                  ? <ActivityIndicator color={colors.text} size="small" />
-                  : <IconLabel
-                      icon={isSold ? RotateCw : CircleCheck}
-                      label={isSold ? 'Снова в продаже' : 'Продано'}
-                      size={16}
-                      textStyle={[s.ownerBtnText, !isSold && { color: colors.green }]}
-                    />}
-              </TouchableOpacity>
-            </View>
-            <TouchableOpacity style={s.deleteBtn} onPress={handleDelete} disabled={managing}>
-              <IconLabel icon={Trash2} label="Удалить товар" size={15} textStyle={s.deleteBtnText} />
-            </TouchableOpacity>
-            {manageError ? <Text style={s.manageError}>{manageError}</Text> : null}
-          </View>
-        ) : null}
 
         {/* Продавец-пользователь: кто он и как с ним связаться */}
         {isUserListing && !isOwner ? (
