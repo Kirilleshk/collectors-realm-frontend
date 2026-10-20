@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Image, Platform, Linking, Alert, TextInput } from 'react-native'
-import { products, wishlist, bids, collection } from '../api'
+import { products, wishlist, bids, collection, reviews } from '../api'
 import { useAuth } from '../AuthContext'
 import { colors } from '../theme'
 import { pickAndUploadPhoto } from '../utils/uploadPhoto'
@@ -8,7 +8,7 @@ import { track } from '../utils/analytics'
 import { showNotice } from '../utils/notice'
 import ScreenBackground from '../components/ScreenBackground'
 import IconLabel from '../components/IconLabel'
-import { Package, Gavel, Camera, Factory, Trophy, MessageCircle, Send, Target, Boxes, Check, CircleSlash, Phone, Pencil, CircleCheck, RotateCw, Trash2, User, ChevronRight } from '../icons'
+import { Package, Gavel, Camera, Factory, Trophy, MessageCircle, Send, Target, Boxes, Check, CircleSlash, Phone, Pencil, CircleCheck, RotateCw, Trash2, User, ChevronRight, Star } from '../icons'
 import { API_URL } from '../config'
 
 const CLOUD_NAME = 'dqutmb1rm'
@@ -75,6 +75,7 @@ export default function ProductDetailScreen({ route, navigation }) {
   const [timeLeft, setTimeLeft] = useState(null)
   const [managing, setManaging] = useState(false)
   const [manageError, setManageError] = useState(null)
+  const [sellerRating, setSellerRating] = useState(null) // { avg, count }
   const timerRef = useRef(null)
 
   useEffect(() => { load() }, [id])
@@ -85,6 +86,18 @@ export default function ProductDetailScreen({ route, navigation }) {
   useEffect(() => navigation.addListener('focus', () => {
     if (loadedOnceRef.current) load()
   }), [navigation, id])
+
+  // Рейтинг продавца-пользователя из отзывов о нём — показывается в блоке
+  // продавца под ценой (доверие, как на Авито)
+  useEffect(() => {
+    const sellerId = item?.sellerId
+    if (!sellerId) { setSellerRating(null); return }
+    let alive = true
+    reviews.getForUser(sellerId)
+      .then(res => { if (alive) setSellerRating({ avg: res.data?.avgRating ?? null, count: res.data?.count || 0 }) })
+      .catch(() => {})
+    return () => { alive = false }
+  }, [item?.sellerId])
 
   useEffect(() => {
     if (item?.isAuction && item?.auctionEndTime) {
@@ -252,10 +265,24 @@ export default function ProductDetailScreen({ route, navigation }) {
   // (товар магазина, модерация чужого). Аукцион — только из админки:
   // в форме «+» нет полей аукциона
   const canManage = isOwner || (isStaff && !item.isAuction)
+  // Закреплённая внизу панель «Написать / Позвонить» (20.10.2026, этап 2
+  // «как на Авито»): видна при любой прокрутке — покупателю не нужно искать
+  // контакты внизу длинной страницы. Не показывается тому, кто управляет
+  // товаром, у проданного и у аукциона (там свой блок ставок).
+  // «Написать» — Telegram, а если его нет — WhatsApp; у товара магазина — чат.
+  const writeAction = !isUserListing
+    ? () => navigation.navigate('Chat', { productName: item.name, productId: item.id })
+    : item.sellerTelegram ? openSellerTelegram
+    : item.sellerPhone ? openSellerWhatsApp
+    : null
+  const showBar = !canManage && !isSold && !item.isAuction && !!writeAction
+  const ratingText = sellerRating?.count
+    ? `${sellerRating.avg.toFixed(1)} · ${sellerRating.count} ${sellerRating.count % 10 === 1 && sellerRating.count % 100 !== 11 ? 'отзыв' : [2, 3, 4].includes(sellerRating.count % 10) && ![12, 13, 14].includes(sellerRating.count % 100) ? 'отзыва' : 'отзывов'}`
+    : 'Пока нет отзывов'
 
   return (
     <ScreenBackground>
-    <ScrollView style={s.wrap} showsVerticalScrollIndicator={false}>
+    <ScrollView style={s.wrap} contentContainerStyle={showBar && s.scrollWithBar} showsVerticalScrollIndicator={false}>
       {/* Фото */}
       <View style={s.imageWrap}>
         {currentPhoto
@@ -314,6 +341,46 @@ export default function ProductDetailScreen({ route, navigation }) {
           <View style={s.manufacturerRow}>
             <Factory size={16} color={colors.text2} strokeWidth={1.8} />
             <Text style={s.manufacturer}>{item.manufacturer}</Text>
+          </View>
+        ) : null}
+
+        {/* Продавец — сразу под ценой, до характеристик: кто продаёт и
+            насколько ему доверяют (рейтинг из отзывов). Тому, кто управляет
+            товаром, вместо этого — панель управления ниже */}
+        {!canManage && isUserListing ? (
+          <View style={s.sellerCard}>
+            {item.seller ? (
+              <TouchableOpacity style={s.sellerRow} onPress={() => navigation.navigate('UserProfile', { userId: item.seller.id })} activeOpacity={0.7}>
+                {item.seller.avatarUrl
+                  ? <Image source={{ uri: item.seller.avatarUrl }} style={s.sellerAvatar} />
+                  : <View style={[s.sellerAvatar, s.sellerAvatarEmpty]}><User size={20} color={colors.text2} /></View>}
+                <View style={{ flex: 1 }}>
+                  <Text style={s.sellerName} numberOfLines={1}>{item.seller.name}</Text>
+                  <View style={s.ratingRow}>
+                    {sellerRating?.count ? <Star size={13} color="#FFB800" fill="#FFB800" strokeWidth={1.5} /> : null}
+                    <Text style={s.sellerSub}>{ratingText}</Text>
+                  </View>
+                </View>
+                <ChevronRight size={18} color={colors.text2} />
+              </TouchableOpacity>
+            ) : null}
+            {!isSold && item.sellerTelegram && item.sellerPhone ? (
+              <TouchableOpacity style={s.altContact} onPress={openSellerWhatsApp}>
+                <MessageCircle size={15} color="#25D366" strokeWidth={2} />
+                <Text style={s.altContactText}>Или написать в WhatsApp</Text>
+              </TouchableOpacity>
+            ) : null}
+            {!isSold && item.sellerPhone ? <Text style={s.sellerPhone}>Телефон: {formatPhone(item.sellerPhone)}</Text> : null}
+            {!isSold ? <Text style={s.sellerNote}>Сделку вы обсуждаете с продавцом напрямую — Markeltoys в ней не участвует.</Text> : null}
+          </View>
+        ) : null}
+        {!canManage && !isUserListing ? (
+          <View style={[s.sellerCard, s.sellerRow]}>
+            <Image source={require('../../assets/logo-mark.png')} style={s.sellerAvatar} resizeMode="contain" />
+            <View style={{ flex: 1 }}>
+              <Text style={s.sellerName}>Markeltoys</Text>
+              <Text style={s.sellerSub}>Официальный магазин · отвечает в чате</Text>
+            </View>
           </View>
         ) : null}
 
@@ -479,56 +546,12 @@ export default function ProductDetailScreen({ route, navigation }) {
           </View>
         )}
 
-        {/* Продавец-пользователь: кто он и как с ним связаться */}
-        {isUserListing && !isOwner ? (
-          <View style={s.contactCard}>
-            <Text style={s.contactTitle}>Продавец</Text>
-            {item.seller ? (
-              <TouchableOpacity style={s.sellerRow} onPress={() => navigation.navigate('UserProfile', { userId: item.seller.id })} activeOpacity={0.7}>
-                {item.seller.avatarUrl
-                  ? <Image source={{ uri: item.seller.avatarUrl }} style={s.sellerAvatar} />
-                  : <View style={[s.sellerAvatar, s.sellerAvatarEmpty]}><User size={20} color={colors.text2} /></View>}
-                <View style={{ flex: 1 }}>
-                  <Text style={s.sellerName} numberOfLines={1}>{item.seller.name}</Text>
-                  <Text style={s.sellerSub}>Открыть профиль</Text>
-                </View>
-                <ChevronRight size={18} color={colors.text2} />
-              </TouchableOpacity>
-            ) : null}
-            {!isSold && item.sellerTelegram ? (
-              <TouchableOpacity style={s.telegramBtn} onPress={openSellerTelegram}>
-                <Send size={18} color="white" strokeWidth={2} />
-                <Text style={s.telegramBtnText} numberOfLines={1}>Telegram · @{item.sellerTelegram}</Text>
-              </TouchableOpacity>
-            ) : null}
-            {!isSold && item.sellerPhone ? (
-              <View style={s.contactRow}>
-                <TouchableOpacity style={s.whatsappBtn} onPress={openSellerWhatsApp}>
-                  <MessageCircle size={18} color="white" strokeWidth={2} />
-                  <Text style={s.whatsappBtnText}>WhatsApp</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={s.callBtn} onPress={callSeller}>
-                  <Phone size={18} color={colors.text} strokeWidth={2} />
-                  <Text style={s.callBtnText}>Позвонить</Text>
-                </TouchableOpacity>
-              </View>
-            ) : null}
-            {!isSold && item.sellerPhone ? <Text style={s.sellerPhone}>{formatPhone(item.sellerPhone)}</Text> : null}
-            {!isSold ? <Text style={s.sellerNote}>Сделку вы обсуждаете с продавцом напрямую — Markeltoys в ней не участвует.</Text> : null}
-          </View>
-        ) : null}
-
         {/* Кнопки покупателя. Тому, кто управляет товаром (продавец, а у
             товаров магазина — персонал: продавец там он сам), не показываем:
             раньше админ на товаре магазина видел «Написать» самому себе.
-            Чат с администрацией — только у товаров магазина */}
+            «Написать» / «Позвонить» — в закреплённой панели внизу экрана */}
         {!canManage && !isSold && !item.isAuction ? (
           <View style={s.actions}>
-            {!isUserListing ? (
-              <TouchableOpacity style={s.buyBtn} onPress={() => navigation.navigate('Chat', { productName: item.name, productId: item.id })}>
-                <IconLabel icon={MessageCircle} label="Написать магазину" size={18} textStyle={s.buyBtnText} />
-              </TouchableOpacity>
-            ) : null}
             <TouchableOpacity
               style={[s.wishlistBtn, addedToWishlist && s.wishlistBtnAdded]}
               onPress={handleAddToWishlist}
@@ -571,6 +594,24 @@ export default function ProductDetailScreen({ route, navigation }) {
         ) : null}
       </View>
     </ScrollView>
+    {showBar ? (
+      <View style={s.bottomBar}>
+        <Text style={s.barPrice} numberOfLines={1}>{item.price?.toLocaleString('ru')} ₽</Text>
+        {isUserListing && item.sellerPhone ? (
+          <TouchableOpacity style={s.barCall} onPress={callSeller} accessibilityLabel="Позвонить продавцу">
+            <Phone size={20} color={colors.text} strokeWidth={2} />
+          </TouchableOpacity>
+        ) : null}
+        <TouchableOpacity style={s.barWrite} onPress={writeAction}>
+          <IconLabel
+            icon={isUserListing && item.sellerTelegram ? Send : MessageCircle}
+            label={isUserListing ? 'Написать' : 'Написать магазину'}
+            size={18}
+            textStyle={s.barWriteText}
+          />
+        </TouchableOpacity>
+      </View>
+    ) : null}
     </ScreenBackground>
   )
 }
@@ -604,21 +645,24 @@ const s = StyleSheet.create({
   descCard: { backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.border, padding: 16, marginBottom: 16 },
   descTitle: { fontSize: 11, fontWeight: '700', color: colors.text2, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 12 },
   descText: { fontSize: 15, color: colors.text, lineHeight: 22 },
-  contactCard: { backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.border, padding: 16, marginBottom: 16, gap: 10 },
   contactTitle: { fontSize: 11, fontWeight: '700', color: colors.text2, textTransform: 'uppercase', letterSpacing: 1.5 },
   contactRow: { flexDirection: 'row', gap: 10 },
-  telegramBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#229ED9', borderRadius: 12, padding: 14 },
-  telegramBtnText: { color: 'white', fontWeight: '700', fontSize: 15 },
-  whatsappBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#25D366', borderRadius: 12, padding: 14 },
-  whatsappBtnText: { color: 'white', fontWeight: '700', fontSize: 15 },
-  callBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: colors.surface2, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.border },
-  callBtnText: { color: colors.text, fontWeight: '700', fontSize: 15 },
-  sellerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 4 },
+  sellerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  sellerCard: { backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.border, padding: 14, marginBottom: 16, gap: 10 },
+  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  altContact: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start' },
+  altContactText: { fontSize: 13, fontWeight: '600', color: '#25D366' },
+  scrollWithBar: { paddingBottom: 88 },
+  bottomBar: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 12, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border },
+  barPrice: { flexShrink: 1, fontSize: 18, fontWeight: '900', color: colors.accent, marginRight: 'auto' },
+  barCall: { width: 48, height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.border },
+  barWrite: { height: 48, paddingHorizontal: 20, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accent },
+  barWriteText: { color: '#fff', fontSize: 15, fontWeight: '800' },
   sellerAvatar: { width: 44, height: 44, borderRadius: 22 },
   sellerAvatarEmpty: { backgroundColor: colors.surface2, justifyContent: 'center', alignItems: 'center' },
   sellerName: { fontSize: 16, fontWeight: '700', color: colors.text },
   sellerSub: { fontSize: 12, color: colors.text2, marginTop: 2 },
-  sellerPhone: { fontSize: 13, color: colors.text2, textAlign: 'center' },
+  sellerPhone: { fontSize: 13, color: colors.text2 },
   sellerNote: { fontSize: 12, color: colors.text2, lineHeight: 17 },
   ownerCard: { backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: `${colors.accent}50`, padding: 16, marginBottom: 16, gap: 10 },
   ownerHint: { fontSize: 13, color: colors.text2, lineHeight: 18 },
@@ -629,8 +673,6 @@ const s = StyleSheet.create({
   deleteBtnText: { color: colors.red, fontSize: 14, fontWeight: '600' },
   manageError: { fontSize: 13, color: colors.red, textAlign: 'center' },
   actions: { flexDirection: 'row', gap: 12, marginTop: 8 },
-  buyBtn: { flex: 1, backgroundColor: colors.accent, borderRadius: 14, padding: 16, alignItems: 'center' },
-  buyBtnText: { color: 'white', fontSize: 16, fontWeight: '700' },
   wishlistBtn: { flex: 1, backgroundColor: colors.surface, borderRadius: 14, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: colors.border },
   wishlistBtnAdded: { borderColor: colors.green },
   wishlistBtnText: { color: colors.accent, fontSize: 15, fontWeight: '600' },

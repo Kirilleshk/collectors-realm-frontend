@@ -54,7 +54,7 @@ function ShopStack() {
     }}>
       <Stack.Screen name="ShopList" component={ShopScreen} options={{ headerShown: false }} />
       <Stack.Screen name="ProductDetail" component={ProductDetailScreen} options={{ title: 'Товар' }} />
-      <Stack.Screen name="Chat" component={ChatScreen} options={{ title: 'Чат с продавцом' }} />
+      <Stack.Screen name="Chat" component={ChatScreen} options={{ title: 'Чат с магазином' }} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: 'Уведомления' }} />
       <Stack.Screen name="UserProfile" component={UserProfileScreen} options={{ title: 'Профиль' }} />
       <Stack.Screen name="Releases" component={ReleasesScreen} options={{ title: 'Новости' }} />
