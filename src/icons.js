@@ -2,6 +2,7 @@
 // Импорт из общего индекса 'lucide-react-native' тянул в веб-сборку все
 // ~1900 иконок (бандл 1,8 → 4 МБ, 13.10.2026) — Metro не вырезает неиспользуемое.
 // Новую иконку добавлять сюда же: имя — как на lucide.dev, файл — в kebab-case.
+export { default as ArrowLeft } from 'lucide-react-native/icons/arrow-left'
 export { default as ArrowLeftRight } from 'lucide-react-native/icons/arrow-left-right'
 export { default as BadgeCheck } from 'lucide-react-native/icons/badge-check'
 export { default as Ban } from 'lucide-react-native/icons/ban'
@@ -26,6 +27,7 @@ export { default as Gavel } from 'lucide-react-native/icons/gavel'
 export { default as Ghost } from 'lucide-react-native/icons/ghost'
 export { default as Hash } from 'lucide-react-native/icons/hash'
 export { default as ImagePlus } from 'lucide-react-native/icons/image-plus'
+export { default as Heart } from 'lucide-react-native/icons/heart'
 export { default as Images } from 'lucide-react-native/icons/images'
 export { default as KeyRound } from 'lucide-react-native/icons/key-round'
 export { default as Landmark } from 'lucide-react-native/icons/landmark'
@@ -55,6 +57,7 @@ export { default as Search } from 'lucide-react-native/icons/search'
 export { default as SearchX } from 'lucide-react-native/icons/search-x'
 export { default as Send } from 'lucide-react-native/icons/send'
 export { default as Settings } from 'lucide-react-native/icons/settings'
+export { default as Share2 } from 'lucide-react-native/icons/share-2'
 export { default as ShoppingBag } from 'lucide-react-native/icons/shopping-bag'
 export { default as SlidersHorizontal } from 'lucide-react-native/icons/sliders-horizontal'
 export { default as Star } from 'lucide-react-native/icons/star'

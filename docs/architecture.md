@@ -31,6 +31,7 @@ collectors-realm/
     │   ├── ProductDetailScreen.js  ← Карточка товара, галерея, ставки; продавец-пользователь / панель владельца
     │   ├── SellProductScreen.js    ← Форма объявления (вкладка «Продать»): разместить / редактировать (route.params.product)
     │   ├── MyListingsScreen.js     ← «Моё → Объявления»: свои товары (у персонала — товары магазина), В продаже / Проданные
+    │   ├── FavoritesScreen.js      ← «Моё → Избранное»: товары с сердечком
     │   ├── MessagesScreen.js       ← вкладка «Сообщения»: переписки по товарам (покупатель и продавец), непрочитанные
     │   ├── ConversationScreen.js   ← переписка: товар сверху, пузыри, опрос новых раз в 4 с (?after=), Enter — отправить
     │   ├── AdminScreen.js          ← вкладки Товары/Люди/Чат/Игра (ADMIN+MODERATOR),
@@ -50,6 +51,7 @@ collectors-realm/
     │   └── BattleScreen.js         ← Экран боя (стол, рука, атака drag-to-target)
     ├── components/
     │   ├── BrandHeader.js          ← Плашка бренда на всех вкладках
+    │   ├── ShopFilters.js          ← панель «Фильтры» магазина: категория, цена от–до, мой город, сортировка
     │   ├── HelpGuide.js            ← «Помощь» (круглая «?» справа в шапке профиля, окно): гайд «что и куда жать» (ОБНОВЛЯТЬ при смене кнопок/вкладок)
     │   ├── ScreenBackground.js     ← Общий атмосферный градиент-фон экранов
     │   └── battle/                 ← BoardSlot, HandCard, BossBanner, CardZoomModal,
@@ -62,6 +64,8 @@ collectors-realm/
         ├── changelog.js            ← История версий (ОБНОВЛЯТЬ ПРИ КАЖДОМ РЕЛИЗЕ)
         ├── OnboardingTour.js       ← Тур по вкладкам (один раз за аккаунт; «Продать» — stay, не переходит)
         ├── notice.js               ← showNotice('текст' [, { error: true }]) + <NoticeHost/> в App.js — всплывающее сообщение
+        ├── favorites.js            ← useFavorites(enabled) + toggleFavorite (оптимистично) + resetFavorites при выходе
+        ├── productMeta.js          ← CATEGORIES / categoryLabel — категории товара
         ├── unread.js               ← useUnreadCount() (счётчик на вкладке, опрос 30 с) + refreshUnread()
         ├── LocationRequiredModal.js← Запрос геолокации при входе (со skip)
         ├── HowToPlayModal.js       ← «Как играть» в карточной игре
@@ -74,8 +78,11 @@ collectors-realm/
 
 ```
 RootNav
-├── Login (не авторизован)
-└── Main → MainTabs
+├── Main → MainTabs — всем, и гостю (с 21.10.2026 магазин без регистрации)
+├── Login — только гостю, поверх (presentation modal); вкладки Карта/Продать/
+│   Сообщения/Моё/Профиль и действия с аккаунтом гостя ведут сюда; после входа
+│   экран исчезает сам. Ссылка на товар — markeltoys.ru/?p=<id> (openSharedProduct)
+└── MainTabs
     ├── Магазин → ShopStack (ShopList → ProductDetail / SellProduct / Chat / Notifications / UserProfile / Releases / Library)
     ├── Карта   → MapStack (MapMain → UserProfileMap)
     ├── Продать → не экран: tabPress → Магазин › SellProduct (кнопка по центру, как «Разместить» на Авито)

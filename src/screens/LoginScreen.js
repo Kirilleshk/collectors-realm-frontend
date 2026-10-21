@@ -8,7 +8,7 @@ import SmartInput from '../utils/SmartInput'
 import { track } from '../utils/analytics'
 import ScreenBackground from '../components/ScreenBackground'
 import IconLabel from '../components/IconLabel'
-import { Boxes, Wrench, Palette, Mountain, PersonStanding, Landmark, Gamepad2, Disc3, Layers, Ban, MessageCircle, TriangleAlert, CircleCheck, Mail, KeyRound, Camera, User, X, Check } from '../icons'
+import { Boxes, Wrench, Palette, Mountain, PersonStanding, Landmark, Gamepad2, Disc3, Layers, Ban, MessageCircle, TriangleAlert, CircleCheck, Mail, KeyRound, Camera, User, X, Check, ArrowLeft } from '../icons'
 import { API_URL } from '../config'
 
 const CLOUD_NAME = 'dqutmb1rm'
@@ -53,7 +53,7 @@ function isLikelyGarbage(text) {
   return maxCount / letters.length > 0.6
 }
 
-export default function LoginScreen() {
+export default function LoginScreen({ navigation }) {
   const { login, register, updateUser } = useAuth()
   const [mode, setMode] = useState('login')
   const [step, setStep] = useState('form') // 'form' | 'verify' | 'photos' | 'anketa'
@@ -359,6 +359,14 @@ export default function LoginScreen() {
     <SafeAreaView style={s.wrap}>
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
+
+        {/* Гость открыл вход из магазина (21.10.2026: смотреть можно без
+            регистрации) — можно вернуться, не входя */}
+        {navigation?.canGoBack?.() ? (
+          <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()} accessibilityRole="button">
+            <IconLabel icon={ArrowLeft} label="В магазин" size={18} textStyle={s.backBtnText} />
+          </TouchableOpacity>
+        ) : null}
 
         {/* Логотип */}
         <Animated.View style={[s.header, { opacity: fadeAnim, transform: [{ scale: logoScale }] }]}>
@@ -776,6 +784,8 @@ export default function LoginScreen() {
 const s = StyleSheet.create({
   wrap: { flex: 1 },
   scroll: { flexGrow: 1, justifyContent: 'center', padding: 24 },
+  backBtn: { alignSelf: 'flex-start', paddingVertical: 8, paddingRight: 12, marginBottom: 8 },
+  backBtnText: { fontSize: 15, fontWeight: '600', color: colors.text2 },
   header: { alignItems: 'center', marginBottom: 36 },
   logoWrap: {
     width: 80, height: 80, borderRadius: 22,

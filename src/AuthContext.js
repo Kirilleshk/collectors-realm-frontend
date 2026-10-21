@@ -5,6 +5,7 @@ import { auth, setUnauthorizedHandler } from './api'
 import { registerForPushNotifications } from './notifications'
 import * as Notifications from 'expo-notifications'
 import { setAnalyticsUser } from './utils/analytics'
+import { resetFavorites } from './utils/favorites'
 
 const AuthContext = createContext()
 
@@ -83,6 +84,7 @@ export function AuthProvider({ children }) {
   }
 
   async function logout() {
+    resetFavorites()
     setAnalyticsUser(null)
     await AsyncStorage.removeItem('token')
     await AsyncStorage.removeItem('user')

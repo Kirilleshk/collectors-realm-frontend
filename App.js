@@ -163,7 +163,18 @@ function MainTabs() {
   const insets = useSafeAreaInsets()
   const { user } = useAuth()
   const isAdmin = user?.roles?.includes('ADMIN') || user?.roles?.includes('ANALYTICS') || user?.roles?.includes('MODERATOR')
-  const unread = useUnreadCount()
+  const unread = useUnreadCount(!!user)
+  // Гость (21.10.2026, магазин без регистрации): смотреть магазин и товары
+  // можно всем; разделы, где нужен аккаунт, — нажатие ведёт на вход. После
+  // входа экран Login исчезает сам (он зарегистрирован только для гостя),
+  // и человек остаётся там, где был.
+  const authOnly = ({ navigation }) => ({
+    tabPress: e => {
+      if (user) return
+      e.preventDefault()
+      navigation.navigate('Login')
+    },
+  })
   return (
     <Tab.Navigator screenOptions={({ route }) => ({
       tabBarIcon: ({ focused, color }) => {
@@ -189,7 +200,7 @@ function MainTabs() {
       headerTitleStyle: { fontWeight: '700' },
     })}>
       <Tab.Screen name="Магазин" component={ShopStack} options={{ headerShown: false }} />
-      <Tab.Screen name="Карта" component={MapStack} options={{ headerShown: false }} />
+      <Tab.Screen name="Карта" component={MapStack} options={{ headerShown: false }} listeners={authOnly} />
       {/* «Продать» по центру — как «Разместить» на Авито (20.10.2026) */}
       <Tab.Screen
         name="Продать"
@@ -198,23 +209,24 @@ function MainTabs() {
         listeners={({ navigation }) => ({
           tabPress: e => {
             e.preventDefault()
-            navigation.navigate('Магазин', { screen: 'SellProduct' })
+            navigation.navigate(user ? 'Магазин' : 'Login', user ? { screen: 'SellProduct' } : undefined)
           },
         })}
       />
       <Tab.Screen
         name="Сообщения"
         component={MessagesStack}
+        listeners={authOnly}
         options={{
           headerShown: false,
           tabBarBadge: unread > 0 ? (unread > 99 ? '99+' : unread) : undefined,
           tabBarBadgeStyle: { backgroundColor: colors.accent, color: '#fff', fontSize: 10, fontWeight: '800' },
         }}
       />
-      <Tab.Screen name="Моё" component={MyStack} options={{ headerShown: false }} />
+      <Tab.Screen name="Моё" component={MyStack} options={{ headerShown: false }} listeners={authOnly} />
       {SHOW_GAME && <Tab.Screen name="Игра" component={GameStack} options={{ headerShown: false }} />}
       {isAdmin && <Tab.Screen name="Админ" component={AdminScreen} options={{ headerShown: false }} />}
-      <Tab.Screen name="Профиль" component={ProfileScreen} options={{ headerShown: false }} />
+      <Tab.Screen name="Профиль" component={ProfileScreen} options={{ headerShown: false }} listeners={authOnly} />
     </Tab.Navigator>
   )
 }
@@ -228,6 +240,22 @@ const navigationRef = React.createRef()
 const SCREEN_KEYS = {
   ShopList: 'Shop', MapMain: 'Map', 'Моё': 'MyItems', MyItemsMain: 'MyItems', MessagesList: 'Messages', GameMain: 'Game',
   'Профиль': 'Profile', 'Админ': 'Admin', UserProfileMap: 'UserProfile',
+}
+
+// Ссылка «Поделиться» на товар — markeltoys.ru/?p=<id> (21.10.2026). Через
+// параметр, а не путь /product/<id>: GitHub Pages на неизвестный путь
+// отдаёт 404, а на ?p= — обычную страницу. При открытии сайта по такой
+// ссылке сразу показываем товар (гостю тоже) и убираем параметр из адреса,
+// чтобы обновление страницы потом не открывало товар заново.
+function openSharedProduct() {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return
+  const id = new URLSearchParams(window.location.search).get('p')
+  if (!id) return
+  window.history.replaceState(null, '', window.location.pathname)
+  navigationRef.current?.navigate('Main', {
+    screen: 'Магазин',
+    params: { screen: 'ProductDetail', params: { id }, initial: false },
+  })
 }
 
 function RootNav() {
@@ -306,13 +334,12 @@ function RootNav() {
     </View>
   )
   return (
-    <NavigationContainer ref={navigationRef} onReady={trackScreen} onStateChange={trackScreen}>
+    <NavigationContainer ref={navigationRef} onReady={() => { trackScreen(); openSharedProduct() }} onStateChange={trackScreen}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {user ? (
-          <Stack.Screen name="Main" component={MainTabs} />
-        ) : (
-          <Stack.Screen name="Login" component={LoginScreen} />
-        )}
+        {/* Main — всем, Login — только гостю, поверх магазина (21.10.2026):
+            раньше без входа сайт не показывал ничего, кроме формы входа */}
+        <Stack.Screen name="Main" component={MainTabs} />
+        {!user && <Stack.Screen name="Login" component={LoginScreen} options={{ presentation: 'modal' }} />}
       </Stack.Navigator>
       {user && <LocationRequiredModal />}
       {user && hasLocation && (

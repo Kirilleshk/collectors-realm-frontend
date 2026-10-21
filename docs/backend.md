@@ -25,6 +25,8 @@ products.routes.ts     CRUD, PATCH /:id/status, /:id/sold, GET/POST /:id/bids
                        sellerTelegram/sellerPhone необязательны, ≤5 фото
                        Cloudinary, лимит 50 активных / 20 в сутки). PUT/PATCH/
                        DELETE — staff или владелец. Товары заблокированных скрыты
+favorites.routes.ts    избранное (auth): GET /ids, GET / (товары), POST /:productId,
+                       DELETE /:productId; до 500 на человека
 messages.routes.ts     чат покупатель ↔ продавец (товары пользователей):
                        GET /unread-count, GET /conversations, POST /conversations
                        {productId} (найти/создать), GET /conversations/:id
@@ -70,6 +72,8 @@ enum CardFaction   { ALIEN, PREDATOR }
   isBlocked, onboardingSeen), `Product` (+ аукцион isAuction/startPrice/
   priceStep/auctionEndTime; продавец sellerId/sellerTelegram/sellerPhone —
   null = товар магазина), `ProductImage`, `Bid`, `WishlistItem`,
+  `Favorite` (userId+productId unique), `Product.category` (enum
+  ProductCategory FIGURE/CARDS/ACCESSORY/OTHER, default FIGURE),
   `Conversation` (товар + покупатель + продавец, *LastReadAt, снимок
   productName; unique productId+buyerId) + `ChatMessage`,
   `CollectionItem`, `Review`, `Notification`, `Release`, `ReleaseReminder`

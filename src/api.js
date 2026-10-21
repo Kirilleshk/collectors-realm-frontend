@@ -67,6 +67,14 @@ export const messages = {
   send: (id, text) => api.post(`/messages/conversations/${id}`, { text }),
 }
 
+// Избранное — «сердечко» на товаре (21.10.2026)
+export const favorites = {
+  ids: () => api.get('/favorites/ids'),
+  list: () => api.get('/favorites'),
+  add: (productId) => api.post(`/favorites/${productId}`),
+  remove: (productId) => api.delete(`/favorites/${productId}`),
+}
+
 export const wishlist = {
   getAll: () => api.get('/wishlist'),
   add: (data) => api.post('/wishlist', data),

@@ -25,11 +25,12 @@ export async function refreshUnread() {
   } catch (e) {}
 }
 
-// Опрос — только пока кто-то подписан (вкладка смонтирована, человек вошёл)
-// и приложение на экране
-export function useUnreadCount() {
+// Опрос — только пока кто-то подписан (вкладка смонтирована), человек
+// вошёл (enabled; у гостя сообщений нет — 401) и приложение на экране
+export function useUnreadCount(enabled = true) {
   const [n, setN] = useState(count)
   useEffect(() => {
+    if (!enabled) { set(0); return }
     listeners.add(setN)
     refreshUnread()
     const timer = setInterval(() => {
@@ -37,6 +38,6 @@ export function useUnreadCount() {
     }, POLL_MS)
     const sub = AppState.addEventListener('change', st => { if (st === 'active') refreshUnread() })
     return () => { listeners.delete(setN); clearInterval(timer); sub.remove() }
-  }, [])
-  return n
+  }, [enabled])
+  return enabled ? n : 0
 }

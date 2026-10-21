@@ -4,11 +4,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { products } from '../api'
 import { useAuth } from '../AuthContext'
 import ShopFilters, { EMPTY_FILTERS, activeFiltersCount } from '../components/ShopFilters'
+import { useFavorites, toggleFavorite } from '../utils/favorites'
 import { colors } from '../theme'
 import ScreenBackground from '../components/ScreenBackground'
 import BrandHeader from '../components/BrandHeader'
 import IconLabel from '../components/IconLabel'
-import { Gavel, CalendarDays, Search, SearchX, X, Package, WifiOff, RotateCw, SlidersHorizontal, MapPin } from '../icons'
+import { Gavel, CalendarDays, Search, SearchX, X, Package, WifiOff, RotateCw, SlidersHorizontal, MapPin, Heart } from '../icons'
 
 // На узком мобильном экране — 2 колонки как раньше; на широком вебе больше
 // колонок, чтобы карточка не растягивалась на пол-окна (фикс "растянутых карточек").
@@ -62,6 +63,11 @@ export default function ShopScreen({ navigation }) {
   const [adv, setAdv] = useState(EMPTY_FILTERS)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const advCount = activeFiltersCount(adv)
+  const isStaff = user?.roles?.some(r => r === 'ADMIN' || r === 'MODERATOR')
+  const favIds = useFavorites(!!user)
+  // Своё сердечком не отмечаем: свой товар у продавца и товары магазина у
+  // персонала. Гостю сердечко видно — нажатие ведёт на вход
+  const canFav = item => !(user && item.sellerId && item.sellerId === user.id) && !(isStaff && !item.sellerId)
   const searchAnim = useRef(new Animated.Value(0)).current
   // Автодополнение по названию товара (Марк, 05.08, пункт 3: та же функция,
   // что и в библиотеке) — товары уже загружены на клиенте, поэтому просто
@@ -303,6 +309,16 @@ export default function ShopScreen({ navigation }) {
                   ? <Image source={{ uri: item.images[0].url }} style={s.img} resizeMode="cover" />
                   : <Package size={44} color={colors.border} strokeWidth={1.5} />
                 }
+                {canFav(item) ? (
+                  <TouchableOpacity
+                    style={s.favBtn}
+                    onPress={() => (user ? toggleFavorite(item.id) : navigation.navigate('Login'))}
+                    hitSlop={6}
+                    accessibilityLabel={favIds.has(item.id) ? 'Убрать из избранного' : 'В избранное'}
+                  >
+                    <Heart size={17} color={favIds.has(item.id) ? colors.accent : '#fff'} fill={favIds.has(item.id) ? colors.accent : 'transparent'} strokeWidth={2.2} />
+                  </TouchableOpacity>
+                ) : null}
                 {item.isAuction ? (
                   <View style={s.auctionBadge}>
                     <IconLabel icon={Gavel} label="АУКЦИОН" size={11} gap={4} textStyle={s.auctionBadgeText} />
@@ -394,6 +410,7 @@ const s = StyleSheet.create({
   },
   imgWrap: { height: 150, backgroundColor: colors.surface2, justifyContent: 'center', alignItems: 'center', position: 'relative', overflow: 'hidden' },
   img: { width: '100%', height: 150 },
+  favBtn: { position: 'absolute', top: 8, left: 8, width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(10,11,14,0.7)', justifyContent: 'center', alignItems: 'center', zIndex: 2 },
   auctionBadge: { position: 'absolute', top: 10, right: 10, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: 'rgba(10,11,14,0.8)', borderWidth: 1, borderColor: '#FF6B0080' },
   auctionBadgeText: { fontSize: 10, fontWeight: '800', color: '#FF6B00' },
   badge: { position: 'absolute', top: 10, right: 10, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1, backgroundColor: 'rgba(10,11,14,0.8)' },

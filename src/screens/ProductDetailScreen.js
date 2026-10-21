@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Image, Platform, Linking, Alert, TextInput } from 'react-native'
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react'
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Image, Platform, Linking, Alert, TextInput, Share } from 'react-native'
 import { products, wishlist, bids, collection, reviews, messages as messagesApi } from '../api'
 import { useAuth } from '../AuthContext'
 import { colors } from '../theme'
@@ -7,9 +7,10 @@ import { pickAndUploadPhoto } from '../utils/uploadPhoto'
 import { track } from '../utils/analytics'
 import { showNotice } from '../utils/notice'
 import { categoryLabel } from '../utils/productMeta'
+import { useFavorites, toggleFavorite } from '../utils/favorites'
 import ScreenBackground from '../components/ScreenBackground'
 import IconLabel from '../components/IconLabel'
-import { Package, Gavel, Camera, Factory, Trophy, MessageCircle, Send, Target, Boxes, Check, CircleSlash, Phone, Pencil, CircleCheck, RotateCw, Trash2, User, ChevronRight, Star } from '../icons'
+import { Package, Gavel, Camera, Factory, Trophy, MessageCircle, Send, Target, Boxes, Check, CircleSlash, Phone, Pencil, CircleCheck, RotateCw, Trash2, User, ChevronRight, Star, Heart, Share2 } from '../icons'
 import { API_URL } from '../config'
 
 const CLOUD_NAME = 'dqutmb1rm'
@@ -80,6 +81,7 @@ export default function ProductDetailScreen({ route, navigation }) {
   const [manageError, setManageError] = useState(null)
   const [sellerRating, setSellerRating] = useState(null) // { avg, count }
   const [openingChat, setOpeningChat] = useState(false)
+  const favIds = useFavorites(!!user)
   const timerRef = useRef(null)
 
   useEffect(() => { load() }, [id])
@@ -87,6 +89,48 @@ export default function ProductDetailScreen({ route, navigation }) {
   // Возврат на карточку (после «Редактировать») — перечитываем товар без
   // спиннера. Пока не закончилась первая загрузка — пропускаем (там уже идёт load())
   const loadedOnceRef = useRef(false)
+
+  // Гость смотрит товар без входа (21.10.2026); для действий с аккаунтом —
+  // экран входа, после него человек вернётся сюда же
+  function requireLogin() {
+    if (user) return true
+    navigation.navigate('Login')
+    return false
+  }
+
+  // «Поделиться» — ссылка markeltoys.ru/?p=<id> (открывается и гостю).
+  // В вебе — системное меню «Поделиться», если браузер умеет, иначе копируем
+  // ссылку; в приложении — системное меню
+  async function shareProduct() {
+    const url = `https://markeltoys.ru/?p=${item.id}`
+    const price = item.isAuction ? `от ${(item.startPrice || item.price)?.toLocaleString('ru')}` : item.price?.toLocaleString('ru')
+    const text = `${item.name} — ${price} ₽ на Markeltoys`
+    track('product_shared', { productId: item.id })
+    if (Platform.OS !== 'web') {
+      try { await Share.share({ message: `${text}\n${url}` }) } catch (e) {}
+      return
+    }
+    if (navigator.share) {
+      try { await navigator.share({ title: item.name, text, url }); return } catch (e) { if (e?.name === 'AbortError') return }
+    }
+    try {
+      await navigator.clipboard.writeText(url)
+      showNotice('Ссылка скопирована — отправьте её в чат')
+    } catch (e) {
+      window.prompt('Скопируйте ссылку на товар', url)
+    }
+  }
+
+  useLayoutEffect(() => {
+    if (!item) return
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity onPress={shareProduct} style={{ paddingHorizontal: 8, paddingVertical: 4 }} accessibilityLabel="Поделиться">
+          <Share2 size={21} color={colors.text} strokeWidth={2} />
+        </TouchableOpacity>
+      ),
+    })
+  }, [navigation, item])
   useEffect(() => navigation.addListener('focus', () => {
     if (loadedOnceRef.current) load()
   }), [navigation, id])
@@ -122,6 +166,7 @@ export default function ProductDetailScreen({ route, navigation }) {
   }
 
   async function handlePlaceBid() {
+    if (!requireLogin()) return
     const amount = Number(bidAmount)
     const topBid = auctionBids[0]?.amount || 0
     const minBid = topBid > 0 ? topBid + (item.priceStep || 0) : (item.startPrice || 0)
@@ -172,6 +217,7 @@ export default function ProductDetailScreen({ route, navigation }) {
   }
 
   async function handleAddToWishlist() {
+    if (!requireLogin()) return
     setAddingToWishlist(true)
     try {
       await wishlist.add({
@@ -187,6 +233,7 @@ export default function ProductDetailScreen({ route, navigation }) {
   }
 
   async function handleAddToCollection() {
+    if (!requireLogin()) return
     setAddingToCollection(true)
     try {
       await collection.add({
@@ -217,7 +264,7 @@ export default function ProductDetailScreen({ route, navigation }) {
   // «Написать» у товара пользователя — переписка на сайте (этап 3 «как на
   // Авито», 20.10.2026): найти/создать переписку и открыть её
   async function openChat() {
-    if (openingChat) return
+    if (openingChat || !requireLogin()) return
     setOpeningChat(true)
     try {
       const res = await messagesApi.start(item.id)
@@ -298,7 +345,7 @@ export default function ProductDetailScreen({ route, navigation }) {
   // в блоке продавца); у товара магазина — чат с администрацией.
   const writeAction = isUserListing
     ? openChat
-    : () => navigation.navigate('Chat', { productName: item.name, productId: item.id })
+    : () => { if (requireLogin()) navigation.navigate('Chat', { productName: item.name, productId: item.id }) }
   const showBar = !hideBuyer && !isSold && !item.isAuction
   const ratingText = sellerRating?.count
     ? `${sellerRating.avg.toFixed(1)} · ${sellerRating.count} ${sellerRating.count % 10 === 1 && sellerRating.count % 100 !== 11 ? 'отзыв' : [2, 3, 4].includes(sellerRating.count % 10) && ![12, 13, 14].includes(sellerRating.count % 100) ? 'отзыва' : 'отзывов'}`
@@ -317,6 +364,16 @@ export default function ProductDetailScreen({ route, navigation }) {
             </>
           : <Package size={80} color={colors.border} strokeWidth={1.2} />
         }
+        {/* Избранное — сердечко слева сверху, как на карточке в магазине */}
+        {!hideBuyer ? (
+          <TouchableOpacity
+            style={s.favBtn}
+            onPress={() => { if (requireLogin()) toggleFavorite(item.id) }}
+            accessibilityLabel={favIds.has(item.id) ? 'Убрать из избранного' : 'В избранное'}
+          >
+            <Heart size={20} color={favIds.has(item.id) ? colors.accent : '#fff'} fill={favIds.has(item.id) ? colors.accent : 'transparent'} strokeWidth={2.2} />
+          </TouchableOpacity>
+        ) : null}
         {/* Бейдж статуса / аукциона */}
         {item.isAuction ? (
           <View style={[s.conditionBadge, { borderColor: '#FF6B0080' }]}>
@@ -374,7 +431,7 @@ export default function ProductDetailScreen({ route, navigation }) {
         {!hideBuyer && isUserListing ? (
           <View style={s.sellerCard}>
             {item.seller ? (
-              <TouchableOpacity style={s.sellerRow} onPress={() => navigation.navigate('UserProfile', { userId: item.seller.id })} activeOpacity={0.7}>
+              <TouchableOpacity style={s.sellerRow} onPress={() => { if (requireLogin()) navigation.navigate('UserProfile', { userId: item.seller.id }) }} activeOpacity={0.7}>
                 {item.seller.avatarUrl
                   ? <Image source={{ uri: item.seller.avatarUrl }} style={s.sellerAvatar} />
                   : <View style={[s.sellerAvatar, s.sellerAvatarEmpty]}><User size={20} color={colors.text2} /></View>}
@@ -668,6 +725,7 @@ const s = StyleSheet.create({
   image: { width: '100%', height: '100%' },
   imageBackdrop: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%', opacity: 0.55 },
   imageDim: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(10,11,14,0.35)' },
+  favBtn: { position: 'absolute', top: 14, left: 14, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(10,11,14,0.75)', justifyContent: 'center', alignItems: 'center', zIndex: 2 },
   conditionBadge: { position: 'absolute', top: 16, right: 16, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, borderWidth: 1, backgroundColor: 'rgba(10,11,14,0.8)' },
   conditionText: { fontSize: 13, fontWeight: '700' },
   photoBtn: { position: 'absolute', bottom: 12, alignSelf: 'center', backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
