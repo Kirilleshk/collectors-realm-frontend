@@ -3,7 +3,8 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import { colors } from '../theme'
 import { ShoppingBag, Plus, MessageCircle, Boxes, Map as MapIcon, CircleHelp, ChevronDown, ChevronUp, ChevronRight } from '../icons'
 
-// Раздел «Помощь» в профиле (21.10.2026, по просьбе Кирилла): вместо
+// «Помощь» — окно по круглой кнопке «?» в шапке профиля (21.10.2026, по
+// просьбе Кирилла): вместо
 // списка фич из changelog и истории версий — понятный гайд «что и куда
 // жать». Сверху три шага быстрого старта, ниже вопросы по разделам —
 // ответ раскрывается по нажатию. Тексты держать в соответствии с

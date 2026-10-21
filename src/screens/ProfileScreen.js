@@ -11,7 +11,7 @@ import { portfolioCollections as collectionsApi, reviews as reviewsApi, support 
 import ScreenBackground from '../components/ScreenBackground'
 import BrandHeader from '../components/BrandHeader'
 import IconLabel from '../components/IconLabel'
-import { User, CircleHelp, Camera, Store, BadgeCheck, MapPin, Pencil, Images, Boxes, MessageCircle, Mail, Hash, RefreshCw, LogOut, X, Trash2, ChevronRight, ChevronDown, ChevronUp } from '../icons'
+import { CircleHelp, Camera, Store, BadgeCheck, MapPin, Pencil, Images, Boxes, MessageCircle, Mail, Hash, RefreshCw, LogOut, X, Trash2, ChevronRight, ChevronDown, ChevronUp } from '../icons'
 import { API_URL } from '../config'
 
 let Updates = null
@@ -67,7 +67,7 @@ export default function ProfileScreen() {
   const collCardWidth = (width - 48) / 2
   const { user, token, logout, updateUser } = useAuth()
   const [editModal, setEditModal] = useState(false)
-  const [profileTab, setProfileTab] = useState('profile')
+  const [helpOpen, setHelpOpen] = useState(false)
   // Длинное «О себе» сворачиваем — иначе растягивает профиль на несколько экранов
   const [bioExpanded, setBioExpanded] = useState(false)
   const [form, setForm] = useState({ name: user?.name || '', city: user?.city || '', bio: user?.bio || '', roles: user?.roles || [] })
@@ -358,26 +358,17 @@ export default function ProfileScreen() {
   return (
     <ScreenBackground>
     <ScrollView style={s.wrap} showsVerticalScrollIndicator={false}>
-      <BrandHeader insets={insets} />
+      {/* Помощь — круглая кнопка «?» справа вверху (21.10.2026, вместо
+          переключателя «Профиль | Помощь» под шапкой); открывает окно с гайдом */}
+      <BrandHeader
+        insets={insets}
+        right={
+          <TouchableOpacity style={s.helpBtn} onPress={() => setHelpOpen(true)} accessibilityRole="button" accessibilityLabel="Помощь">
+            <CircleHelp size={20} color={colors.accent} strokeWidth={2.2} />
+          </TouchableOpacity>
+        }
+      />
 
-      {/* Переключатель вкладок профиля */}
-      <View style={s.profileTabs}>
-        <TouchableOpacity style={[s.profileTab, profileTab === 'profile' && s.profileTabActive]} onPress={() => setProfileTab('profile')}>
-          <IconLabel icon={User} label="Профиль" textStyle={[s.profileTabText, profileTab === 'profile' && s.profileTabTextActive]} />
-        </TouchableOpacity>
-        <TouchableOpacity style={[s.profileTab, profileTab === 'help' && s.profileTabActive]} onPress={() => setProfileTab('help')}>
-          <IconLabel icon={CircleHelp} label="Помощь" textStyle={[s.profileTabText, profileTab === 'help' && s.profileTabTextActive]} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Вкладка помощи — гайд «что и куда жать» (21.10.2026). Раньше здесь
-          были карточки фич из changelog и история версий — убраны по просьбе
-          Кирилла: непонятно, как пользоваться сайтом */}
-      {profileTab === 'help' && (
-        <HelpGuide onContactSupport={() => { setSupportModal(true); loadSupportMessages() }} />
-      )}
-
-      {profileTab !== 'help' && <>
       {/* Шапка */}
       <View style={s.headerWrap}>
         <TouchableOpacity onPress={pickAvatar} style={s.avatarWrap} disabled={uploadingAvatar}>
@@ -881,10 +872,26 @@ export default function ProfileScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      </>}
     </ScrollView>
-      {/* Модал: Связь с администрацией — вне блока вкладки «Профиль»: его
-          открывает и кнопка в «Помощи» (21.10.2026) */}
+
+      {/* Модал: Помощь — гайд «что и куда жать» (21.10.2026). Раньше в
+          «Помощи» были карточки фич из changelog и история версий — убраны
+          по просьбе Кирилла: непонятно, как пользоваться сайтом */}
+      <Modal visible={helpOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setHelpOpen(false)}>
+        <View style={s.modal}>
+          <View style={s.modalHead}>
+            <IconLabel icon={CircleHelp} label="Помощь" size={20} gap={8} textStyle={s.modalTitle} />
+            <TouchableOpacity onPress={() => setHelpOpen(false)} accessibilityLabel="Закрыть">
+              <X size={22} color={colors.text2} />
+            </TouchableOpacity>
+          </View>
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <HelpGuide onContactSupport={() => { setHelpOpen(false); setSupportModal(true); loadSupportMessages() }} />
+          </ScrollView>
+        </View>
+      </Modal>
+      {/* Модал: Связь с администрацией — открывается и кнопкой «Остались
+          вопросы?» в «Помощи» (21.10.2026) */}
       <Modal visible={supportModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setSupportModal(false)}>
         <View style={[s.modal, { flex: 1 }]}>
           <View style={s.modalHead}>
@@ -963,11 +970,7 @@ export default function ProfileScreen() {
 
 const s = StyleSheet.create({
   wrap: { flex: 1 },
-  profileTabs: { flexDirection: 'row', backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
-  profileTab: { flex: 1, paddingVertical: 14, alignItems: 'center' },
-  profileTabActive: { borderBottomWidth: 2, borderBottomColor: colors.accent },
-  profileTabText: { fontSize: 14, fontWeight: '600', color: colors.text2 },
-  profileTabTextActive: { color: colors.accent },
+  helpBtn: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', backgroundColor: `${colors.accent}18`, borderWidth: 1, borderColor: `${colors.accent}50` },
   headerWrap: { alignItems: 'center', paddingTop: 40, paddingBottom: 24, paddingHorizontal: 24, borderBottomWidth: 1, borderBottomColor: colors.border },
   avatarWrap: { position: 'relative', marginBottom: 16 },
   avatar: { width: 88, height: 88, borderRadius: 24, backgroundColor: `${colors.blue}30`, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: `${colors.blue}60` },
