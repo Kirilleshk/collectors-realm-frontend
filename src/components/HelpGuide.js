@@ -1,0 +1,178 @@
+import React, { useState } from 'react'
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
+import { colors } from '../theme'
+import { ShoppingBag, Plus, MessageCircle, Boxes, Map as MapIcon, CircleHelp, ChevronDown, ChevronUp, ChevronRight } from '../icons'
+
+// Раздел «Помощь» в профиле (21.10.2026, по просьбе Кирилла): вместо
+// списка фич из changelog и истории версий — понятный гайд «что и куда
+// жать». Сверху три шага быстрого старта, ниже вопросы по разделам —
+// ответ раскрывается по нажатию. Тексты держать в соответствии с
+// интерфейсом: при переименовании кнопок/вкладок — обновить и здесь.
+//
+// В тексте ответа **так** выделяется название кнопки/вкладки.
+
+const QUICK_START = [
+  { icon: ShoppingBag, title: 'Найдите фигурку', text: 'Вкладка **Магазин** внизу. Вверху — поиск по названию, под ним фильтры. Нажмите на товар, чтобы открыть его.' },
+  { icon: MessageCircle, title: 'Напишите продавцу', text: 'В карточке товара внизу кнопка **Написать**. Ответ придёт во вкладку **Сообщения**.' },
+  { icon: Plus, title: 'Продайте свою', text: 'Круглая кнопка **Продать** в центре нижнего меню — фото, название, цена, и объявление сразу в магазине.' },
+]
+
+const SECTIONS = [
+  {
+    icon: ShoppingBag,
+    title: 'Покупка',
+    items: [
+      { q: 'Как найти нужную фигурку?', a: 'Откройте **Магазин**. В поле поиска вверху введите название или производителя. Под поиском — фильтры: **Новые**, **Б/у**, **Аукцион**, **Предзаказ**, **Продано** и другие. Нажмите на карточку товара — откроются фото, цена, характеристики и продавец.' },
+      { q: 'Как связаться с продавцом?', a: 'Откройте товар. Внизу экрана всегда видна панель с ценой: **Написать** — переписка прямо на сайте, кнопка с трубкой — **Позвонить** (если продавец оставил телефон). Под ценой — блок продавца, там же **Или напрямую: Telegram / WhatsApp**, если он их указал.' },
+      { q: 'Кто продаёт: магазин или человек?', a: 'Под ценой в карточке написано, кто продавец. **Markeltoys · официальный магазин** — товар магазина, кнопка **Написать магазину** открывает чат с администрацией. Если там имя человека — это объявление коллекционера, вы пишете ему напрямую.' },
+      { q: 'Как проходит сделка с коллекционером?', a: 'Цену, встречу, доставку и оплату вы обсуждаете с продавцом сами — Markeltoys в сделках между пользователями не участвует. Перед покупкой посмотрите рейтинг продавца под ценой и отзывы в его профиле (нажмите на имя).' },
+      { q: 'Как участвовать в аукционе?', a: 'Выберите фильтр **Аукцион** и откройте товар. В блоке **Аукцион** — таймер, начальная цена, шаг и лучшая ставка. Впишите сумму не меньше минимальной (она подсказана в поле) и нажмите **Ставка**.' },
+      { q: 'Как оставить отзыв о продавце?', a: 'Нажмите на имя продавца в карточке товара — откроется его профиль. Поставьте от 1 до 5 звёзд и напишите пару слов. Отзыв увидят все.' },
+    ],
+  },
+  {
+    icon: Plus,
+    title: 'Продажа',
+    items: [
+      { q: 'Как выставить свою фигурку?', a: 'Нажмите **Продать** в центре нижнего меню. Добавьте фото (до 5 штук, первое — обложка), напишите, что продаёте, выберите состояние **Новый** или **Б/у**, укажите цену. Описание и подробности — по желанию. Нажмите **Опубликовать** — объявление сразу появится в магазине.' },
+      { q: 'Нужно ли оставлять телефон?', a: 'Нет. Покупатели напишут вам во вкладку **Сообщения**. Telegram и телефон можно добавить по желанию — их увидят все, кто откроет объявление.' },
+      { q: 'Как изменить объявление, отметить проданным или удалить?', a: 'Откройте **Моё** → **Объявления**. На каждой карточке кнопки **Изменить**, **Продано** и корзина — удалить. Проданные лежат в разделе **Проданные**, оттуда их можно **Вернуть** в продажу. То же самое есть в самом объявлении — панель **Это ваш товар** сразу под ценой.' },
+      { q: 'Где ответить покупателю?', a: 'Во вкладке **Сообщения**. Переписки по вашим объявлениям подписаны **Ваш товар**. Красная цифра на вкладке — сколько сообщений вы ещё не прочитали.' },
+      { q: 'Есть ли ограничения?', a: 'До 5 фото в объявлении, не больше 20 новых объявлений в сутки и 50 одновременно в продаже. Отметьте проданные — место освободится.' },
+    ],
+  },
+  {
+    icon: MessageCircle,
+    title: 'Сообщения',
+    items: [
+      { q: 'Где все мои переписки?', a: 'Вкладка **Сообщения** в нижнем меню. Там и ваши вопросы продавцам, и сообщения от покупателей. Свежие — сверху, непрочитанные отмечены цифрой.' },
+      { q: 'Как отправить сообщение?', a: 'Откройте переписку, напишите текст внизу и нажмите кнопку со стрелкой. На компьютере можно просто нажать **Enter** (**Shift + Enter** — новая строка). Новые ответы появляются сами, обновлять страницу не нужно.' },
+      { q: 'Как открыть товар из переписки?', a: 'Нажмите на полоску с товаром вверху переписки — откроется его карточка.' },
+    ],
+  },
+  {
+    icon: Boxes,
+    title: 'Коллекция и вишлист',
+    items: [
+      { q: 'Что такое «Коллекция»?', a: 'Ваш личный каталог фигурок: **Моё** → **Коллекция**. Добавляйте фото, цену покупки и заметки. Понравившийся товар из магазина можно добавить кнопкой **В мою коллекцию** в его карточке.' },
+      { q: 'Что такое «Вишлист»?', a: 'Список того, что вы ищете: **Моё** → **Вишлист**. В карточке товара — кнопка **В вишлист**. В мобильном приложении придёт уведомление, когда в магазине появится похожая фигурка или подешевеет товар из вишлиста.' },
+    ],
+  },
+  {
+    icon: MapIcon,
+    title: 'Карта, новости и профиль',
+    items: [
+      { q: 'Как найти коллекционеров рядом?', a: 'Вкладка **Карта** — коллекционеры, мастера по ремонту, кастомизаторы и мастера диорам. Нажмите на метку — откроется профиль человека. Чтобы вас тоже видели на карте, в **Профиле** нажмите **Указать моё местоположение**.' },
+      { q: 'Где новости магазина?', a: 'В **Магазине** слева вверху кнопка **Новости** — посты Markeltoys: новинки, привозы, анонсы.' },
+      { q: 'Как изменить имя, город или фото?', a: 'Вкладка **Профиль** → **Редактировать профиль**: имя, город, «О себе» и кто вы (коллекционер, мастер…). Чтобы сменить аватар, нажмите на своё фото.' },
+    ],
+  },
+  {
+    icon: CircleHelp,
+    title: 'Если что-то не работает',
+    items: [
+      { q: 'Сайт долго грузится или показывает старое', a: 'Первый вход после перерыва может занять до минуты — сервер просыпается. Если видите старую версию, обновите страницу: на компьютере **Ctrl + F5**, на телефоне потяните страницу вниз или закройте и снова откройте вкладку.' },
+      { q: 'Нашли ошибку или есть вопрос?', a: 'Напишите нам: кнопка **Связь с администрацией** ниже или в **Профиле**. Отвечаем там же.' },
+    ],
+  },
+]
+
+// «Нажмите **Продать**» → текст с выделенными названиями кнопок
+function Rich({ text, style }) {
+  const parts = text.split('**')
+  return (
+    <Text style={style}>
+      {parts.map((p, i) => (i % 2 ? <Text key={i} style={s.strong}>{p}</Text> : p))}
+    </Text>
+  )
+}
+
+function Question({ q, a }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <View style={s.qWrap}>
+      <TouchableOpacity style={s.qRow} onPress={() => setOpen(v => !v)} activeOpacity={0.7} accessibilityRole="button" accessibilityState={{ expanded: open }}>
+        <Text style={s.qText}>{q}</Text>
+        {open ? <ChevronUp size={18} color={colors.text2} /> : <ChevronDown size={18} color={colors.text2} />}
+      </TouchableOpacity>
+      {open ? <Rich text={a} style={s.aText} /> : null}
+    </View>
+  )
+}
+
+export default function HelpGuide({ onContactSupport }) {
+  return (
+    <View style={s.wrap}>
+      <Text style={s.title}>Как пользоваться Markeltoys</Text>
+      <Text style={s.lead}>Коротко — три шага. Подробнее — вопросы ниже, нажмите на нужный.</Text>
+
+      <View style={s.steps}>
+        {QUICK_START.map((st, i) => (
+          <View key={st.title} style={s.step}>
+            <View style={s.stepNum}><Text style={s.stepNumText}>{i + 1}</Text></View>
+            <View style={{ flex: 1 }}>
+              <View style={s.stepHead}>
+                <st.icon size={16} color={colors.accent} strokeWidth={2} />
+                <Text style={s.stepTitle}>{st.title}</Text>
+              </View>
+              <Rich text={st.text} style={s.stepText} />
+            </View>
+          </View>
+        ))}
+      </View>
+
+      {SECTIONS.map(sec => (
+        <View key={sec.title} style={s.section}>
+          <View style={s.sectionHead}>
+            <sec.icon size={18} color={colors.accent} strokeWidth={2} />
+            <Text style={s.sectionTitle}>{sec.title}</Text>
+          </View>
+          <View style={s.card}>
+            {sec.items.map((it, i) => (
+              <View key={it.q} style={i > 0 && s.divider}>
+                <Question q={it.q} a={it.a} />
+              </View>
+            ))}
+          </View>
+        </View>
+      ))}
+
+      {onContactSupport ? (
+        <TouchableOpacity style={s.support} onPress={onContactSupport} activeOpacity={0.8}>
+          <MessageCircle size={22} color={colors.accent} strokeWidth={1.8} />
+          <View style={{ flex: 1 }}>
+            <Text style={s.supportTitle}>Остались вопросы?</Text>
+            <Text style={s.supportSub}>Напишите в «Связь с администрацией» — ответим здесь же</Text>
+          </View>
+          <ChevronRight size={20} color={colors.text2} />
+        </TouchableOpacity>
+      ) : null}
+    </View>
+  )
+}
+
+const s = StyleSheet.create({
+  wrap: { padding: 16, gap: 18, width: '100%', maxWidth: 720, alignSelf: 'center' },
+  title: { fontSize: 20, fontWeight: '800', color: colors.text },
+  lead: { fontSize: 13, color: colors.text2, lineHeight: 19, marginTop: -10 },
+  strong: { fontWeight: '700', color: colors.text },
+  steps: { gap: 10 },
+  step: { flexDirection: 'row', gap: 12, backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 14 },
+  stepNum: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.accent, justifyContent: 'center', alignItems: 'center' },
+  stepNumText: { color: '#fff', fontSize: 14, fontWeight: '800' },
+  stepHead: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
+  stepTitle: { fontSize: 15, fontWeight: '700', color: colors.text },
+  stepText: { fontSize: 13, color: colors.text2, lineHeight: 19 },
+  section: { gap: 8 },
+  sectionHead: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 2 },
+  sectionTitle: { fontSize: 16, fontWeight: '800', color: colors.text },
+  card: { backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
+  divider: { borderTopWidth: 1, borderTopColor: colors.border },
+  qWrap: { paddingHorizontal: 14, paddingVertical: 12 },
+  qRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  qText: { flex: 1, fontSize: 14, fontWeight: '600', color: colors.text, lineHeight: 19 },
+  aText: { fontSize: 13, color: colors.text2, lineHeight: 20, marginTop: 8 },
+  support: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1, borderColor: `${colors.accent}50`, padding: 16 },
+  supportTitle: { fontSize: 15, fontWeight: '700', color: colors.text },
+  supportSub: { fontSize: 12, color: colors.text2, marginTop: 2 },
+})

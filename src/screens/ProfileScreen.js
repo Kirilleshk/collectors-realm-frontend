@@ -6,8 +6,7 @@ import { useAuth } from '../AuthContext'
 import { colors } from '../theme'
 import { pickAndUploadPhoto } from '../utils/uploadPhoto'
 import SmartInput from '../utils/SmartInput'
-import { HELP_ITEMS } from '../utils/WhatsNewModal'
-import { CHANGELOG, CURRENT_VERSION } from '../utils/changelog'
+import HelpGuide from '../components/HelpGuide'
 import { portfolioCollections as collectionsApi, reviews as reviewsApi, support as supportApi } from '../api'
 import ScreenBackground from '../components/ScreenBackground'
 import BrandHeader from '../components/BrandHeader'
@@ -371,51 +370,11 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Вкладка помощи */}
+      {/* Вкладка помощи — гайд «что и куда жать» (21.10.2026). Раньше здесь
+          были карточки фич из changelog и история версий — убраны по просьбе
+          Кирилла: непонятно, как пользоваться сайтом */}
       {profileTab === 'help' && (
-        <View style={{ padding: 16, gap: 20 }}>
-          {/* Все функции */}
-          <View>
-            <Text style={{ fontSize: 18, fontWeight: '800', color: colors.text, marginBottom: 12 }}>Как пользоваться приложением</Text>
-            <View style={{ gap: 10 }}>
-              {HELP_ITEMS.map((item, i) => (
-                <View key={i} style={{ backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 16, flexDirection: 'row', gap: 14 }}>
-                  <Text style={{ fontSize: 26 }}>{item.icon}</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 4 }}>{item.title}</Text>
-                    <Text style={{ fontSize: 13, color: colors.text2, lineHeight: 18 }}>{item.desc}</Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          </View>
-
-          {/* История обновлений */}
-          <View>
-            <Text style={{ fontSize: 18, fontWeight: '800', color: colors.text, marginBottom: 12 }}>История обновлений</Text>
-            {CHANGELOG.map(release => (
-              <View key={release.version} style={{ marginBottom: 16 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                  <View style={{ backgroundColor: release.version === CURRENT_VERSION ? colors.accent : colors.surface2, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 }}>
-                    <Text style={{ fontSize: 13, fontWeight: '700', color: release.version === CURRENT_VERSION ? 'white' : colors.text2 }}>v{release.version}</Text>
-                  </View>
-                  <Text style={{ fontSize: 12, color: colors.text2 }}>{release.date}</Text>
-                </View>
-                <View style={{ gap: 6 }}>
-                  {release.changes.map((c, i) => (
-                    <View key={i} style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
-                      <Text style={{ fontSize: 16 }}>{c.icon}</Text>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>{c.title}</Text>
-                        <Text style={{ fontSize: 12, color: colors.text2, lineHeight: 17 }}>{c.desc}</Text>
-                      </View>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            ))}
-          </View>
-        </View>
+        <HelpGuide onContactSupport={() => { setSupportModal(true); loadSupportMessages() }} />
       )}
 
       {profileTab !== 'help' && <>
@@ -922,7 +881,10 @@ export default function ProfileScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* Модал: Связь с администрацией */}
+      </>}
+    </ScrollView>
+      {/* Модал: Связь с администрацией — вне блока вкладки «Профиль»: его
+          открывает и кнопка в «Помощи» (21.10.2026) */}
       <Modal visible={supportModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setSupportModal(false)}>
         <View style={[s.modal, { flex: 1 }]}>
           <View style={s.modalHead}>
@@ -995,9 +957,6 @@ export default function ProfileScreen() {
           </KeyboardAvoidingView>
         </View>
       </Modal>
-
-      </>}
-    </ScrollView>
     </ScreenBackground>
   )
 }

@@ -50,6 +50,7 @@ collectors-realm/
     │   └── BattleScreen.js         ← Экран боя (стол, рука, атака drag-to-target)
     ├── components/
     │   ├── BrandHeader.js          ← Плашка бренда на всех вкладках
+    │   ├── HelpGuide.js            ← «Профиль → Помощь»: гайд «что и куда жать» (ОБНОВЛЯТЬ при смене кнопок/вкладок)
     │   ├── ScreenBackground.js     ← Общий атмосферный градиент-фон экранов
     │   └── battle/                 ← BoardSlot, HandCard, BossBanner, CardZoomModal,
     │                                  DamagePopup, DeckPile, HpBar, LogEntry
