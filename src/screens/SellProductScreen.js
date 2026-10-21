@@ -6,6 +6,7 @@ import { colors } from '../theme'
 import { pickAndUploadPhoto } from '../utils/uploadPhoto'
 import { track } from '../utils/analytics'
 import { showNotice } from '../utils/notice'
+import { CATEGORIES } from '../utils/productMeta'
 import ScreenBackground from '../components/ScreenBackground'
 import IconLabel from '../components/IconLabel'
 import { ImagePlus, X, ChevronDown, ChevronUp, Send, Phone } from '../icons'
@@ -64,6 +65,7 @@ export default function SellProductScreen({ navigation, route }) {
   const [uploading, setUploading] = useState(false)
   const [name, setName] = useState(initial(editing?.name))
   const [condition, setCondition] = useState(editing?.condition || 'NEW')
+  const [category, setCategory] = useState(editing?.category || 'FIGURE')
   const [price, setPrice] = useState(initial(editing?.price))
   const [description, setDescription] = useState(initial(editing?.description))
   const [manufacturer, setManufacturer] = useState(initial(editing?.manufacturer))
@@ -100,6 +102,8 @@ export default function SellProductScreen({ navigation, route }) {
 
   function validate() {
     const e = {}
+    // Хотя бы одно фото (21.10.2026) — объявление без фото в магазине пустое
+    if (!photos.length) e.photos = 'Добавьте хотя бы одно фото — без него непонятно, что вы продаёте'
     if (name.trim().length < 2) e.name = 'Напишите, что продаёте — хотя бы пару слов'
     const p = parsePrice(price)
     if (!price.trim() || !(p > 0)) e.price = 'Укажите цену в рублях'
@@ -139,6 +143,7 @@ export default function SellProductScreen({ navigation, route }) {
         description: description.trim() || empty,
         price: parsePrice(price),
         condition,
+        category,
         manufacturer: manufacturer.trim() || empty,
         franchise: franchise.trim() || empty,
         character: character.trim() || empty,
@@ -195,8 +200,8 @@ export default function SellProductScreen({ navigation, route }) {
       </Text>
 
       {/* Фото */}
-      <View style={s.card}>
-        <Text style={s.cardTitle}>Фото</Text>
+      <View style={[s.card, errors.photos && s.cardError]}>
+        <Text style={s.cardTitle}>Фото <Text style={s.req}>*</Text></Text>
         <Text style={s.cardHint}>
           {photos.length > 1
             ? 'Первое фото — обложка в магазине. Нажмите на другое, чтобы сделать обложкой его.'
@@ -213,7 +218,7 @@ export default function SellProductScreen({ navigation, route }) {
             </TouchableOpacity>
           ))}
           {photos.length < MAX_PHOTOS && (
-            <TouchableOpacity style={[s.photoTile, s.photoAdd]} onPress={addPhoto} activeOpacity={0.8}>
+            <TouchableOpacity style={[s.photoTile, s.photoAdd]} onPress={() => { clearError('photos'); addPhoto() }} activeOpacity={0.8}>
               {uploading
                 ? <ActivityIndicator color={colors.accent} />
                 : <>
@@ -224,11 +229,26 @@ export default function SellProductScreen({ navigation, route }) {
             </TouchableOpacity>
           )}
         </View>
+        {errors.photos ? <Text style={s.error}>{errors.photos}</Text> : null}
       </View>
 
       {/* Основное */}
       <View style={s.card}>
-        <Text style={s.label}>Что продаёте <Text style={s.req}>*</Text></Text>
+        <Text style={s.label}>Категория <Text style={s.req}>*</Text></Text>
+        <View style={s.chips}>
+          {CATEGORIES.map(c => (
+            <TouchableOpacity
+              key={c.value}
+              style={[s.chip, category === c.value && s.chipActive]}
+              onPress={() => setCategory(c.value)}
+              activeOpacity={0.85}
+            >
+              <Text style={[s.chipText, category === c.value && s.chipTextActive]}>{c.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <Text style={[s.label, s.labelGap]}>Что продаёте <Text style={s.req}>*</Text></Text>
         <TextInput
           style={[s.input, errors.name && s.inputError]}
           value={name}
@@ -387,6 +407,12 @@ const s = StyleSheet.create({
   inputError: { borderColor: colors.red },
   textarea: { minHeight: 96 },
   error: { fontSize: 12, color: colors.red, marginTop: 6, lineHeight: 16 },
+  cardError: { borderColor: `${colors.red}90` },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface2 },
+  chipActive: { borderColor: colors.accent, backgroundColor: `${colors.accent}18` },
+  chipText: { fontSize: 14, fontWeight: '600', color: colors.text2 },
+  chipTextActive: { color: colors.accent },
   segment: { flexDirection: 'row', gap: 10 },
   segmentBtn: { flex: 1, borderRadius: 12, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface2, paddingVertical: 10, paddingHorizontal: 12, alignItems: 'center' },
   segmentBtnActive: { borderColor: colors.accent, backgroundColor: `${colors.accent}18` },

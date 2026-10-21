@@ -6,6 +6,7 @@ import { colors } from '../theme'
 import { pickAndUploadPhoto } from '../utils/uploadPhoto'
 import { track } from '../utils/analytics'
 import { showNotice } from '../utils/notice'
+import { categoryLabel } from '../utils/productMeta'
 import ScreenBackground from '../components/ScreenBackground'
 import IconLabel from '../components/IconLabel'
 import { Package, Gavel, Camera, Factory, Trophy, MessageCircle, Send, Target, Boxes, Check, CircleSlash, Phone, Pencil, CircleCheck, RotateCw, Trash2, User, ChevronRight, Star } from '../icons'
@@ -462,6 +463,10 @@ export default function ProductDetailScreen({ route, navigation }) {
           <View style={s.specRow}>
             <Text style={s.specLabel}>Состояние</Text>
             <Text style={[s.specValue, { color: conditionColor }]}>{conditionLabel}</Text>
+          </View>
+          <View style={s.specRow}>
+            <Text style={s.specLabel}>Категория</Text>
+            <Text style={s.specValue}>{categoryLabel(item.category)}</Text>
           </View>
           {statusInfo.label && (
             <View style={s.specRow}>
