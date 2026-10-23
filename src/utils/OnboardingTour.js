@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { View, Text, Image, Modal, Pressable, StyleSheet, useWindowDimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { ShoppingBag, Map as MapIcon, User, Plus, MessageCircle } from '../icons'
+import { ShoppingBag, Map as MapIcon, User, MessageCircle } from '../icons'
 import { colors } from '../theme'
 import { useAuth } from '../AuthContext'
 import { users as usersApi } from '../api'
@@ -11,10 +11,10 @@ const ARROW_HALF = 12
 // Шаги тура — каждый указывает на вкладку нижнего меню, которую нужно
 // подсветить (стрелка снизу + не затемнённый таб-бар на этой вкладке)
 const ALL_STEPS = [
-  { tab: 'Магазин', Icon: ShoppingBag, title: 'Магазин', desc: 'Здесь — товары других коллекционеров: фигурки, аксессуары, диорамы. Используйте поиск и фильтры по статусу и состоянию.' },
+  // 23.10.2026: шаг «Продать» (вкладка-кнопка) убран вместе с вкладкой —
+  // «+» снова вверху магазина, о нём говорит шаг «Магазин»
+  { tab: 'Магазин', Icon: ShoppingBag, title: 'Магазин', desc: 'Здесь — товары других коллекционеров: фигурки, аксессуары, диорамы. Вверху — поиск и фильтры, а круглая «+» справа — выставить свою фигурку.' },
   { tab: 'Карта', Icon: MapIcon, title: 'Карта коллекционеров', desc: 'Коллекционеры, мастера по ремонту, кастомизаторы и мастера диорам рядом с вами. Нажмите на маркер — откроется профиль.' },
-  // «Продать» — кнопка, а не экран: туда не переходим (stay), только подсвечиваем
-  { tab: 'Продать', Icon: Plus, stay: true, title: 'Продать', desc: 'Выставьте свою фигурку: фото, название, цена и контакт — она сразу появится в магазине.' },
   { tab: 'Сообщения', Icon: MessageCircle, title: 'Сообщения', desc: 'Переписки с продавцами и покупателями по товарам. Нажмите «Написать» в карточке товара — ответ придёт сюда.' },
   { tab: 'Моё', title: 'Объявления, коллекция и вишлист', desc: 'Ваши объявления — изменить, отметить проданным, удалить. А ещё каталог ваших фигурок и список того, что хотите найти.' },
   { tab: 'Профиль', Icon: User, title: 'Профиль', desc: 'Город, роли, фото портфолио, связь с администрацией и раздел «Помощь» со всеми функциями приложения.' },
@@ -29,7 +29,7 @@ const ALL_STEPS = [
 // что определяют состав вкладок в MainTabs (нужны для подсветки нужной)
 export default function OnboardingTour({ navigationRef, showGame, isAdmin, onFinish }) {
   const STEPS = ALL_STEPS
-  const TABS = ['Магазин', 'Карта', 'Продать', 'Сообщения', 'Моё', ...(showGame ? ['Игра'] : []), ...(isAdmin ? ['Админ'] : []), 'Профиль']
+  const TABS = ['Магазин', 'Карта', 'Сообщения', 'Моё', ...(showGame ? ['Игра'] : []), ...(isAdmin ? ['Админ'] : []), 'Профиль']
 
   const insets = useSafeAreaInsets()
   const { width, height } = useWindowDimensions()
@@ -57,7 +57,7 @@ export default function OnboardingTour({ navigationRef, showGame, isAdmin, onFin
   function goNext() {
     if (step >= STEPS.length - 1) { finish(); return }
     const next = STEPS[step + 1]
-    if (!next.stay) navigationRef.current?.navigate(next.tab)
+    navigationRef.current?.navigate(next.tab)
     setStep(step + 1)
   }
 

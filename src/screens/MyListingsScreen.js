@@ -139,7 +139,7 @@ export default function MyListingsScreen() {
             </Text>
             {section === 'active' ? (
               <>
-                <Text style={s.emptySub}>Нажмите «Продать» внизу экрана — фигурка сразу появится в магазине</Text>
+                <Text style={s.emptySub}>Нажмите кнопку ниже или «+» вверху магазина — фигурка сразу появится в магазине</Text>
                 <TouchableOpacity style={s.primaryBtn} onPress={() => navigation.navigate('SellProduct')}>
                   <IconLabel icon={Plus} label="Разместить объявление" textStyle={s.primaryBtnText} />
                 </TouchableOpacity>

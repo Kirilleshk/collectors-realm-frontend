@@ -9,7 +9,7 @@ import { colors } from '../theme'
 import ScreenBackground from '../components/ScreenBackground'
 import BrandHeader from '../components/BrandHeader'
 import IconLabel from '../components/IconLabel'
-import { Gavel, CalendarDays, Search, SearchX, X, Package, WifiOff, RotateCw, SlidersHorizontal, MapPin, Heart } from '../icons'
+import { Gavel, CalendarDays, Plus, Search, SearchX, X, Package, WifiOff, RotateCw, SlidersHorizontal, MapPin, Heart } from '../icons'
 
 // На узком мобильном экране — 2 колонки как раньше; на широком вебе больше
 // колонок, чтобы карточка не растягивалась на пол-окна (фикс "растянутых карточек").
@@ -183,13 +183,23 @@ export default function ShopScreen({ navigation }) {
   return (
     <ScreenBackground style={s.wrap}>
       <BrandHeader insets={insets} />
-      {/* Верхний ряд (20.10.2026, упрощение магазина): компактная кнопка
-          «Новости» (бывшая «Анонсы новых фигурок», ведёт на тот же экран
-          анонсов). «Библиотека» убрана — раздел закрыт; «+» переехал в
-          нижнее меню кнопкой «Продать», свои товары — «Моё → Объявления» */}
+      {/* Верхний ряд (20.10.2026, упрощение магазина): слева — компактная
+          кнопка «Новости» (бывшая «Анонсы новых фигурок», ведёт на тот же
+          экран анонсов), справа — «+» разместить свой товар. «Библиотека»
+          убрана — раздел закрыт. «+» 20.10 уезжал в нижнее меню кнопкой
+          «Продать», 23.10 вернулся сюда (просьба Марка). Свои товары —
+          «Моё → Объявления». Гостю «+» открывает вход */}
       <View style={s.topRow}>
         <TouchableOpacity style={s.newsBtn} onPress={() => navigation.navigate('Releases')}>
           <IconLabel icon={CalendarDays} label="Новости" size={14} gap={5} textStyle={s.newsBtnText} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={s.addBtn}
+          onPress={() => navigation.navigate(user ? 'SellProduct' : 'Login')}
+          accessibilityRole="button"
+          accessibilityLabel="Разместить товар"
+        >
+          <Plus size={22} color="#fff" strokeWidth={2.6} />
         </TouchableOpacity>
       </View>
 
@@ -388,6 +398,7 @@ const s = StyleSheet.create({
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: 12, marginTop: 8, marginBottom: 4 },
   newsBtn: { height: 34, justifyContent: 'center', backgroundColor: `${colors.blue}15`, borderRadius: 17, borderWidth: 1, borderColor: `${colors.blue}30`, paddingHorizontal: 12 },
   newsBtnText: { fontSize: 13, fontWeight: '600', color: colors.blue },
+  addBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.accent, justifyContent: 'center', alignItems: 'center', shadowColor: colors.accent, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.4, shadowRadius: 6, elevation: 4 },
   filtersWrap: { marginBottom: 4 },
   filterBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   filterBtnActive: { backgroundColor: colors.accent, borderColor: colors.accent },

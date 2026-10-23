@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { View, Image, ActivityIndicator, Platform, AppState } from 'react-native'
-import { ShoppingBag, Map as MapIcon, Gamepad2, Settings, User, Plus, MessageCircle } from './src/icons'
+import { ShoppingBag, Map as MapIcon, Gamepad2, Settings, User, MessageCircle } from './src/icons'
 import { NavigationContainer } from '@react-navigation/native'
 import * as NavigationBar from 'expo-navigation-bar'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
@@ -34,8 +34,9 @@ import ConversationScreen from './src/screens/ConversationScreen'
 import NotReadyScreen from './src/screens/NotReadyScreen'
 
 // Флаг видимости карточной игры — поставить false, чтобы мгновенно скрыть вкладку.
-// 20.10.2026: скрыта (раздел закрыт 13.10) — нижнее меню как на Авито:
-// Магазин · Карта · Продать · Моё · Профиль
+// 20.10.2026: скрыта (раздел закрыт 13.10) — нижнее меню как на Авито.
+// 23.10.2026: «Продать» из меню снова кнопкой «+» в магазине (просьба Марка
+// 21.10) — Магазин · Карта · Сообщения · Моё · Профиль
 const SHOW_GAME = false
 
 const Tab = createBottomTabNavigator()
@@ -120,12 +121,6 @@ function MessagesStack() {
   )
 }
 
-// Вкладка «Продать» — не экран, а кнопка: нажатие открывает форму
-// объявления в магазине (tabPress ниже), сама вкладка никогда не показывается
-function SellTabPlaceholder() {
-  return null
-}
-
 function MapStack() {
   return (
     <Stack.Navigator screenOptions={{
@@ -178,13 +173,6 @@ function MainTabs() {
   return (
     <Tab.Navigator screenOptions={({ route }) => ({
       tabBarIcon: ({ focused, color }) => {
-        if (route.name === 'Продать') {
-          return (
-            <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: colors.accent, justifyContent: 'center', alignItems: 'center', marginTop: -4 }}>
-              <Plus size={22} color="#fff" strokeWidth={2.6} />
-            </View>
-          )
-        }
         if (route.name === 'Моё') {
           return <Image source={require('./assets/logo-mark.png')} style={{ width: 22, height: 22, opacity: focused ? 1 : 0.5 }} resizeMode="contain" />
         }
@@ -201,18 +189,6 @@ function MainTabs() {
     })}>
       <Tab.Screen name="Магазин" component={ShopStack} options={{ headerShown: false }} />
       <Tab.Screen name="Карта" component={MapStack} options={{ headerShown: false }} listeners={authOnly} />
-      {/* «Продать» по центру — как «Разместить» на Авито (20.10.2026) */}
-      <Tab.Screen
-        name="Продать"
-        component={SellTabPlaceholder}
-        options={{ headerShown: false, tabBarLabelStyle: { fontSize: 11, fontWeight: '700', color: colors.accent } }}
-        listeners={({ navigation }) => ({
-          tabPress: e => {
-            e.preventDefault()
-            navigation.navigate(user ? 'Магазин' : 'Login', user ? { screen: 'SellProduct' } : undefined)
-          },
-        })}
-      />
       <Tab.Screen
         name="Сообщения"
         component={MessagesStack}

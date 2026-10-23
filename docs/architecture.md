@@ -27,9 +27,9 @@ collectors-realm/
     ├── theme.js             ← bg, surface, surface2, text, text2, accent, border, blue, purple, green
     ├── screens/
     │   ├── LoginScreen.js          ← Вход + регистрация (анкета коллекционера, мин. 3 фото)
-    │   ├── ShopScreen.js           ← Магазин: «Новости» сверху, поиск, фильтры, аукцион
+    │   ├── ShopScreen.js           ← Магазин: «Новости» и «+» (разместить товар) сверху, поиск, фильтры, аукцион
     │   ├── ProductDetailScreen.js  ← Карточка товара, галерея, ставки; продавец-пользователь / панель владельца
-    │   ├── SellProductScreen.js    ← Форма объявления (вкладка «Продать»): разместить / редактировать (route.params.product)
+    │   ├── SellProductScreen.js    ← Форма объявления («+» в магазине, «Моё → Объявления»): разместить / редактировать (route.params.product)
     │   ├── MyListingsScreen.js     ← «Моё → Объявления»: свои товары (у персонала — товары магазина), В продаже / Проданные
     │   ├── FavoritesScreen.js      ← «Моё → Избранное»: товары с сердечком
     │   ├── MessagesScreen.js       ← вкладка «Сообщения»: переписки по товарам (покупатель и продавец), непрочитанные
@@ -62,7 +62,7 @@ collectors-realm/
         ├── analytics.js            ← track() — отправка событий аналитики
         ├── WhatsNewModal.js        ← Модал "Что нового" при обновлении
         ├── changelog.js            ← История версий (ОБНОВЛЯТЬ ПРИ КАЖДОМ РЕЛИЗЕ)
-        ├── OnboardingTour.js       ← Тур по вкладкам (один раз за аккаунт; «Продать» — stay, не переходит)
+        ├── OnboardingTour.js       ← Тур по вкладкам (один раз за аккаунт; TABS = порядок вкладок MainTabs)
         ├── notice.js               ← showNotice('текст' [, { error: true }]) + <NoticeHost/> в App.js — всплывающее сообщение
         ├── favorites.js            ← useFavorites(enabled) + toggleFavorite (оптимистично) + resetFavorites при выходе
         ├── productMeta.js          ← CATEGORIES / categoryLabel — категории товара
@@ -79,13 +79,12 @@ collectors-realm/
 ```
 RootNav
 ├── Main → MainTabs — всем, и гостю (с 21.10.2026 магазин без регистрации)
-├── Login — только гостю, поверх (presentation modal); вкладки Карта/Продать/
-│   Сообщения/Моё/Профиль и действия с аккаунтом гостя ведут сюда; после входа
+├── Login — только гостю, поверх (presentation modal); вкладки Карта/Сообщения/
+│   Моё/Профиль, «+» в магазине и действия с аккаунтом гостя ведут сюда; после входа
 │   экран исчезает сам. Ссылка на товар — markeltoys.ru/?p=<id> (openSharedProduct)
 └── MainTabs
     ├── Магазин → ShopStack (ShopList → ProductDetail / SellProduct / Chat / Notifications / UserProfile / Releases / Library)
     ├── Карта   → MapStack (MapMain → UserProfileMap)
-    ├── Продать → не экран: tabPress → Магазин › SellProduct (кнопка по центру, как «Разместить» на Авито)
     ├── Сообщения → MessagesStack (MessagesList → Conversation / ProductDetail / SellProduct / UserProfile / Chat), счётчик непрочитанных
     ├── Моё     → MyStack (MyItemsMain → ProductDetail / SellProduct / Chat / UserProfile / Conversation) — те же имена роутов, что в ShopStack
     ├── Игра    → GameStack — СКРЫТА с 20.10.2026 (SHOW_GAME = false, раздел закрыт)
