@@ -3,9 +3,21 @@
 // isHelp: true — попадает в раздел Помощь (постоянные фичи)
 // isHelp: false — только в "Что нового" (временные анонсы)
 
-export const CURRENT_VERSION = '1.9.1'
+export const CURRENT_VERSION = '1.9.2'
 
 export const CHANGELOG = [
+  {
+    version: '1.9.2',
+    date: '2026-10-23',
+    changes: [
+      {
+        icon: '📍',
+        title: 'Подсказка «Где» в фильтрах',
+        desc: 'Без входа в аккаунт фильтр «Где» подсказывает сначала войти и указать город в профиле.',
+        isHelp: false,
+      },
+    ],
+  },
   {
     version: '1.9.1',
     date: '2026-10-23',

@@ -29,7 +29,7 @@ function Chip({ label, active, onPress }) {
   )
 }
 
-export default function ShopFilters({ visible, onClose, value, onChange, onReset, resultCount, userCity }) {
+export default function ShopFilters({ visible, onClose, value, onChange, onReset, resultCount, userCity, guest }) {
   const digits = t => t.replace(/\D/g, '').slice(0, 9)
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -78,7 +78,12 @@ export default function ShopFilters({ visible, onClose, value, onChange, onReset
                 <View style={[s.check, value.myCity && s.checkOn]}>{value.myCity ? <Check size={14} color="#fff" strokeWidth={3} /> : null}</View>
               </TouchableOpacity>
             ) : (
-              <Text style={s.hint}>Укажите свой город в «Профиль → Редактировать профиль» — тогда можно будет показать товары только из него.</Text>
+              // Гостю (магазин без входа, 21.10) профиля нет — сначала войти
+              <Text style={s.hint}>
+                {guest
+                  ? 'Войдите и укажите свой город в профиле — тогда можно будет показать товары только из него.'
+                  : 'Укажите свой город в «Профиль → Редактировать профиль» — тогда можно будет показать товары только из него.'}
+              </Text>
             )}
 
             <Text style={s.label}>Сортировка</Text>

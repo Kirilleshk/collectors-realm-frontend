@@ -234,6 +234,7 @@ export default function ShopScreen({ navigation }) {
         onReset={() => setAdv(EMPTY_FILTERS)}
         resultCount={filtered.length}
         userCity={user?.city?.trim() || null}
+        guest={!user}
       />
 
       {/* Дропдаун автодополнения по названию — обычный поток, отодвигает
