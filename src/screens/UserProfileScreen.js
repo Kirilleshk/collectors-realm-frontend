@@ -5,6 +5,7 @@ import { reviews as reviewsApi, portfolioCollections as collectionsApi } from '.
 import { useAuth } from '../AuthContext'
 import ScreenBackground from '../components/ScreenBackground'
 import IconLabel from '../components/IconLabel'
+import PhotoViewer from '../components/PhotoViewer'
 import { Boxes, Wrench, Palette, Mountain, Store, BadgeCheck, MapPin, Camera, Pencil, Plus } from '../icons'
 import { API_URL } from '../config'
 
@@ -54,6 +55,11 @@ export default function UserProfileScreen({ route, navigation }) {
   const [collections, setCollections] = useState([])
   const [activeCollection, setActiveCollection] = useState(null)
   const [collectionDetailVisible, setCollectionDetailVisible] = useState(false)
+  // Фото на весь экран по нажатию (Марк, 26.10.2026). Аватар и портфолио —
+  // viewer, фото коллекции — свой индекс: просмотрщик рендерится внутри модалки
+  // коллекции, иначе на iOS не откроется поверх неё
+  const [viewer, setViewer] = useState(null) // { photos: [url], index }
+  const [collPhotoIndex, setCollPhotoIndex] = useState(null)
   const collCardWidth = (width - 48) / 2
 
   const isMe = me?.id === userId
@@ -113,7 +119,11 @@ export default function UserProfileScreen({ route, navigation }) {
       {/* Шапка */}
       <View style={s.header}>
         {user.avatarUrl
-          ? <Image source={{ uri: user.avatarUrl }} style={s.avatar} />
+          ? (
+            <TouchableOpacity onPress={() => setViewer({ photos: [user.avatarUrl], index: 0 })} activeOpacity={0.8}>
+              <Image source={{ uri: user.avatarUrl }} style={s.avatar} />
+            </TouchableOpacity>
+          )
           : <View style={s.avatarPlaceholder}><Text style={s.avatarText}>{initials}</Text></View>
         }
 
@@ -165,7 +175,9 @@ export default function UserProfileScreen({ route, navigation }) {
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={{ flexDirection: 'row', gap: 10 }}>
               {user.portfolioPhotos.map((photo, i) => (
-                <Image key={i} source={{ uri: photo.url }} style={s.portfolioImg} resizeMode="cover" />
+                <TouchableOpacity key={i} onPress={() => setViewer({ photos: user.portfolioPhotos.map(p => p.url), index: i })} activeOpacity={0.8}>
+                  <Image source={{ uri: photo.url }} style={s.portfolioImg} resizeMode="cover" />
+                </TouchableOpacity>
               ))}
             </View>
           </ScrollView>
@@ -183,7 +195,7 @@ export default function UserProfileScreen({ route, navigation }) {
               <TouchableOpacity
                 key={col.id}
                 style={[s.collCard, { width: collCardWidth }]}
-                onPress={() => { setActiveCollection(col); setCollectionDetailVisible(true) }}
+                onPress={() => { setActiveCollection(col); setCollPhotoIndex(null); setCollectionDetailVisible(true) }}
               >
                 {col.photos[0] ? (
                   <Image source={{ uri: col.photos[0].url }} style={[s.collCover, { width: collCardWidth, height: collCardWidth }]} />
@@ -294,14 +306,20 @@ export default function UserProfileScreen({ route, navigation }) {
               <Text style={{ color: colors.text2, fontSize: 14, marginBottom: 16, lineHeight: 20 }}>{activeCollection.description}</Text>
             ) : null}
             <View style={s.collPhotoGrid}>
-              {(activeCollection?.photos || []).map(photo => (
-                <Image key={photo.id} source={{ uri: photo.url }} style={s.collPhoto} />
+              {(activeCollection?.photos || []).map((photo, i) => (
+                <TouchableOpacity key={photo.id} onPress={() => setCollPhotoIndex(i)} activeOpacity={0.8}>
+                  <Image source={{ uri: photo.url }} style={s.collPhoto} />
+                </TouchableOpacity>
               ))}
             </View>
             <View style={{ height: 40 }} />
           </ScrollView>
         </View>
+        {collPhotoIndex != null && activeCollection?.photos?.length > 0 && (
+          <PhotoViewer photos={activeCollection.photos.map(p => p.url)} initialIndex={collPhotoIndex} onClose={() => setCollPhotoIndex(null)} />
+        )}
       </Modal>
+      {viewer && <PhotoViewer photos={viewer.photos} initialIndex={viewer.index} onClose={() => setViewer(null)} />}
     </ScrollView>
     </ScreenBackground>
   )

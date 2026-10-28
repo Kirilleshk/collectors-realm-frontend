@@ -37,7 +37,7 @@ collectors-realm/
     │   ├── AdminScreen.js          ← вкладки Товары/Люди/Чат/Игра (ADMIN+MODERATOR),
     │   │                              Релизы (только ADMIN), Статистика (+ ANALYTICS)
     │   ├── ProfileScreen.js        ← Профиль: аватар, роли, геолокация, портфолио-коллекции
-    │   ├── UserProfileScreen.js    ← Публичный профиль (портфолио read-only)
+    │   ├── UserProfileScreen.js    ← Публичный профиль (портфолио read-only, фото — на весь экран через PhotoViewer)
     │   ├── MapScreen.js / .web.js  ← Leaflet (react-leaflet веб / WebView мобайл), радиус 5/20км
     │   ├── MyItemsScreen.js        ← вкладка «Моё» — переключатель Объявления/Коллекция/Вишлист
     │   ├── CollectionScreen.js     ← Моя коллекция
@@ -54,6 +54,7 @@ collectors-realm/
     │   ├── ShopFilters.js          ← панель «Фильтры» магазина: категория, цена от–до, мой город, сортировка
     │   ├── HelpGuide.js            ← «Помощь» (круглая «?» справа в шапке профиля, окно): гайд «что и куда жать» (ОБНОВЛЯТЬ при смене кнопок/вкладок)
     │   ├── ScreenBackground.js     ← Общий атмосферный градиент-фон экранов
+    │   ├── PhotoViewer.js          ← фото на весь экран: свайп/стрелки, закрыть ✕/нажатием/Esc; рендерить только пока открыт, из другого Modal — внутри него
     │   └── battle/                 ← BoardSlot, HandCard, BossBanner, CardZoomModal,
     │                                  DamagePopup, DeckPile, HpBar, LogEntry
     └── utils/

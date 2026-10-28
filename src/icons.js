@@ -14,6 +14,7 @@ export { default as CalendarDays } from 'lucide-react-native/icons/calendar-days
 export { default as Camera } from 'lucide-react-native/icons/camera'
 export { default as Check } from 'lucide-react-native/icons/check'
 export { default as ChevronDown } from 'lucide-react-native/icons/chevron-down'
+export { default as ChevronLeft } from 'lucide-react-native/icons/chevron-left'
 export { default as ChevronRight } from 'lucide-react-native/icons/chevron-right'
 export { default as ChevronUp } from 'lucide-react-native/icons/chevron-up'
 export { default as CircleCheck } from 'lucide-react-native/icons/circle-check'
