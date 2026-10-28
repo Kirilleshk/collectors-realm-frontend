@@ -45,7 +45,7 @@ collectors-realm/
     │   ├── LibraryScreen.js        ← Библиотека знаний гик-культуры (Groq + Wikipedia)
     │   ├── ChatScreen.js           ← Чат с продавцом (единый тред с саппортом)
     │   ├── NotificationsScreen.js  ← Уведомления
-    │   ├── ReleasesScreen.js       ← Анонсы релизов
+    │   ├── ReleasesScreen.js       ← «Новости» — посты тг-канала Markeltoys, колонка ≤640 px; медиа поста — NewsMedia
     │   ├── GameScreen.js           ← Коллекция карт темы + вход в бой
     │   ├── LevelSelectScreen.js    ← Карта-путь лестницы боссов
     │   └── BattleScreen.js         ← Экран боя (стол, рука, атака drag-to-target)
@@ -54,6 +54,7 @@ collectors-realm/
     │   ├── ShopFilters.js          ← панель «Фильтры» магазина: категория, цена от–до, мой город, сортировка
     │   ├── HelpGuide.js            ← «Помощь» (круглая «?» справа в шапке профиля, окно): гайд «что и куда жать» (ОБНОВЛЯТЬ при смене кнопок/вкладок)
     │   ├── ScreenBackground.js     ← Общий атмосферный градиент-фон экранов
+    │   ├── NewsMedia.js            ← фото/альбом/видео поста «Новостей»; NewsVideo.web.js — <video> (не expo-av: обложка закрывает кнопки), NewsVideo.js — expo-av по нажатию, NewsVideoCover — обложка «Смотреть в Telegram»
     │   ├── PhotoViewer.js          ← фото на весь экран: свайп/стрелки, закрыть ✕/нажатием/Esc; рендерить только пока открыт, из другого Modal — внутри него
     │   └── battle/                 ← BoardSlot, HandCard, BossBanner, CardZoomModal,
     │                                  DamagePopup, DeckPile, HpBar, LogEntry

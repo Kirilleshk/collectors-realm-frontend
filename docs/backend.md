@@ -42,7 +42,9 @@ notifications.routes   GET /, PATCH /:id/read, /read-all, POST /trigger-report
 support.routes.ts      чат «связь с администрацией» ↔ SupportMessage,
                        /conversations и /:userId/reply — для staff
 analytics.routes.ts    POST / (событие), GET /summary (staff)
-news.routes.ts         GET / — витрина новостей
+news.routes.ts         GET / (?before) — посты t.me/s/markeltoys (кеш 15 мин): text, media[]
+                       (photo/video по порядку; у видео mp4 с токеном CDN или только
+                       обложка — «Media is too big»), imageUrl — для старых версий
 markBot.routes.ts      GET/PATCH /notes, POST /send, POST /webhook — Telegram-бот задач Марка
 growth.routes.ts       POST /run (?dryRun ?wait ?handle ?debug), GET /stats — бот привлечения
                        (x-bot-secret; логика — services/growth/*)

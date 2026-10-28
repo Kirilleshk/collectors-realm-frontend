@@ -3,9 +3,21 @@
 // isHelp: true — попадает в раздел Помощь (постоянные фичи)
 // isHelp: false — только в "Что нового" (временные анонсы)
 
-export const CURRENT_VERSION = '1.9.3'
+export const CURRENT_VERSION = '1.9.4'
 
 export const CHANGELOG = [
+  {
+    version: '1.9.4',
+    date: '2026-10-28',
+    changes: [
+      {
+        icon: '🎬',
+        title: 'Видео и альбомы в «Новостях»',
+        desc: 'Видео из канала Markeltoys проигрываются прямо в ленте, у альбомов видны все фото. Нажмите на фото — откроется на весь экран.',
+        isHelp: false,
+      },
+    ],
+  },
   {
     version: '1.9.3',
     date: '2026-10-28',

@@ -6,9 +6,15 @@ import {
 import { news as newsApi } from '../api'
 import { colors } from '../theme'
 import ScreenBackground from '../components/ScreenBackground'
+import NewsMedia from '../components/NewsMedia'
 import { Settings, Newspaper } from '../icons'
 
+// Лента на ПК — колонкой по центру, как в Telegram: во всю ширину 1440 px
+// фото и обложки видео растягивались и размывались (28.10.2026)
+const MAX_FEED = 640
+
 function FeedCard({ item }) {
+  const hasMedia = !!(item.media?.length || item.imageUrl)
   const date = new Date(item.date)
   const dateStr = date.toLocaleDateString('ru', { day: 'numeric', month: 'long' })
   const timeStr = date.toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })
@@ -25,12 +31,10 @@ function FeedCard({ item }) {
         </View>
       </View>
 
-      {item.imageUrl ? (
-        <Image source={{ uri: item.imageUrl }} style={s.img} resizeMode="cover" />
-      ) : null}
+      <NewsMedia item={item} />
 
       {item.text ? (
-        <Text style={[s.text, item.imageUrl && { paddingTop: 10 }]}>{item.text}</Text>
+        <Text style={[s.text, hasMedia && { paddingTop: 10 }]}>{item.text}</Text>
       ) : null}
     </View>
   )
@@ -107,7 +111,7 @@ export default function ReleasesScreen() {
     <FlatList
       data={feed}
       keyExtractor={i => i.id}
-      contentContainerStyle={{ paddingVertical: 8 }}
+      contentContainerStyle={s.list}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={() => loadFeed(true)} tintColor={colors.accent} />
       }
@@ -138,13 +142,13 @@ export default function ReleasesScreen() {
 
 const s = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  list: { paddingVertical: 8, width: '100%', maxWidth: MAX_FEED, alignSelf: 'center' },
 
   card: { backgroundColor: colors.surface, paddingBottom: 14 },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 12 },
   avatar: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#229ED920', borderWidth: 1, borderColor: '#229ED940', justifyContent: 'center', alignItems: 'center' },
   channelName: { fontSize: 14, fontWeight: '700', color: colors.text },
   date: { fontSize: 11, color: colors.text2, marginTop: 1 },
-  img: { width: '100%', aspectRatio: 4 / 3 },
   text: { fontSize: 14, color: colors.text, lineHeight: 21, paddingHorizontal: 16, paddingBottom: 14 },
 
   separator: { height: 1, backgroundColor: colors.border, marginHorizontal: 16 },
